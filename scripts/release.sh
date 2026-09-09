@@ -72,7 +72,9 @@ for osarch in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; d
   cp third_party/cloudflared/LICENSE "$pkg/CLOUDFLARED-LICENSE.txt"
 
   if [ "$goos" = windows ]; then
-    (cd "$stage" && zip -qry "$repo/$out/fylane-companion-$goos-$goarch.zip" "fylane-companion-$goos-$goarch")
+    # No -y: these archives hold no symlinks, and the zip that Chocolatey
+    # ships for the Windows runner rejects the flag outright (exit 16).
+    (cd "$stage" && zip -qr "$repo/$out/fylane-companion-$goos-$goarch.zip" "fylane-companion-$goos-$goarch")
   else
     tar -czf "$out/fylane-companion-$goos-$goarch.tar.gz" -C "$stage" "fylane-companion-$goos-$goarch"
   fi
@@ -161,7 +163,7 @@ if [ "${FYLANE_BUILD_DESKTOP:-}" = "1" ]; then
     cp "$src/fylane-companion$hostext" "$src/cloudflared$hostext" "$pkgd/"
     cp third_party/cloudflared/LICENSE "$pkgd/CLOUDFLARED-LICENSE.txt"
     if [ "$hostos" = windows ]; then
-      (cd "$stage" && zip -qry "$repo/$out/$name.zip" "$name")
+      (cd "$stage" && zip -qr "$repo/$out/$name.zip" "$name")
     else
       tar -czf "$out/$name.tar.gz" -C "$stage" "$name"
     fi
