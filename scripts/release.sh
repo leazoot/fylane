@@ -170,6 +170,15 @@ if [ "${FYLANE_BUILD_DESKTOP:-}" = "1" ]; then
   fi
 fi
 
-(cd "$out" && shasum -a 256 -- * > SHA256SUMS)
+# macOS has shasum (Perl) and no sha256sum; Git Bash on Windows and most
+# Linux images have sha256sum and no shasum. Same output format either way.
+if command -v shasum >/dev/null 2>&1; then
+  (cd "$out" && shasum -a 256 -- * > SHA256SUMS)
+elif command -v sha256sum >/dev/null 2>&1; then
+  (cd "$out" && sha256sum -- * > SHA256SUMS)
+else
+  echo "error: neither shasum nor sha256sum is available to write SHA256SUMS" >&2
+  exit 1
+fi
 echo "release $VERSION:"
 ls -l "$out"
