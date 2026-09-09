@@ -12,6 +12,8 @@ import {
   Connect,
   CopyText,
   CoreStatus,
+  Dock,
+  SetDockHidden,
   PairClaims,
   PairingCode,
   PauseWorkspace,
@@ -591,6 +593,29 @@ export type ReadBoundaryInfo = {
   /** One sentence saying why, safe to show: it never carries a path. */
   detail: string;
 };
+
+/** Whether the Dock icon is hidden — a shell setting, not a Core one: it is
+ *  about how this window presents itself and has to be applied before the
+ *  Core has answered anything, so the shell keeps it in its own file.
+ *
+ *  Same shape as AutostartInfo for the same reason: where a platform has no
+ *  Dock, the row explains instead of offering a switch that would do nothing. */
+export type DockInfo = {
+  supported: boolean;
+  hidden: boolean;
+  detail?: string;
+};
+
+export async function fetchDock(): Promise<DockInfo> {
+  return JSON.parse(await Dock());
+}
+
+/** The shell answers with the state now in force, which the page redraws
+ *  from — the switch must not sit where the click put it if the change was
+ *  refused. */
+export async function setDockHidden(hidden: boolean): Promise<DockInfo> {
+  return JSON.parse(await SetDockHidden(hidden));
+}
 
 export type PrefsInfo = {
   task_timeout_seconds: number;

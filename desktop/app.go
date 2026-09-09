@@ -43,6 +43,11 @@ func (a *App) startup(ctx context.Context) {
 	} else if base, err := os.UserConfigDir(); err == nil {
 		a.dataDir = filepath.Join(base, "fylane")
 	}
+	// Before anything is shown: a Dock tile that appears and then vanishes
+	// is the one thing a "hide the Dock icon" setting must not do.
+	if dockSupported && a.readShellPrefs().DockHidden {
+		applyDockHidden(true)
+	}
 	// First-run: nobody has started the Core yet — the shell brings it up so
 	// the user never faces a "core is not running" wall. The Core's
 	// single-instance lock makes a concurrent start harmless.

@@ -216,6 +216,12 @@ export const DICT = {
   "set.basics": { en: "Basics", zh: "基础" },
   "set.basicsNote": { en: "Language, appearance and startup.", zh: "语言、外观与启动方式。" },
   "set.autostart": { en: "Start at login", zh: "开机启动" },
+  // The cell holds two switches now — how the app lives on this machine —
+  // so its title names that, and each switch carries its own label.
+  "set.presence": { en: "Startup & presence", zh: "启动与常驻" },
+  "set.dock": { en: "Hide Dock icon", zh: "隐藏 Dock 图标" },
+  "set.dockNote": { en: "Menu bar only", zh: "只留菜单栏" },
+  "set.dockUnsupported": { en: "This system has no Dock icon to hide.", zh: "这个系统没有 Dock 图标可隐藏。" },
   // Beside the switch in a third-width cell. The design puts a short state
   // label there, not a sentence: the cell's own title already says what the
   // setting is, and an explanation wraps to three lines at this width.

@@ -177,6 +177,8 @@ function deps(over: Partial<SettingsDeps> = {}): SettingsDeps {
     save: async () => PREFS,
     status: async () => STATUS,
     setMode: async () => ({ approval_mode: "safe" as const }),
+    dock: async () => ({ supported: true, hidden: false }),
+    setDock: async (hidden: boolean) => ({ supported: true, hidden }),
     connect: async () => connect(),
     commands: async () => ({ rung: "workspace", grants: [] }),
     setRung: async () => ({ rung: "workspace", grants: [] }),
@@ -1483,6 +1485,78 @@ describe("the update notice", () => {
 // after — while `POST /v1/safety` and the `approval_mode` status field went
 // on working. What is pinned here is that the page shows which policy is
 // running, can change it, and never invents one.
+
+// Hiding the Dock icon is a shell setting: it lives with the window, not the
+// Core, and where there is no Dock the row has to say so rather than offer a
+// switch that would do nothing.
+describe("hiding the Dock icon", () => {
+  const sw = (label: string) =>
+    buttons().find((b) => b.getAttribute("role") === "switch" && b.getAttribute("aria-label") === label);
+
+  it("offers the switch where there is a Dock, off by default", async () => {
+    // Bare settingsProps carries no deps, and the real bindings do not exist
+    // under jsdom — the switch only appears once the shell has answered.
+    draw(<SettingsScreen {...settingsProps} deps={deps()} />);
+    await settle();
+    expect(sw("Hide Dock icon")?.getAttribute("aria-checked")).toBe("false");
+    expect(sw("Hide Dock icon")?.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("sends the choice and shows what the shell now holds", async () => {
+    let sent: boolean | null = null;
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({
+          setDock: async (hidden: boolean) => {
+            sent = hidden;
+            return { supported: true, hidden };
+          },
+        })}
+      />,
+    );
+    await settle();
+    click(sw("Hide Dock icon"));
+    await settle();
+    expect(sent).toBe(true);
+    expect(sw("Hide Dock icon")?.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("keeps the switch where the shell left it when the change was refused", async () => {
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({ setDock: async () => ({ supported: true, hidden: false }) })}
+      />,
+    );
+    await settle();
+    click(sw("Hide Dock icon"));
+    await settle();
+    expect(sw("Hide Dock icon")?.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("says so, and disables the switch, on a system with no Dock", async () => {
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({
+          dock: async () => ({ supported: false, hidden: false, detail: "There is no Dock icon to hide on this system." }),
+        })}
+      />,
+    );
+    await settle();
+    expect(sw("Hide Dock icon")?.hasAttribute("disabled")).toBe(true);
+    expect(text()).toContain("no Dock icon to hide");
+  });
+
+  it("leaves the login switch alone in the cell it now shares", async () => {
+    draw(<SettingsScreen {...settingsProps} deps={deps()} />);
+    await settle();
+    expect(sw("Start at login")).toBeTruthy();
+    expect(text()).toContain("Startup & presence");
+  });
+});
+
 describe("the file-write approval policy", () => {
   const st = (mode: "safe" | "balanced"): CoreStatusInfo => ({ ...STATUS, approval_mode: mode });
 

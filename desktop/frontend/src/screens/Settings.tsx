@@ -8,6 +8,8 @@ import {
   fetchConnect,
   fetchPrefs,
   fetchStatus,
+  fetchDock,
+  setDockHidden,
   mintPairingCode,
   openURL,
   raiseWindow,
@@ -34,6 +36,7 @@ import {
   type TunnelSetupState,
   type Workspace,
   type WriteMode,
+  type DockInfo,
 } from "../lib/core";
 import { LANGS, useT, type Key, type Lang, type Translator } from "../lib/i18n";
 import { agoShort } from "../lib/records";
@@ -232,6 +235,8 @@ export interface SettingsDeps {
   setNetwork: typeof setWorkspaceNetwork;
   status: typeof fetchStatus;
   setMode: typeof setWriteMode;
+  dock: typeof fetchDock;
+  setDock: typeof setDockHidden;
 }
 
 const CORE: SettingsDeps = {
@@ -250,6 +255,8 @@ const CORE: SettingsDeps = {
   setNetwork: setWorkspaceNetwork,
   status: fetchStatus,
   setMode: setWriteMode,
+  dock: fetchDock,
+  setDock: setDockHidden,
 };
 
 export interface SettingsProps {
@@ -296,6 +303,7 @@ export function SettingsScreen({
   const [prefs, setPrefs] = useState<PrefsInfo | null>(null);
   const [rung, setRung] = useState<CommandRung | null>(null);
   const [mode, setMode] = useState<WriteMode | null>(null);
+  const [dock, setDock] = useState<DockInfo | null>(null);
   const [proxies, setProxies] = useState<ProxyProvider[]>([]);
   const [servers, setServers] = useState<LanguageServer[]>([]);
   const [grants, setGrants] = useState<CommandGrant[]>([]);
@@ -308,6 +316,17 @@ export function SettingsScreen({
 
   useEffect(() => {
     let alive = true;
+    // A shell setting, read beside the Core's rather than after them. Failing
+    // to read it is a quiet absence — the switch does not appear — not a
+    // reason to hold the page.
+    void deps
+      .dock()
+      .then((info) => {
+        if (alive) {
+          setDock(info);
+        }
+      })
+      .catch(() => {});
     void readSettings(deps).then((read) => {
       if (!alive) {
         return;
@@ -366,6 +385,14 @@ export function SettingsScreen({
       setGrants(res.grants);
     } catch (e) {
       onError(e instanceof Error ? e.message : t("shell.errGate"));
+    }
+  };
+
+  const chooseDock = async (hidden: boolean) => {
+    try {
+      setDock(await deps.setDock(hidden));
+    } catch (e) {
+      onError(e instanceof Error ? e.message : t("shell.errPrefs"));
     }
   };
 
@@ -490,7 +517,7 @@ export function SettingsScreen({
             />
           </div>
           <div className="fy-cell">
-            <div className="fy-cell-title">{t("set.autostart")}</div>
+            <div className="fy-cell-title">{t("set.presence")}</div>
             <div
               style={{
                 display: "flex",
@@ -515,6 +542,23 @@ export function SettingsScreen({
                   : t("set.autostartNote")}
               </span>
             </div>
+            {/* Hidden from the Dock, the app is reached from the menu bar's
+                own item, which every platform has — so this can never strand
+                the window. Where there is no Dock the row says so, in the
+                same words the login switch uses when it cannot register. */}
+            {dock && (
+              <div className="fy-cell-body" style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+                <Switch
+                  label={t("set.dock")}
+                  on={dock.hidden}
+                  disabled={!dock.supported}
+                  onToggle={() => void chooseDock(!dock.hidden)}
+                />
+                <span className="fy-snote">
+                  {dock.supported ? t("set.dock") : dock.detail || t("set.dockUnsupported")}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
