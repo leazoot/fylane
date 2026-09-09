@@ -190,6 +190,10 @@ type Manager struct {
 	tasks  map[string]*task
 	byKey  map[string]string
 	closed bool
+	// nextSeq orders tasks that share a startedAt. Clocks are coarse —
+	// Windows ticks in milliseconds — so two tasks started back to back can
+	// carry the same time, and "oldest" then has to mean "arrived first".
+	nextSeq uint64
 }
 
 // New builds a Manager. Close must be called at shutdown: it is what turns
@@ -276,11 +280,17 @@ func (m *Manager) List() []Snapshot {
 	}
 	m.mu.Unlock()
 
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if !a.startedAt.Equal(b.startedAt) {
+			return a.startedAt.After(b.startedAt)
+		}
+		return a.seq > b.seq
+	})
 	snaps := make([]Snapshot, 0, len(out))
 	for _, t := range out {
 		snaps = append(snaps, t.snapshot(0, 0))
 	}
-	sort.Slice(snaps, func(i, j int) bool { return snaps[i].StartedAt.After(snaps[j].StartedAt) })
 	return snaps
 }
 
@@ -368,6 +378,7 @@ func (m *Manager) acquire(meta Meta) (*task, bool, error) {
 		network:    meta.Network,
 		state:      Running,
 		startedAt:  m.now(),
+		seq:        m.nextSeq,
 		maxRuntime: m.maxRuntime,
 		stdout:     newBuffer(m.maxOutput),
 		stderr:     newBuffer(m.maxOutput),
@@ -376,6 +387,7 @@ func (m *Manager) acquire(meta Meta) (*task, bool, error) {
 		done:       make(chan struct{}),
 		now:        m.now,
 	}
+	m.nextSeq++
 	m.tasks[id] = t
 	if meta.Key != "" {
 		m.byKey[meta.Key] = id
@@ -413,7 +425,13 @@ func (m *Manager) purgeLocked() {
 			finished = append(finished, t)
 		}
 	}
-	sort.Slice(finished, func(i, j int) bool { return finished[i].startedAt.Before(finished[j].startedAt) })
+	sort.Slice(finished, func(i, j int) bool {
+		a, b := finished[i], finished[j]
+		if !a.startedAt.Equal(b.startedAt) {
+			return a.startedAt.Before(b.startedAt)
+		}
+		return a.seq < b.seq
+	})
 	for _, t := range finished {
 		if len(m.tasks) <= m.maxTasks {
 			return
@@ -432,6 +450,7 @@ func (m *Manager) forgetLocked(id string, t *task) {
 type task struct {
 	id         string
 	key        string
+	seq        uint64
 	label      string
 	dir        string
 	provider   string

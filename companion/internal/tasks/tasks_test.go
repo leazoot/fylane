@@ -481,6 +481,33 @@ func TestTheTableIsTrimmedToItsCap(t *testing.T) {
 	}
 }
 
+// Regression: two tasks started in the same clock tick have equal
+// startedAt, and a sort with no tie-break then puts them in any order — so a
+// trim "from the oldest end" could evict the task whose result the caller is
+// about to read. Windows ticks coarsely enough to hit this in a tight loop;
+// a stopped clock reproduces it on every platform, every time.
+func TestTrimBreaksTimestampTiesByArrival(t *testing.T) {
+	clock := &fakeClock{t: time.Unix(1_700_000_000, 0)}
+	m := New(Options{MaxTasks: 5, now: clock.now})
+	defer m.Close()
+
+	var ids []string
+	for i := 0; i < 20; i++ {
+		s, err := m.Run(context.Background(), Meta{}, instant(0))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, s.ID)
+	}
+	if _, err := m.Status(ids[len(ids)-1], 0, 0); err != nil {
+		t.Fatalf("the newest of equal-timestamp tasks was trimmed: %v", err)
+	}
+	// And the list agrees on which one is newest.
+	if got := m.List(); len(got) == 0 || got[0].ID != ids[len(ids)-1] {
+		t.Fatalf("list head = %v, want the last-started task first", got)
+	}
+}
+
 func TestListIsNewestFirst(t *testing.T) {
 	clock := &fakeClock{t: time.Unix(1_700_000_000, 0)}
 	m := New(Options{now: clock.now})
