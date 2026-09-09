@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"time"
 )
 
 func node(name string, kind, from, to int, children ...symbolNode) symbolNode {
@@ -112,8 +111,12 @@ func TestReachStopsAtTheBudgetAndSaysSo(t *testing.T) {
 	if _, err := s.Symbols(t.Context(), query(root, "widget.go")); err != nil {
 		t.Fatalf("Symbols: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), time.Nanosecond)
-	defer cancel()
+	// Cancelled outright rather than given a nanosecond: a deadline that
+	// short is already past on a fine-grained clock and still ahead on a
+	// coarse one, and Windows ticks coarsely enough for the whole call to
+	// finish inside it. Reach keys on ctx.Err() either way.
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
 	reach, err := s.Reach(ctx, query(root, "widget.go"), []int{3})
 	if err != nil {
 		// An expired context may end the symbol call instead, which is the
