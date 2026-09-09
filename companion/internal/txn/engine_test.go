@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -294,10 +295,20 @@ func TestMidApplyFailureRestoresEverything(t *testing.T) {
 	f.write(t, "locked/target.txt", "old\n")
 	lockedHash := hashBytes([]byte("old\n"))
 	lockedDir := filepath.Join(f.root, "locked")
-	if err := os.Chmod(lockedDir, 0o555); err != nil {
-		t.Fatal(err)
+	if runtime.GOOS == "windows" {
+		// Directory modes are ignored here. An open handle on the target is
+		// what refuses the rename that fs.go uses to replace it.
+		held, err := os.Open(filepath.Join(lockedDir, "target.txt"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { held.Close() })
+	} else {
+		if err := os.Chmod(lockedDir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.Chmod(lockedDir, 0o755) })
 	}
-	t.Cleanup(func() { os.Chmod(lockedDir, 0o755) })
 
 	res := f.execute(t,
 		Operation{Type: OpCreate, Path: "created.txt", Content: "temp\n"},

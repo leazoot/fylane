@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -163,7 +164,8 @@ func TestFetchInstallsAVerifiedBinary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm()&0o100 == 0 {
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o100 == 0 {
+		// On Windows the .exe suffix, not a mode bit, is what runs.
 		t.Errorf("installed mode %v is not executable", info.Mode().Perm())
 	}
 }

@@ -350,10 +350,22 @@ func uriToPath(uri string) (string, error) {
 		return "", fmt.Errorf("location %q is on another host", uri)
 	}
 	p := u.Path
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" && hasDriveAfterSlash(p) {
+		// "/C:/src" is how a drive-rooted path travels in a URI; the slash is
+		// the anchor, not part of the path. A drive-less "/tmp/a.go" keeps
+		// its slash, or it would come back relative.
 		p = strings.TrimPrefix(p, "/")
 	}
 	return filepath.FromSlash(p), nil
+}
+
+// hasDriveAfterSlash reports whether p looks like "/X:..." for a drive letter X.
+func hasDriveAfterSlash(p string) bool {
+	if len(p) < 3 || p[0] != '/' || p[2] != ':' {
+		return false
+	}
+	c := p[1]
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
 }
 
 // utf16Column converts a byte offset within a line into LSP's UTF-16 code

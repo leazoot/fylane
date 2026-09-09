@@ -35,6 +35,12 @@ func Setup(dataDir, version string) (string, error) {
 
 	latest := filepath.Join(dir, latestName)
 	meta := filepath.Join(dir, metaName)
+	// Let go of any capture armed earlier in this process before touching the
+	// file. The runtime holds its own handle, and on Windows an open file can
+	// be neither renamed into the archive nor removed with its directory.
+	if err := debug.SetCrashOutput(nil, debug.CrashOptions{}); err != nil {
+		return "", fmt.Errorf("releasing crash output: %w", err)
+	}
 	if info, err := os.Stat(latest); err == nil && info.Size() > 0 {
 		stamp := info.ModTime().UTC().Format("20060102-150405")
 		os.Rename(latest, filepath.Join(dir, "crash-"+stamp+".log"))
@@ -57,6 +63,10 @@ func Setup(dataDir, version string) (string, error) {
 	if err := debug.SetCrashOutput(f, debug.CrashOptions{}); err != nil {
 		f.Close()
 		return "", fmt.Errorf("arming crash output: %w", err)
+	}
+	// The runtime duplicated the descriptor; this copy is now just a leak.
+	if err := f.Close(); err != nil {
+		return "", fmt.Errorf("closing crash file: %w", err)
 	}
 	return latest, nil
 }

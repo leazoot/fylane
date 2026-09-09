@@ -298,7 +298,19 @@ func TestTheProviderStartsInsideTheWorkspace(t *testing.T) {
 	}
 	sess := open(t, fixtureProvider(t), dir)
 	res := callText(t, sess, "probe", "")
-	if !strings.Contains(res.Text, "cwd="+want) {
+	// Windows hands out %TEMP% in 8.3 form ("RUNNER~1"), so the child's
+	// verbatim report and t.TempDir() can spell one directory two ways.
+	// Resolve the report the same way as the expectation before comparing.
+	got := ""
+	for _, line := range strings.Split(res.Text, "\n") {
+		if rest, ok := strings.CutPrefix(line, "cwd="); ok {
+			got = rest
+		}
+	}
+	if resolved, err := filepath.EvalSymlinks(got); err == nil {
+		got = resolved
+	}
+	if got != want {
 		t.Errorf("probe = %q, want the provider started in %q", res.Text, want)
 	}
 }

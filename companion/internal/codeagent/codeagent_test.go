@@ -111,7 +111,9 @@ func TestScrubbingWriterReportsTheCallersLength(t *testing.T) {
 }
 
 func TestWorkDirRejectsEscapes(t *testing.T) {
-	root := filepath.FromSlash("/Users/dev/project")
+	// Absolute on every platform: a drive-less path is relative on Windows,
+	// and workDir is right to refuse it — which is not what this test is for.
+	root := filepath.Join(filepath.VolumeName(t.TempDir())+string(filepath.Separator), "Users", "dev", "project")
 	if _, err := workDir(Task{Root: root, Dir: "../elsewhere"}); err == nil {
 		t.Fatal("a directory outside the workspace was accepted")
 	}

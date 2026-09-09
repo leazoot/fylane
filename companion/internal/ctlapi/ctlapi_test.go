@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -82,9 +83,14 @@ func newFixture(t *testing.T) *fixture {
 	if cf.Addr != addr || cf.Token == "" || cf.PID != os.Getpid() {
 		t.Fatalf("control file = %+v, addr = %s", cf, addr)
 	}
-	info, err := os.Stat(filepath.Join(dataDir, controlFileName))
-	if err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("control file permissions = %v, %v", info.Mode(), err)
+	// Owner-only is a POSIX promise. Windows has no mode bits and this Core
+	// sets no ACL there, so the token is only as private as the data
+	// directory — a gap, not a property to assert on.
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(filepath.Join(dataDir, controlFileName))
+		if err != nil || info.Mode().Perm() != 0o600 {
+			t.Fatalf("control file permissions = %v, %v", info.Mode(), err)
+		}
 	}
 	return &fixture{addr: addr, token: cf.Token, svc: svc, manager: manager, st: st, srv: srv, dataDir: dataDir, root: root, backups: backups}
 }
@@ -195,6 +201,9 @@ func TestSafetyModeSwitch(t *testing.T) {
 }
 
 func TestControlFileModeRepaired(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("there is no mode to repair on Windows: the file has no POSIX bits")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	dataDir := t.TempDir()
