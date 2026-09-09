@@ -10,8 +10,10 @@ import (
 )
 
 func TestSetupArmsAndRotates(t *testing.T) {
-	t.Cleanup(Release)
 	dataDir := t.TempDir()
+	// Registered after TempDir so it runs before the directory is removed:
+	// cleanups run in reverse order, and Windows cannot delete a held file.
+	t.Cleanup(Release)
 
 	latest, err := Setup(dataDir, "0.0.1-test")
 	if err != nil {
@@ -48,8 +50,10 @@ func TestSetupArmsAndRotates(t *testing.T) {
 }
 
 func TestPruneKeepsNewest(t *testing.T) {
-	t.Cleanup(Release)
 	dataDir := t.TempDir()
+	// Registered after TempDir so it runs before the directory is removed:
+	// cleanups run in reverse order, and Windows cannot delete a held file.
+	t.Cleanup(Release)
 	dir := filepath.Join(dataDir, dirName)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -77,8 +81,10 @@ func TestPruneKeepsNewest(t *testing.T) {
 }
 
 func TestDiagnosticsExcludesSecrets(t *testing.T) {
-	t.Cleanup(Release)
 	dataDir := t.TempDir()
+	// Registered after TempDir so it runs before the directory is removed:
+	// cleanups run in reverse order, and Windows cannot delete a held file.
+	t.Cleanup(Release)
 	if _, err := Setup(dataDir, "0.0.1-test"); err != nil {
 		t.Fatal(err)
 	}
