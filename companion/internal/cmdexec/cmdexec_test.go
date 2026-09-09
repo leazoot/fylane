@@ -54,6 +54,22 @@ func newRunner(t *testing.T) (*Runner, *recorder) {
 	return New(rec, nil), rec
 }
 
+// Commands run through a real read boundary here, and on Linux that boundary
+// is applied by re-executing this binary as a shim (readbox/box_linux.go).
+// Under `go test` this binary is the test binary: without this interception
+// the child would run the package again instead of the command, and the
+// command would appear to produce nothing for as long as its budget lasts.
+func TestMain(m *testing.M) {
+	if readbox.IsShim(os.Args) {
+		if err := readbox.RunShim(os.Args); err != nil {
+			os.Stderr.WriteString("read boundary shim: " + err.Error() + "\n")
+			os.Exit(1)
+		}
+		return
+	}
+	os.Exit(m.Run())
+}
+
 func TestNewRejectsAMissingAuditor(t *testing.T) {
 	defer func() {
 		if recover() == nil {

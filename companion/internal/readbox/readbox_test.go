@@ -97,12 +97,19 @@ func TestTheWorkspaceIsReadableAndTheCredentialStoresAreNot(t *testing.T) {
 	if len(p.ReadWrite) != 1 || p.ReadWrite[0] != root {
 		t.Fatalf("read-write = %v, want just the workspace", p.ReadWrite)
 	}
+	// The policy keeps only paths that exist, so this test owns its home
+	// directory rather than reading the developer's: a machine with no
+	// ~/.gitconfig — every fresh CI runner — would otherwise fail a test
+	// about names with a fact about one filesystem.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p = WorkspacePolicy(root, true)
 	joined := strings.Join(p.allPaths(), "\n")
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Skip("no home directory on this machine")
-	}
 	// Configuration a toolchain cannot start without: allowed.
 	if !strings.Contains(joined, filepath.Join(home, ".gitconfig")) {
 		t.Fatalf("git configuration is not readable, so git cannot run:\n%s", joined)
