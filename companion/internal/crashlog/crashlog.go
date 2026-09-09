@@ -36,11 +36,9 @@ func Setup(dataDir, version string) (string, error) {
 	latest := filepath.Join(dir, latestName)
 	meta := filepath.Join(dir, metaName)
 	// Let go of any capture armed earlier in this process before touching the
-	// file. The runtime holds its own handle, and on Windows an open file can
-	// be neither renamed into the archive nor removed with its directory.
-	if err := debug.SetCrashOutput(nil, debug.CrashOptions{}); err != nil {
-		return "", fmt.Errorf("releasing crash output: %w", err)
-	}
+	// file: on Windows an open file can be neither renamed into the archive
+	// nor removed with its directory.
+	Release()
 	if info, err := os.Stat(latest); err == nil && info.Size() > 0 {
 		stamp := info.ModTime().UTC().Format("20060102-150405")
 		os.Rename(latest, filepath.Join(dir, "crash-"+stamp+".log"))
@@ -89,6 +87,17 @@ func prune(dir string) {
 		os.Remove(strings.TrimSuffix(rotated[0], ".log") + ".meta")
 		rotated = rotated[1:]
 	}
+}
+
+// Release drops the runtime's handle on the crash file. The process keeps
+// writing fatal errors to stderr; only the extra copy on disk stops. Called
+// on the way out of a run so nothing in the data directory stays held open —
+// which on Windows is the difference between a directory that can be
+// replaced or removed and one that cannot.
+func Release() {
+	// A nil file cannot fail to be set; the error return exists for the
+	// non-nil case.
+	_ = debug.SetCrashOutput(nil, debug.CrashOptions{})
 }
 
 // Diagnostics writes a shareable zip of the crash directory plus a build

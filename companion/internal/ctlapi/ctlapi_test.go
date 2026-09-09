@@ -389,8 +389,25 @@ func TestWorkspacesEndpointShowsRootPathLocally(t *testing.T) {
 	// The desktop UI shows the user their own folder; this is a
 	// loopback-only surface. MCP and Relay surfaces still never carry
 	// root_path — enforced by the mcpserver tests.
-	if !strings.Contains(string(body), "root_path") || !strings.Contains(string(body), f.root) {
+	// Compared as a path, not as a substring: the endpoint answers with the
+	// resolved form (/private/var on macOS, the long name on Windows), and
+	// a substring match was only ever passing because one spelling happened
+	// to contain the other.
+	var listed struct {
+		Workspaces []struct {
+			RootPath string `json:"root_path"`
+		} `json:"workspaces"`
+	}
+	if err := json.Unmarshal(body, &listed); err != nil || len(listed.Workspaces) != 1 {
 		t.Fatalf("workspaces endpoint must include root_path for local display: %s", body)
+	}
+	want, err := filepath.EvalSymlinks(f.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := filepath.EvalSymlinks(listed.Workspaces[0].RootPath)
+	if err != nil || got != want {
+		t.Fatalf("root_path = %q (%v), want %q", listed.Workspaces[0].RootPath, err, want)
 	}
 }
 

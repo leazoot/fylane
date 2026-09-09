@@ -10,6 +10,7 @@ import (
 )
 
 func TestSetupArmsAndRotates(t *testing.T) {
+	t.Cleanup(Release)
 	dataDir := t.TempDir()
 
 	latest, err := Setup(dataDir, "0.0.1-test")
@@ -47,6 +48,7 @@ func TestSetupArmsAndRotates(t *testing.T) {
 }
 
 func TestPruneKeepsNewest(t *testing.T) {
+	t.Cleanup(Release)
 	dataDir := t.TempDir()
 	dir := filepath.Join(dataDir, dirName)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -75,6 +77,7 @@ func TestPruneKeepsNewest(t *testing.T) {
 }
 
 func TestDiagnosticsExcludesSecrets(t *testing.T) {
+	t.Cleanup(Release)
 	dataDir := t.TempDir()
 	if _, err := Setup(dataDir, "0.0.1-test"); err != nil {
 		t.Fatal(err)

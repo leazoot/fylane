@@ -112,6 +112,7 @@ func (a *App) Run(ctx context.Context) error {
 	if _, err := crashlog.Setup(a.cfg.DataDir, buildinfo.Version); err != nil {
 		a.log.Warn("crash capture not armed", "error", err)
 	}
+	defer crashlog.Release()
 
 	// Where to look for a tunnel binary the user consented to download
 	//. Telling the resolver where to look fetches nothing and makes
