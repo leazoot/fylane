@@ -1,0 +1,310 @@
+import React from "react";
+import { createRoot } from "react-dom/client";
+import "../src/style.css";
+import { LaneScreen } from "../src/screens/Lane";
+import { TasksScreen } from "../src/screens/Tasks";
+import { SettingsScreen } from "../src/screens/Settings";
+import { OnboardingScreen, type FirstRunStep } from "../src/screens/Onboarding";
+import { CommandPalette } from "../src/components/CommandPalette";
+import { Jelly } from "../src/components/Jelly";
+import { Dock } from "../src/components/Dock";
+import { PairClaimSheet } from "../src/components/PairClaimSheet";
+import { translatorFor, type Key } from "../src/lib/i18n";
+import type { Approval } from "../src/lib/core";
+import * as fx from "./fixtures";
+
+// Design-fidelity harness: renders one screen with fixture data so a
+// screenshot can be diffed against its design board.
+// Development only — it is never part of the shipped bundle.
+
+// The boards are drawn in English, so the labels come from the dictionary
+// under a fixed translator rather than being spelled out again here — a
+// renamed screen has to reach the boards too.
+const en = translatorFor("en");
+
+// Desktop v2 §1: three pages and no fourth.
+const NAV: { key: string; label: Key }[] = [
+  { key: "lane", label: "nav.lane" },
+  { key: "tasks", label: "nav.tasks" },
+  { key: "settings", label: "nav.settings" },
+];
+
+const params = new URLSearchParams(location.search);
+const board = params.get("board") ?? "lane";
+
+// Density is remembered per machine, so a board that wants the compact list
+// has to seed the same key the screen reads. `?density=compact` next to the
+// board name, the way `?theme=dark` works.
+const density = params.get("density");
+if (density === "compact" || density === "comfortable") {
+  try {
+    window.localStorage.setItem("fylane.density", density);
+  } catch {
+    // A profile that refuses storage just gets the default board.
+  }
+}
+const noop = () => {};
+
+// Both themes are boards (12–14), so the harness stamps the same attribute
+// the shell does: `?theme=dark` next to the board name.
+const theme = params.get("theme");
+if (theme === "dark" || theme === "light") {
+  document.documentElement.setAttribute("data-fy", theme);
+}
+
+// The title bar the window really draws, minus the platform branch: the
+// boards are all macOS, so the left edge is the traffic-light reserve.
+/** Which page the board is standing on, for the dock's current-item mark. */
+function active(): string {
+  if (board.startsWith("tasks")) return "tasks";
+  if (board.startsWith("settings")) return "settings";
+  return "lane";
+}
+
+function Header({ active }: { active: string }) {
+  return (
+    <div className="fy-titlebar">
+      <span style={{ flex: "none", width: 86 }} />
+      <span style={{ flex: 1 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span className="fy-dot fy-dot-sm" style={{ background: "var(--fy-sage)" }} />
+        <span style={{ fontSize: 11.5, color: "var(--fy-muted)", letterSpacing: ".01em" }}>
+          {en.t("shell.titleCalm")}
+        </span>
+      </div>
+      <span style={{ flex: 1 }} />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          paddingRight: 16,
+        }}
+      >
+        <span className="fy-headbtn">{en.t("shell.pause")}</span>
+        <span className="fy-palettebtn">
+          {en.t("shell.actions")}
+          <span
+            style={{
+              font: "500 10.5px/1 var(--fy-mono)",
+              letterSpacing: ".04em",
+            }}
+          >
+            {"⌘K"}
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// The window floats the title bar over the page and pads the scroller to
+// match (see App.tsx). A board drawn without that padding gets its own page
+// head clipped, which is not what the board says.
+function Scroller({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        position: "relative",
+        overflowY: "auto",
+        paddingTop: 46,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function laneSnapshot() {
+  const held: Record<string, Approval[]> = {
+    "lane-held": fx.HELD,
+    "lane-command": fx.HELD_COMMAND,
+    "lane-disclosure": fx.HELD_DISCLOSURE,
+  };
+  if (held[board]) {
+    return fx.snapshot({ approvals: held[board], status: { ...fx.STATUS, pending_approvals: 1 } });
+  }
+  if (board === "lane-empty") {
+    return fx.snapshot({
+      sources: fx.SOURCES.map((s) => ({ ...s, connected: false })),
+      changeSets: [],
+    });
+  }
+  if (board === "lane-paused") {
+    return fx.snapshot({ workspace: { ...fx.WORKSPACES[0], status: "paused" } });
+  }
+  if (board === "lane-offline") {
+    return {
+      online: false,
+      status: null,
+      workspace: null,
+      approvals: [],
+      changeSets: [],
+      sources: [],
+    };
+  }
+  return fx.snapshot();
+}
+
+function Lane({ tasks = fx.TASKS }: { tasks?: typeof fx.TASKS }) {
+  return (
+    <LaneScreen
+      snapshot={laneSnapshot()}
+      tasks={tasks}
+      workspaces={fx.WORKSPACES}
+      canStop
+      onApprove={noop}
+      onReject={noop}
+      onSelectWorkspace={noop}
+      onChooseWorkspace={noop}
+      onOpenDir={noop}
+      onStopTask={noop}
+      onTogglePause={noop}
+      onStartCore={noop}
+      onGotoTasks={noop}
+    />
+  );
+}
+
+function Board() {
+  switch (board) {
+    case "lane":
+    case "lane-held":
+    case "lane-command":
+    case "lane-disclosure":
+    case "lane-empty":
+    case "lane-paused":
+    case "lane-offline":
+      return (
+        <>
+          <Header active="lane" />
+          <Scroller>
+            <Lane />
+          </Scroller>
+        </>
+      );
+    case "tasks":
+    case "tasks-empty":
+      return (
+        <>
+          <Header active="tasks" />
+          <Scroller>
+            <TasksScreen
+              tasks={board === "tasks-empty" ? [] : fx.TASKS}
+              changeSets={board === "tasks-empty" ? [] : fx.CHANGE_SETS}
+              workspace={fx.WORKSPACES[0]}
+              now={fx.NOW}
+              canStop
+              onCancel={noop}
+              onRollback={noop}
+              onAccept={noop}
+              onCopy={noop}
+              onGotoLane={noop}
+            />
+          </Scroller>
+        </>
+      );
+    case "settings":
+    case "settings-update":
+      return (
+        <>
+          <Header active="settings" />
+          <Scroller>
+            <SettingsScreen
+              lang="zh"
+              onLang={noop}
+              theme="light"
+              onTheme={noop}
+              workspaces={fx.WORKSPACES}
+              undoCount={2}
+              onClearBackups={async () => ({ cleared: 2, backups_removed: 2 })}
+              recordCount={fx.TASKS.length + fx.CHANGE_SETS.length}
+              onClearRecords={noop}
+              onError={noop}
+              version={fx.STATUS.version}
+              update={board === "settings-update" ? { version: "0.0.2" } : undefined}
+              deps={fx.SETTINGS_DEPS}
+            />
+          </Scroller>
+        </>
+      );
+    case "commands":
+      return (
+        <>
+          <Header active="lane" />
+          <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+            <Lane />
+            <CommandPalette
+              snapshot={fx.snapshot()}
+              tasks={fx.TASKS}
+              canStop
+              onGoto={noop}
+              onClose={noop}
+              onApprove={noop}
+              onStopTask={noop}
+              onTogglePause={noop}
+              onChooseWorkspace={noop}
+              onStartCore={noop}
+            />
+          </div>
+        </>
+      );
+    case "pairing":
+      return (
+        <>
+          <Header active="lane" />
+          <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+            <Lane />
+            <PairClaimSheet claim={fx.CLAIM} onResolve={noop} />
+          </div>
+        </>
+      );
+    // First run (Fylane-V3). Four steps; the board names the one to draw.
+    case "first-run":
+    case "first-run-write":
+    case "first-run-rung":
+    case "first-run-done": {
+      const step: FirstRunStep = board.endsWith("-write")
+        ? "write"
+        : board.endsWith("-rung")
+          ? "rung"
+          : board.endsWith("-done")
+            ? "done"
+            : "folder";
+      return (
+        <OnboardingScreen
+          step={step}
+          workspace={step === "folder" ? null : fx.WORKSPACES[1]}
+          sources={step === "done" ? fx.ALL_SOURCES : fx.NO_SOURCES}
+          onChooseFolder={fx.pickFolder}
+          onTestWrite={fx.testWrite}
+          onSetRung={async () => {}}
+          onFinish={noop}
+        />
+      );
+    }
+    default:
+      return <div style={{ padding: 40 }}>unknown board “{board}”</div>;
+  }
+}
+
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--fy-bg)",
+        overflow: "hidden",
+      }}
+    >
+      <Board />
+      <Dock pages={NAV} current={active()} onGoto={noop} pending={board === "lane-held"} />
+    </div>
+  </React.StrictMode>,
+);

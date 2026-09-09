@@ -1,0 +1,24 @@
+-- Whether the programs started for one workspace may reach the network
+-- (BL-8, 2026-09-02).
+--
+-- It lives on the workspace and not in config.json because it is a property
+-- of a folder, exactly like mode and the exclude rules beside it: one machine
+-- routinely holds both a repository whose build has to fetch dependencies and
+-- a repository whose contents should not be able to leave. A machine-wide
+-- switch could only take the lower of those two answers.
+--
+-- 'allow' is the default, and NULL reads as 'allow'. That is the permissive
+-- value on purpose. Denying by default would make the first dependency
+-- install in every workspace fail with an error that never mentions the
+-- network -- measured: a denied DNS lookup on macOS reports
+-- "isc_socket_bind: unexpected error" -- and a defence people switch off is
+-- worse than one they never had, because it still leaves them believing they
+-- are covered.
+--
+-- What this column decides is whether the boundary is asked for. What the
+-- machine can actually deny is a separate answer the kernel gives (macOS
+-- denies every socket; Landlock denies TCP and has no UDP rule, so DNS and
+-- QUIC are not stopped), and the workspace face states which of the two it
+-- got. A row saying 'deny' on a machine that cannot deny is not a lie told
+-- here; it is a request the face reports as unmet.
+ALTER TABLE workspaces ADD COLUMN network TEXT;

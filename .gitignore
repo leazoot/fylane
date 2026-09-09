@@ -1,0 +1,35 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.*
+
+# Logs and temp
+*.log
+tmp/
+
+# Node
+node_modules/
+
+# Go
+/bin/
+
+# Wails desktop
+desktop/build/bin/
+desktop/frontend/dist/
+desktop/frontend/wailsjs/
+desktop/frontend/package-lock.json.backup
+
+# Third-party binaries are fetched by scripts/fetch-cloudflared.sh against a
+# checksum pinned in that script; the licence text next to them is tracked.
+third_party/cloudflared/bin/
+
+# Release artifacts and signing assets never enter the repo
+dist/
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+desktop/desktop

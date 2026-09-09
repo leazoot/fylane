@@ -1,0 +1,23 @@
+# TLS termination for the self-hosted relay. Caddy gets and renews the
+# certificate from Let's Encrypt on its own; the relay speaks plain HTTP on
+# the internal network only.
+{$FYLANE_RELAY_HOST} {
+	# The companion's tunnel is a long-lived WebSocket and MCP responses
+	# stream, so no response buffering and no read timeout on either.
+	reverse_proxy relay:9000 {
+		flush_interval -1
+	}
+
+	# Requests, not payloads: the relay's own promise is that file content
+	# never lands anywhere, and an access log full of paths would break it
+	# from the outside.
+	log {
+		format filter {
+			wrap console
+			fields {
+				request>uri query {replace: REDACTED}
+				request>headers>Authorization delete
+			}
+		}
+	}
+}

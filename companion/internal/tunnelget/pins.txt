@@ -1,0 +1,26 @@
+# Pinned tunnel-binary releases. This file is the single source of truth for
+# both readers: scripts/fetch-cloudflared.sh (build time, vendors the binary
+# into the desktop bundle) and package tunnelget (runtime, downloads it onto a
+# machine that did not get one in its package). Two copies of a checksum is
+# two chances to raise one of them and forget the other.
+#
+# Raising the pin: change the version line, replace every checksum with the
+# digest the vendor publishes for the new tag, refresh
+# third_party/cloudflared/LICENSE if upstream changed it, and re-run the
+# script for every target.
+#
+#   base    <binary> <url prefix, up to but not including the version>
+#   version <binary> <release tag>
+#   asset   <binary> <goos/goarch> <published file name> <tgz|raw> <sha256>
+#
+# The sha256 is of the published asset as downloaded. For tgz assets that is
+# the archive, not the binary inside it.
+
+base cloudflared https://github.com/cloudflare/cloudflared/releases/download
+version cloudflared 2026.8.2
+
+asset cloudflared darwin/arm64 cloudflared-darwin-arm64.tgz tgz 9042c2c5d8b2de78e60f313d5fb31b6c5c1cebde787a3caf1f2c9588084ac442
+asset cloudflared darwin/amd64 cloudflared-darwin-amd64.tgz tgz f1727723c586500e2092368ae21871b3df7ddfd2cb097f22d81bee4a9c458bb4
+asset cloudflared linux/amd64 cloudflared-linux-amd64 raw fcfb02b575a52ca1af2e3267af4e1517bcdeb30ac48c834c69abaed3c0576ad2
+asset cloudflared linux/arm64 cloudflared-linux-arm64 raw 7747d94570fb390cf47dcb4f9555c193c6355cda9793f0d878d9049e5d6a7790
+asset cloudflared windows/amd64 cloudflared-windows-amd64.exe raw c29eee2b121f5436a642eed69fd9767da7e7b8c510fa50aaa130337f931357b5

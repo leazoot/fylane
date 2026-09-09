@@ -1,0 +1,52 @@
+# Self-hosted Fylane relay behind Caddy, which obtains and renews the
+# certificate on its own. Set FYLANE_RELAY_HOST to the hostname whose DNS A
+# record points at this machine, then:
+#
+#   FYLANE_RELAY_HOST=relay.example.com docker compose -f deploy/docker-compose.yml up -d
+#
+# This pulls a published image. To build from the checkout instead, add the
+# build override:
+#
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml up -d --build
+#
+# The relay itself never terminates TLS: the certificate belongs to whatever
+# is already renewing certificates on the host.
+services:
+  relay:
+    image: ${FYLANE_RELAY_IMAGE:-ghcr.io/fylane/fylane-relay:latest}
+    restart: unless-stopped
+    command: ["-issuer", "https://${FYLANE_RELAY_HOST:?set FYLANE_RELAY_HOST}"]
+    environment:
+      # Metadata only. Point this at a postgres:// URL instead to
+      # use PostgreSQL; anything else is taken as a SQLite file path.
+      FYLANE_RELAY_DB: /var/lib/fylane/relay.db
+    volumes:
+      - relay-data:/var/lib/fylane
+    # No published ports: only Caddy talks to the relay.
+    expose:
+      - "9000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - relay
+    environment:
+      FYLANE_RELAY_HOST: ${FYLANE_RELAY_HOST:?set FYLANE_RELAY_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  relay-data:
+  caddy-data:
+  caddy-config:

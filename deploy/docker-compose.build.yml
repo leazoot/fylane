@@ -1,0 +1,11 @@
+# Overlay for building the relay from this checkout instead of pulling the
+# published image. Useful when auditing a change before it is released, or on
+# an architecture no published image covers.
+#
+#   FYLANE_RELAY_HOST=relay.example.com \
+#     docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml up -d --build
+services:
+  relay:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile

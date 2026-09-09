@@ -1,0 +1,82 @@
+# Publishes the self-hosted relay image so operators can `docker run` it
+# instead of cloning the repository and building .
+#
+# The image carries the relay and nothing else: it stores OAuth and device
+# metadata only, never file content.
+name: relay image
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Extra tag to publish alongside the commit SHA
+        required: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/fylane-relay
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # Required by attest-build-provenance, which signs the image so an
+      # operator can verify it came from this repository.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # arm64 is not optional: plenty of self-hosters run this on a small ARM
+      # VPS or a Raspberry Pi.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: version
+        run: echo "value=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          # Operators are told to pull :latest, so make
+          # the rule explicit rather than relying on the action's default.
+          flavor: latest=auto
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+          labels: |
+            org.opencontainers.image.title=Fylane Relay
+            org.opencontainers.image.description=Self-hosted Fylane relay; forwards MCP calls in memory and stores metadata only
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ steps.version.outputs.value }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # A published image should not depend on whichever runner happened
+          # to have a warm cache.
+          provenance: true
+          sbom: true
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

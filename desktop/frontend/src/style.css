@@ -1,0 +1,2875 @@
+/* Bundled faces (SIL OFL 1.1 — see assets/fonts/*-LICENSE.txt). The shell
+   must not fetch remote assets, so anything the design names has to ship in
+   the binary.
+
+   Geist Mono carries every command, path and number. Newsreader carries the
+   display line — Fylane-V3 §设计参数 puts the page titles, the approval
+   statement and the workspace name on a serif, and no platform serif is
+   close enough across macOS and Windows to stand in for it. Only the latin
+   subset ships; CJK falls through to the platform serif, which is what the
+   design's own stack does. Body text still runs on the platform UI stack
+   (recorded deviation). */
+@font-face {
+  font-family: "Geist Mono";
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/GeistMono-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist Mono";
+  font-weight: 500;
+  font-display: swap;
+  src: url("./assets/fonts/GeistMono-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Newsreader";
+  font-weight: 300 600;
+  font-display: swap;
+  src: url("./assets/fonts/Newsreader-Variable.woff2") format("woff2");
+}
+
+/* Desktop v3 tokens,
+   taken from the prototype's own :root rather than retyped from prose. */
+:root {
+  --fy-desk: #d8d3c6;
+  --fy-bg: #f4f1e9;
+  --fy-shell: #eeeae0;
+  --fy-tint: rgba(31, 33, 28, 0.035);
+  --fy-inset: #e8e3d7;
+  --fy-raised: #fcfbf7;
+  --fy-ink: #1f211c;
+  --fy-ink2: #33362f;
+  --fy-muted: #6a6e63;
+  --fy-faint: #7b7f71;
+  --fy-rule: rgba(31, 33, 28, 0.11);
+  --fy-rule2: rgba(31, 33, 28, 0.06);
+  --fy-surf: rgba(31, 33, 28, 0.045);
+  --fy-surf2: rgba(31, 33, 28, 0.075);
+  --fy-sage: #63805a;
+  --fy-sageSoft: rgba(99, 128, 90, 0.14);
+  /* A 5px dot loses apparent saturation; sage reads grey at that size
+     next to a hollow ring. This is sage with enough chroma left to be
+     green at a glance, and it is only ever used on status dots — the
+     13px text and pills keep --fy-sage. */
+  --fy-live: #3f7d36;
+  --fy-amber: #a87a33;
+  --fy-amberSoft: rgba(168, 122, 51, 0.14);
+  --fy-brick: #9c4e36;
+  --fy-brickSoft: rgba(156, 78, 54, 0.11);
+  --fy-dock: rgba(250, 248, 243, 0.97);
+  --fy-float: 0 3px 10px rgba(31, 33, 28, 0.08), 0 1px 2px rgba(31, 33, 28, 0.05);
+  --fy-lift: 0 14px 34px rgba(31, 33, 28, 0.11);
+  --fy-frame: rgba(31, 33, 28, 0.15);
+  --fy-win: 0 26px 60px rgba(20, 22, 18, 0.24), 0 2px 8px rgba(20, 22, 18, 0.1);
+
+  /* The v2 names, kept because first run still draws in them and is being
+     redesigned separately. They are aliases, not a second palette: a screen
+     that reaches for one gets the v3 value. */
+  --fy-paper: var(--fy-raised);
+  --fy-soft: var(--fy-faint);
+  --fy-line: var(--fy-rule);
+  --fy-line2: var(--fy-rule2);
+  --fy-sageBg: var(--fy-sageSoft);
+  --fy-amberBg: var(--fy-amberSoft);
+  --fy-red: var(--fy-brick);
+  --fy-redBg: var(--fy-brickSoft);
+  --fy-clay: var(--fy-brick);
+  --fy-btn: var(--fy-ink);
+  --fy-btnInk: var(--fy-bg);
+  --fy-pop: var(--fy-lift);
+
+  --fy-sans: -apple-system, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  --fy-serif: Newsreader, "Noto Serif SC", "Songti SC", "Source Han Serif SC", serif;
+  --fy-mono: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+
+:root[data-os="windows"] {
+  --fy-sans: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+  --fy-serif: Newsreader, "Noto Serif CJK SC", "Noto Serif SC", SimSun, serif;
+}
+
+/* Auto follows the system; Settings overrides it by stamping data-fy on
+   <html>. The two blocks below are the same tokens: CSS has no way to name a
+   declaration block, and a preprocessor is not worth pulling in for one.
+   Keep them in step. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-fy="light"]) {
+    --fy-desk: #0c0d0b;
+    --fy-bg: #191b17;
+    --fy-shell: #1f221d;
+    --fy-tint: rgba(234, 236, 228, 0.045);
+    --fy-inset: #222520;
+    --fy-raised: #272a24;
+    --fy-ink: #eceee6;
+    --fy-ink2: #d3d6cc;
+    --fy-muted: #979b8e;
+    --fy-faint: #8d9184;
+    --fy-rule: rgba(234, 236, 228, 0.13);
+    --fy-rule2: rgba(234, 236, 228, 0.07);
+    --fy-surf: rgba(234, 236, 228, 0.05);
+    --fy-surf2: rgba(234, 236, 228, 0.085);
+    --fy-sage: #9eb98f;
+    --fy-sageSoft: rgba(158, 185, 143, 0.15);
+    --fy-live: #79cc66;
+    --fy-amber: #d0a45f;
+    --fy-amberSoft: rgba(208, 164, 95, 0.14);
+    --fy-brick: #ce8768;
+    --fy-brickSoft: rgba(206, 135, 104, 0.13);
+    --fy-dock: rgba(38, 41, 35, 0.97);
+    --fy-float: 0 3px 10px rgba(0, 0, 0, 0.34), 0 1px 2px rgba(0, 0, 0, 0.26);
+    --fy-lift: 0 16px 38px rgba(0, 0, 0, 0.46);
+    --fy-frame: rgba(234, 236, 228, 0.11);
+    --fy-win: 0 30px 70px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.45);
+  }
+}
+:root[data-fy="dark"] {
+  --fy-desk: #0c0d0b;
+  --fy-bg: #191b17;
+  --fy-shell: #1f221d;
+  --fy-tint: rgba(234, 236, 228, 0.045);
+  --fy-inset: #222520;
+  --fy-raised: #272a24;
+  --fy-ink: #eceee6;
+  --fy-ink2: #d3d6cc;
+  --fy-muted: #979b8e;
+  --fy-faint: #8d9184;
+  --fy-rule: rgba(234, 236, 228, 0.13);
+  --fy-rule2: rgba(234, 236, 228, 0.07);
+  --fy-surf: rgba(234, 236, 228, 0.05);
+  --fy-surf2: rgba(234, 236, 228, 0.085);
+  --fy-sage: #9eb98f;
+  --fy-sageSoft: rgba(158, 185, 143, 0.15);
+  --fy-live: #79cc66;
+  --fy-amber: #d0a45f;
+  --fy-amberSoft: rgba(208, 164, 95, 0.14);
+  --fy-brick: #ce8768;
+  --fy-brickSoft: rgba(206, 135, 104, 0.13);
+  --fy-dock: rgba(38, 41, 35, 0.97);
+  --fy-float: 0 3px 10px rgba(0, 0, 0, 0.34), 0 1px 2px rgba(0, 0, 0, 0.26);
+  --fy-lift: 0 16px 38px rgba(0, 0, 0, 0.46);
+  --fy-frame: rgba(234, 236, 228, 0.11);
+  --fy-win: 0 30px 70px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+/* Native scrollbars, form controls and the window chrome follow the same
+   choice — a dark window with light scrollbars reads as broken. */
+:root {
+  color-scheme: light dark;
+}
+:root[data-fy="light"] {
+  color-scheme: light;
+}
+:root[data-fy="dark"] {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--fy-bg);
+  color: var(--fy-ink);
+  font-family: var(--fy-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  font-family: var(--fy-sans);
+  color: inherit;
+}
+
+button:focus-visible,
+[tabindex="0"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--fy-ink);
+  outline-offset: 1px;
+}
+
+::selection {
+  background: var(--fy-sageSoft);
+  color: var(--fy-ink);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fy-rule);
+  border-radius: 8px;
+  border: 3.5px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fy-faint);
+  border: 3.5px solid transparent;
+  background-clip: content-box;
+}
+
+/* Unified titlebar: the window has no bar of its own, so the top strip of
+   the app is the drag handle. Interactive children opt back out. */
+.fy-drag {
+  --wails-draggable: drag;
+}
+button,
+input,
+a {
+  --wails-draggable: no-drag;
+}
+
+/* ── motion ──────────────────────────────────────────────────────────────
+   v3 timings (§设计参数): page 200ms, an approval arriving ~520ms in lines
+   40/100ms apart, approval 420ms. */
+@keyframes fyPage {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fyLine {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fyFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* The scene leaving after a decision: it moves with the request, to the
+   right and out. */
+@keyframes fyPush {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(7px);
+  }
+}
+@keyframes fyRun {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+@keyframes fyIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Kept for first run, which still draws the v1 lane. */
+@keyframes fyRunAll {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes fyRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fySoft {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fyLand {
+  0% {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  22% {
+    opacity: 1;
+    transform: none;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes wbIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wbLayer {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Reduced motion: displacement becomes a 120ms fade. Nothing is dropped —
+   order is then carried by the text and the marks. The two indicators that
+   mean "still going" keep a slow beat of their own further down; a 120ms
+   loop is a strobe, which is the opposite of what was asked for. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 120ms !important;
+    animation-timing-function: ease-out !important;
+    transition-duration: 120ms !important;
+  }
+  @keyframes fyRunAll {
+    from {
+      opacity: 0;
+      offset-distance: 100%;
+    }
+    to {
+      opacity: 1;
+      offset-distance: 100%;
+    }
+  }
+  @keyframes fyRise {
+    from {
+      opacity: 0;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fyIn {
+    from {
+      opacity: 0;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fyPage {
+    from {
+      opacity: 0;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fyLine {
+    from {
+      opacity: 0;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes wbIn {
+    from {
+      opacity: 0;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes wbLayer {
+    from {
+      opacity: 0;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ── title bar (unchanged from v2 — the user kept this row) ────────────── */
+
+.fy-titlebar {
+  /* Out of the column and over the scroller: frosted glass has to have
+     something behind it, so the page runs under this row rather than
+     starting below it. The scroller carries the matching 46px of padding. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 46px;
+  display: flex;
+  align-items: stretch;
+  background: color-mix(in srgb, var(--fy-bg) 42%, transparent);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  border-bottom: 1px solid var(--fy-rule2);
+  z-index: 6;
+}
+/* Without the blur a 42% fill is just a smear of whatever it covers, so the
+   fallback goes back to opaque rather than degrading to transparent. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .fy-titlebar {
+    background: var(--fy-bg);
+  }
+}
+
+.fy-navpill {
+  flex: none;
+  position: relative;
+  border: 0;
+  background: transparent;
+  padding: 7px 13px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 13.5px;
+  font-weight: 450;
+  color: var(--fy-muted);
+  white-space: nowrap;
+  transition:
+    background 0.14s ease-out,
+    color 0.14s ease-out;
+}
+.fy-navpill:hover {
+  background: var(--fy-surf);
+}
+.fy-navpill[aria-current="page"] {
+  font-weight: 600;
+  color: var(--fy-ink);
+  background: var(--fy-surf);
+}
+/* Something is waiting on the user; the dot rides the word it is waiting on. */
+.fy-navdot {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 4px;
+  background: var(--fy-amber);
+}
+
+.fy-palettebtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--fy-rule);
+  background: transparent;
+  padding: 5px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 11.5px;
+  color: var(--fy-muted);
+  transition:
+    border-color 0.14s ease-out,
+    color 0.14s ease-out;
+}
+.fy-palettebtn:hover {
+  border-color: var(--fy-ink);
+  color: var(--fy-ink);
+}
+
+/* Windows caption buttons. macOS draws its own; this branch is never
+   rendered there. */
+.fy-caption {
+  width: 46px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fy-ink);
+  transition: background 0.14s ease-out;
+}
+.fy-caption:hover {
+  background: var(--fy-surf);
+}
+.fy-caption-close:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+
+.fy-headbtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fy-muted);
+  font: 400 12px/1 var(--fy-sans);
+  cursor: pointer;
+  transition:
+    color 0.14s ease-out,
+    background 0.14s ease-out;
+}
+.fy-headbtn:hover:not(:disabled) {
+  color: var(--fy-ink);
+  background: var(--fy-surf);
+}
+.fy-headbtn:disabled {
+  cursor: default;
+  opacity: 1;
+  color: var(--fy-rule);
+}
+
+/* Windows app mark in the title bar: the two strokes of the Fylane gate. */
+.fy-winmark {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--fy-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.fy-winmark i {
+  width: 1.5px;
+  height: 7px;
+  background: var(--fy-bg);
+}
+.fy-winmark i:first-child {
+  margin-right: 1.5px;
+}
+
+.fy-x {
+  position: relative;
+  width: 12px;
+  height: 12px;
+}
+.fy-x::before,
+.fy-x::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 12px;
+  height: 1px;
+  background: currentColor;
+}
+.fy-x::before {
+  transform: rotate(45deg);
+}
+.fy-x::after {
+  transform: rotate(-45deg);
+}
+
+/* ── type roles ───────────────────────────────────────────────────────────
+   The display line is the serif; everything a machine produced is the mono;
+   everything else is the platform sans. Three roles and no fourth. */
+
+.fy-display {
+  margin: 0;
+  font-family: var(--fy-serif);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--fy-ink);
+  text-wrap: balance;
+}
+
+/* An all-caps anchor above a block. It names the block; it is never a
+   sentence. */
+.fy-eyebrow {
+  font: 400 10.5px/1 var(--fy-sans);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fy-faint);
+}
+.fy-eyebrow-tight {
+  font-size: 11px;
+  letter-spacing: 0.13em;
+}
+
+.fy-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--fy-rule);
+}
+.fy-dot-sm {
+  width: 5px;
+  height: 5px;
+}
+/* A source that is not connected reads as an empty socket rather than a
+   dimmer version of a live one: two filled dots a few percent apart in
+   lightness are the same dot to anyone not comparing them side by side. */
+.fy-dot-hollow {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--fy-rule);
+}
+
+/* The one thing that still moves while something is running. It keeps its
+   own beat under reduced motion instead of inheriting the 120ms fade. */
+.fy-beat {
+  animation: fyRun 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fy-beat {
+    animation: fyRun 2.4s ease-in-out infinite !important;
+  }
+}
+
+.fy-vline {
+  flex: none;
+  width: 1px;
+  height: 11px;
+  background: var(--fy-rule);
+}
+.fy-hline {
+  height: 1px;
+  background: var(--fy-rule2);
+}
+
+/* ── buttons ─────────────────────────────────────────────────────────────
+   §设计参数: buttons are radius 9, the primary is 42px tall and filled with
+   ink. Nothing on any screen is filled with a colour. */
+
+.fy-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: var(--fy-ink);
+  color: var(--fy-bg);
+  height: 42px;
+  padding: 0 24px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.14s ease-out,
+    box-shadow 0.14s ease-out,
+    opacity 0.14s ease-out;
+}
+.fy-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(31, 33, 28, 0.18);
+}
+.fy-primary:active:not(:disabled) {
+  transform: none;
+}
+.fy-primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.fy-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--fy-rule);
+  background: transparent;
+  color: var(--fy-ink2);
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 13.5px;
+  transition:
+    background 0.14s ease-out,
+    opacity 0.14s ease-out;
+}
+.fy-outline:hover:not(:disabled) {
+  background: var(--fy-surf);
+}
+.fy-outline:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.fy-reject {
+  border: 0;
+  background: transparent;
+  color: var(--fy-faint);
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 13.5px;
+  transition:
+    background 0.14s ease-out,
+    color 0.14s ease-out,
+    opacity 0.14s ease-out;
+}
+.fy-reject:hover:not(:disabled) {
+  background: var(--fy-brickSoft);
+  color: var(--fy-brick);
+}
+.fy-reject:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* A word with a rule under it. The v3 pages use this instead of a link and
+   instead of a second outlined button. */
+.fy-underbtn {
+  border: 0;
+  background: transparent;
+  padding: 0 0 2px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 12.5px;
+  color: var(--fy-ink2);
+  border-bottom: 1px solid var(--fy-rule);
+  transition:
+    color 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+.fy-underbtn:hover:not(:disabled) {
+  color: var(--fy-ink);
+  border-bottom-color: var(--fy-ink);
+}
+.fy-underbtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* A quiet action that stays visible: reduced, never hidden. */
+.fy-quiet {
+  border: 0;
+  background: transparent;
+  color: var(--fy-muted);
+  padding: 5px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 12px;
+  transition:
+    background 0.14s ease-out,
+    color 0.14s ease-out,
+    opacity 0.14s ease-out;
+}
+.fy-quiet:hover:not(:disabled) {
+  background: var(--fy-surf);
+  color: var(--fy-ink);
+}
+.fy-quiet:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* A small bordered control: 保留 30 天, 复制, 清理本地数据…. */
+.fy-smallbtn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--fy-rule);
+  background: transparent;
+  color: var(--fy-ink2);
+  padding: 6px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 12.5px;
+  transition:
+    background 0.14s ease-out,
+    color 0.14s ease-out,
+    border-color 0.14s ease-out;
+}
+.fy-smallbtn:hover:not(:disabled) {
+  background: var(--fy-surf);
+}
+.fy-smallbtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.fy-danger {
+  border: 1px solid var(--fy-rule);
+  background: transparent;
+  color: var(--fy-muted);
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 12.5px;
+  transition:
+    background 0.15s ease-out,
+    color 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+.fy-danger:hover:not(:disabled) {
+  color: var(--fy-brick);
+  border-color: var(--fy-brickSoft);
+  background: var(--fy-brickSoft);
+}
+.fy-danger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Kept for first run, which is still on the v1 drawing. */
+.fy-btn {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--fy-ink);
+  border-radius: 8px;
+  background: var(--fy-ink);
+  color: var(--fy-bg);
+  font: 500 12.5px/1 var(--fy-sans);
+  cursor: pointer;
+  transition: opacity 0.14s ease-out;
+}
+.fy-btn:hover {
+  opacity: 0.86;
+}
+.fy-btn:disabled {
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--fy-muted);
+  border-color: var(--fy-rule);
+}
+.fy-textbtn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--fy-muted);
+  font: 400 12.5px/1 var(--fy-sans);
+  cursor: pointer;
+  transition: color 0.14s ease-out;
+}
+.fy-textbtn:hover {
+  color: var(--fy-ink);
+}
+.fy-textbtn-danger:hover {
+  color: var(--fy-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--fy-clay);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+.fy-pulse {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  margin-top: -4px;
+  border-radius: 2px;
+  offset-rotate: 0deg;
+  pointer-events: none;
+  z-index: 4;
+}
+.fy-gatemark {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+}
+.fy-gatemark-bar {
+  width: 1.5px;
+  height: 7px;
+  border-radius: 1px;
+  background: var(--fy-sage);
+}
+
+.fy-field {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--fy-rule);
+  border-radius: 8px;
+  background: var(--fy-raised);
+  color: var(--fy-ink);
+  font: 400 12.5px/1 var(--fy-mono);
+}
+.fy-field:focus {
+  border-color: var(--fy-ink);
+  outline: none;
+}
+
+.fy-sagepill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 400 10.5px/1 var(--fy-sans);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--fy-sage);
+}
+.fy-sagepill i {
+  width: 5px;
+  height: 5px;
+  border-radius: 4px;
+  background: var(--fy-sage);
+}
+
+/* ── Jelly, the loading mark ──────────────────────────────────────────
+   Two soft balls pull apart and come back; the pair turns 90° every half
+   round. 0.8s a deformation, 1.6s a round. */
+
+@keyframes jlRot {
+  0%,
+  49.999%,
+  100% {
+    transform: none;
+  }
+  50%,
+  99.999% {
+    transform: rotate(90deg);
+  }
+}
+@keyframes jlLeft {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: scale(0.65) translateX(-75%);
+  }
+}
+@keyframes jlRight {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: scale(0.65) translateX(75%);
+  }
+}
+@keyframes jlCalm {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.fy-jelly {
+  --jl-color: var(--fy-ink);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+  /* It is its own size wherever it stands: stretched by a flex parent it
+     would centre itself across the whole row instead of sitting beside the
+     thing that is waiting. */
+  align-self: center;
+}
+.fy-jelly[data-size="20"] {
+  gap: 9px;
+}
+.fy-jelly-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.fy-jelly-stage {
+  position: relative;
+  flex: none;
+  display: block;
+  width: var(--jl-size);
+  height: calc(var(--jl-size) / 2);
+  animation: jlRot 1.6s linear infinite;
+}
+.fy-jelly-stage i {
+  position: absolute;
+  top: 0;
+  left: 25%;
+  width: 50%;
+  height: 100%;
+  border-radius: 100%;
+  background: var(--jl-color);
+}
+.fy-jelly-stage i:first-child {
+  animation: jlLeft 0.8s ease infinite;
+}
+.fy-jelly-stage i:last-child {
+  animation: jlRight 0.8s ease infinite;
+}
+.fy-jelly-label {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fy-muted);
+  white-space: nowrap;
+}
+.fy-jelly[data-size="20"] .fy-jelly-label {
+  font-size: 12px;
+}
+/* Reduced motion keeps a slow breath rather than a 120ms strobe: the mark
+   still has to say "not finished". */
+@media (prefers-reduced-motion: reduce) {
+  .fy-jelly-stage {
+    animation: jlCalm 2.4s ease-in-out infinite !important;
+  }
+  .fy-jelly-stage i {
+    animation: none !important;
+  }
+}
+
+/* ── Lane (01–04, 13) ────────────────────────────────────────────────────
+   A focus scene on the left, a rail of standing facts on the right. The rail
+   does not move between states; only the scene changes. */
+
+.fy-lane {
+  min-height: 100%;
+  display: flex;
+  align-items: stretch;
+  animation: fyPage 0.2s cubic-bezier(0.2, 0.8, 0.24, 1) both;
+}
+.fy-lanecol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* The right side is a gutter, not an edge: the rail's hairline is a
+     divider between two columns, and content that touches it reads as
+     clipped — which is what the reason line and the reject button did. */
+  padding: 44px 34px 26px 52px;
+}
+.fy-scene {
+  /* Grows into the free space so the scene sits centred, but never shrinks
+     below its own content: an open request with a diff in it is taller than
+     the window, and the page has to grow instead of clipping. */
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.fy-scene[data-leaving="true"] {
+  animation: fyPush 0.38s cubic-bezier(0.4, 0, 0.6, 1) both;
+}
+.fy-rail {
+  flex: none;
+  width: 250px;
+  border-left: 1px solid var(--fy-rule2);
+  padding: 44px 40px 26px 34px;
+  display: flex;
+  flex-direction: column;
+}
+/* Below the design's own minimum the rail stops being a margin note and
+   starts squeezing the command, so it goes under the scene instead. */
+@media (max-width: 900px) {
+  .fy-lane {
+    flex-direction: column;
+  }
+  .fy-lanecol {
+    padding: 40px 28px 20px 32px;
+  }
+  .fy-rail {
+    width: auto;
+    border-left: 0;
+    border-top: 1px solid var(--fy-rule2);
+    padding: 24px 32px 28px;
+  }
+}
+
+/* The command is the content: 21px mono on a very light tint that bleeds
+   left to the window edge. No card inside a card. */
+.fy-band {
+  margin: 26px 0 0 -52px;
+  padding: 20px 30px 22px 52px;
+  background: var(--fy-tint);
+  border-radius: 0 12px 12px 0;
+  display: flex;
+  gap: 20px;
+  max-width: 748px;
+}
+@media (max-width: 900px) {
+  .fy-band {
+    margin-left: -32px;
+    padding-left: 32px;
+  }
+}
+.fy-band-cmd {
+  flex: 1;
+  min-width: 0;
+  font: 400 21px/1.5 var(--fy-mono);
+  letter-spacing: -0.02em;
+  color: var(--fy-ink);
+  word-break: break-word;
+}
+/* The gate, drawn as the two bars it has always been. It closes while
+   something is held and opens when it is let through. */
+.fy-gate {
+  flex: none;
+  display: flex;
+  gap: 5px;
+  padding-top: 3px;
+  transition: gap 0.26s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-gate i {
+  width: 2px;
+  height: 52px;
+  border-radius: 2px;
+  background: var(--fy-ink);
+  transition: background 0.26s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-gate[data-open="true"] {
+  gap: 13px;
+}
+.fy-gate[data-open="true"] i {
+  background: var(--fy-faint);
+}
+
+/* Path · risk · estimate, separated by hairlines rather than by dots. */
+.fy-metaline {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  animation: fyFade 0.28s ease-out 0.13s both;
+}
+
+/* The in-place expansion under a request. */
+.fy-detail {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px 20px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--fy-rule2);
+  font-size: 12.5px;
+  max-width: 660px;
+  animation: fyFade 0.22s ease-out both;
+}
+.fy-detail dt {
+  margin: 0;
+  color: var(--fy-faint);
+}
+.fy-detail dd {
+  margin: 0;
+  color: var(--fy-ink2);
+  word-break: break-word;
+}
+
+.fy-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+  max-width: 748px;
+  animation: fyLine 0.32s cubic-bezier(0.2, 0.8, 0.24, 1) 0.16s both;
+}
+
+/* The one-line footer: the last thing that ran, and a way into the list. */
+.fy-recent {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  margin-left: 34px;
+  max-width: 640px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease-out;
+}
+.fy-recent:hover {
+  background: var(--fy-surf);
+}
+@media (max-width: 900px) {
+  .fy-recent {
+    margin-left: 0;
+  }
+}
+
+/* The numbers under the calm scene. */
+.fy-figure {
+  font-family: var(--fy-serif);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--fy-ink);
+}
+
+/* The rail sits against the right edge of the window, so this hangs off the
+   right of its anchor. Anchored left it ran past the frame and cut the paths
+   it exists to show. */
+.fy-wsmenu {
+  position: absolute;
+  right: 0;
+  top: 34px;
+  z-index: 9;
+  width: 264px;
+  max-width: calc(100vw - 24px);
+  padding: 7px;
+  background: var(--fy-raised);
+  border: 1px solid var(--fy-rule2);
+  border-radius: 10px;
+  box-shadow: var(--fy-lift);
+  animation: fyIn 0.16s ease-out;
+}
+.fy-wsitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 9px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  color: var(--fy-ink);
+  transition: background 0.14s ease-out;
+}
+.fy-wsitem[data-current="true"] {
+  background: var(--fy-surf);
+}
+/* The path is what tells two folders of the same name apart, so it keeps its
+   width and the name gives way instead. */
+.fy-wsitem-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fy-wsitem-path {
+  flex: none;
+  max-width: 60%;
+  font: 400 11px/1 var(--fy-mono);
+  color: var(--fy-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+}
+
+/* ── hover reveals (Fylane-V3 boards 01–04, 08) ──────────────────────────
+   A second line that is not needed at rest: the workspace's full path, what
+   each connected AI is doing, the build's platform. They open on hover and on
+   focus — a keyboard has to be able to see them too. */
+.fy-reveal {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height 0.22s cubic-bezier(0.2, 0.8, 0.24, 1),
+    opacity 0.18s ease-out;
+}
+.fy-revealer:hover .fy-reveal,
+.fy-revealer:focus-within .fy-reveal {
+  max-height: var(--fy-reveal-h, 26px);
+  opacity: 1;
+}
+.fy-wsitem:hover {
+  background: var(--fy-surf2);
+}
+
+/* The diff of a pending write, inside its request. Colour is carried by the
+   line's own sign, not by a background wash. */
+.fy-diff {
+  margin: 8px 0 0;
+  padding: 0 0 0 17px;
+  border-left: 1px solid var(--fy-rule);
+  background: transparent;
+  font: 400 12.5px/1.75 var(--fy-mono);
+  color: var(--fy-muted);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 240px;
+}
+
+/* ── Tasks (05–07, 14) ───────────────────────────────────────────────────
+   An editorial feed, not a table: time, a state dot, the command in mono,
+   and the meta at the right edge. A row opens in place. */
+
+.fy-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 40px 52px 0 62px;
+  animation: fyPage 0.2s cubic-bezier(0.2, 0.8, 0.24, 1) both;
+}
+@media (max-width: 900px) {
+  .fy-page {
+    padding: 36px 28px 0 32px;
+  }
+}
+
+.fy-filters {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding-bottom: 3px;
+  flex-wrap: wrap;
+}
+/* Not a segmented control: weight plus a 1.5px underline marks the current
+   one, with its count beside it. */
+.fy-filter {
+  border: 0;
+  background: transparent;
+  padding: 0 0 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  border-bottom: 1.5px solid transparent;
+  font-family: var(--fy-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--fy-muted);
+  transition:
+    color 0.16s ease-out,
+    border-color 0.16s ease-out;
+}
+.fy-filter:hover {
+  color: var(--fy-ink2);
+}
+.fy-filter[aria-pressed="true"] {
+  font-weight: 500;
+  color: var(--fy-ink);
+  border-bottom-color: var(--fy-ink);
+}
+.fy-filter b {
+  font-weight: inherit;
+}
+.fy-filter span {
+  font-size: 11.5px;
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Density. Two text options in the settings page's switch language: the
+   current one carries the weight and the rule under it, the other is quiet
+   and clickable. It is a display preference, so nothing here is disabled or
+   hidden — only sized. */
+.fy-density {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-left: 18px;
+  padding-left: 18px;
+  border-left: 1px solid var(--fy-rule2);
+}
+.fy-density button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 12.5px;
+  color: var(--fy-faint);
+  border-bottom: 1.5px solid transparent;
+  padding-bottom: 2px;
+  transition: color 0.16s ease-out;
+}
+.fy-density button:hover {
+  color: var(--fy-ink2);
+}
+.fy-density button[aria-pressed="true"] {
+  color: var(--fy-ink);
+  font-weight: 500;
+  border-bottom-color: var(--fy-ink);
+}
+
+/* Compact trades the editorial spacing for rows per screen. Only metrics
+   change — no row, column, action or state disappears, because a list that
+   drops content in one density is two lists. */
+.fy-feed[data-density="compact"] .fy-trow-head {
+  padding: 6px 0;
+  gap: 12px;
+}
+.fy-feed[data-density="compact"] .fy-trow-cmd {
+  font-size: 13px;
+}
+.fy-feed[data-density="compact"] .fy-trow-time {
+  width: 44px;
+  font-size: 11px;
+}
+.fy-feed[data-density="compact"] .fy-trow-meta {
+  font-size: 11px;
+}
+.fy-feed[data-density="compact"] .fy-grouphead {
+  margin-top: 16px;
+  margin-bottom: 2px;
+}
+.fy-feed[data-density="compact"] .fy-trow-dot {
+  transform: translateY(-2px);
+}
+
+.fy-feed {
+  margin: 22px -12px 0;
+  padding: 0 12px 76px;
+}
+
+.fy-grouphead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0 12px;
+}
+.fy-grouphead span:first-child {
+  font: 400 11px/1 var(--fy-sans);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fy-faint);
+}
+.fy-grouphead i {
+  flex: 1;
+  height: 1px;
+  background: var(--fy-rule2);
+}
+.fy-grouphead span:last-child {
+  font: 400 11.5px/1 var(--fy-sans);
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.fy-trow {
+  margin: 0 -12px;
+  padding: 0 24px 0 12px;
+  border-radius: 9px;
+  background: transparent;
+  transition: background 0.16s ease-out;
+}
+.fy-trow:hover,
+.fy-trow[data-open="true"] {
+  background: var(--fy-surf);
+}
+.fy-trow-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 13px 0;
+  cursor: pointer;
+}
+.fy-trow-time {
+  flex: none;
+  width: 52px;
+  font: 400 12px/1.4 var(--fy-mono);
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+}
+.fy-trow-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 5px;
+  transform: translateY(-3px);
+}
+.fy-trow-cmd {
+  flex: 1;
+  min-width: 0;
+  font: 400 16px/1.4 var(--fy-mono);
+  letter-spacing: -0.018em;
+  color: var(--fy-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Actions arrive from 10px to the right on hover, and on focus — otherwise a
+   keyboard could never reach the stop button. */
+.fy-trow-acts {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateX(10px);
+  pointer-events: none;
+  transition:
+    opacity 0.17s cubic-bezier(0.2, 0.8, 0.24, 1),
+    transform 0.17s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-trow:hover .fy-trow-acts,
+.fy-trow:focus-within .fy-trow-acts,
+.fy-trow[data-open="true"] .fy-trow-acts {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.fy-trow-meta {
+  flex: none;
+  width: 186px;
+  text-align: right;
+  font: 400 12px/1.4 var(--fy-sans);
+  color: var(--fy-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fy-trow-sep {
+  color: var(--fy-rule);
+}
+.fy-trow-chev {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-left: 2px;
+  border-right: 1.5px solid var(--fy-faint);
+  border-bottom: 1.5px solid var(--fy-faint);
+  transform: rotate(45deg) translateY(-1px);
+  opacity: 0.22;
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.2s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-trow:hover .fy-trow-chev {
+  opacity: 0.5;
+}
+.fy-trow[data-open="true"] .fy-trow-chev {
+  opacity: 0.75;
+  transform: rotate(-135deg) translateY(-1px);
+}
+.fy-trow-rule {
+  height: 1px;
+  background: var(--fy-rule2);
+}
+.fy-trow[data-open="true"] .fy-trow-rule {
+  background: transparent;
+}
+.fy-trow-panel {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height 0.3s cubic-bezier(0.2, 0.8, 0.24, 1),
+    opacity 0.22s ease-out;
+}
+.fy-trow[data-open="true"] .fy-trow-panel {
+  max-height: 520px;
+  opacity: 1;
+}
+/* The execution detail: command and output on the left behind a single
+   1px rule, meta and actions on the right. No pale block anywhere. */
+.fy-tpanel {
+  display: flex;
+  gap: 32px;
+  margin: 2px 0 22px 68px;
+}
+@media (max-width: 900px) {
+  .fy-tpanel {
+    flex-direction: column;
+    gap: 20px;
+    margin-left: 0;
+  }
+}
+.fy-tpanel-side {
+  flex: none;
+  width: 168px;
+  border-left: 1px solid var(--fy-rule2);
+  padding-left: 26px;
+}
+@media (max-width: 900px) {
+  .fy-tpanel-side {
+    width: auto;
+    border-left: 0;
+    border-top: 1px solid var(--fy-rule2);
+    padding: 14px 0 0;
+  }
+}
+.fy-tpanel-pair {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+}
+/* Both are flex items in a 142px column, and by default both shrink. The
+   label lost that contest and broke mid-word — "\5f00 / \59cb", "\5de5\4f5c / \76ee\5f55" — which is
+   not a line break, it is a word coming apart. A label is short and fixed;
+   the value is the part that can afford to take the squeeze. */
+.fy-tpanel-pair dt {
+  margin: 0;
+  flex: none;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--fy-faint);
+}
+.fy-tpanel-pair dd {
+  margin: 0;
+  min-width: 0;
+  /* Paths and timestamps have no useful break points of their own; without
+     this they push the label instead of wrapping. */
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: var(--fy-ink2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* stdout, behind a rule. The v2 dark block is gone — v3 has no filled
+   surface for machine output. */
+.fy-out {
+  border-left: 1px solid var(--fy-rule);
+  padding-left: 17px;
+  margin-top: 9px;
+  font: 400 12.5px/1.85 var(--fy-mono);
+  color: var(--fy-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+
+/* Empty: the gate drawn full height, and one sentence beside it. */
+.fy-empty {
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  padding-bottom: 70px;
+}
+.fy-empty-inner {
+  display: flex;
+  align-items: center;
+  gap: 44px;
+  animation: fyLine 0.32s cubic-bezier(0.2, 0.8, 0.24, 1) both;
+}
+.fy-empty-gate {
+  flex: none;
+  display: flex;
+  gap: 9px;
+}
+.fy-empty-gate i {
+  width: 2px;
+  height: 64px;
+  background: var(--fy-rule);
+}
+
+/* ── Settings (08–12) ────────────────────────────────────────────────────
+   Four sections, four ways of organising: three cells side by side, a
+   two-column policy panel, a main connection with the rest as rows, and two
+   promises above the controls that act on them. */
+
+.fy-setpage {
+  padding: 40px 52px 100px;
+  max-width: 890px;
+  margin: 0 auto;
+  animation: fyPage 0.2s cubic-bezier(0.2, 0.8, 0.24, 1) both;
+}
+@media (max-width: 900px) {
+  .fy-setpage {
+    padding: 36px 28px 80px;
+  }
+}
+.fy-pagehead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid var(--fy-rule);
+}
+.fy-sechead {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.fy-sechead h2 {
+  margin: 0;
+  font: 400 19px/1.2 var(--fy-serif);
+  color: var(--fy-ink);
+}
+.fy-sechead p {
+  margin: 0;
+  font: 400 12px/1.5 var(--fy-sans);
+  color: var(--fy-faint);
+}
+
+/* Three settings side by side, divided by the background showing through a
+   1px gap rather than by borders. */
+.fy-cells {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 15px;
+  background: var(--fy-rule2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .fy-cells {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.fy-cell {
+  background: var(--fy-tint);
+  padding: 17px 19px 19px;
+  display: flex;
+  flex-direction: column;
+}
+.fy-cell-title {
+  font: 450 13px/1.3 var(--fy-sans);
+  color: var(--fy-ink);
+}
+
+/* Text options with a rule under the current one. Replaces the v2 segmented
+   control everywhere on this page. */
+.fy-opts {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+.fy-opt {
+  border: 0;
+  background: transparent;
+  padding: 0 0 3px;
+  cursor: pointer;
+  font-family: var(--fy-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--fy-faint);
+  border-bottom: 1.5px solid transparent;
+  transition:
+    color 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+.fy-opt:hover:not(:disabled) {
+  color: var(--fy-ink);
+}
+.fy-opt[aria-checked="true"] {
+  font-weight: 500;
+  color: var(--fy-ink);
+  border-bottom-color: var(--fy-ink);
+}
+.fy-opt:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.fy-switch {
+  flex: none;
+  width: 38px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid var(--fy-rule);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition:
+    background 0.18s cubic-bezier(0.2, 0.8, 0.24, 1),
+    border-color 0.18s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-switch i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: var(--fy-faint);
+  transition:
+    left 0.18s cubic-bezier(0.2, 0.8, 0.24, 1),
+    background 0.18s ease-out;
+}
+.fy-switch[aria-checked="true"] {
+  background: var(--fy-ink);
+  border-color: var(--fy-ink);
+}
+.fy-switch[aria-checked="true"] i {
+  left: 18px;
+  background: var(--fy-bg);
+}
+.fy-switch:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.fy-switch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* A section that is one block rather than a list of cards. */
+.fy-panel {
+  margin-top: 15px;
+  padding: 22px 22px 24px;
+  background: var(--fy-tint);
+  border-radius: 12px;
+}
+.fy-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--fy-rule2);
+}
+.fy-panel-cols {
+  display: flex;
+  gap: 36px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.fy-panel-col {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
+/* One rung of the approval ladder. The whole row is the target and the mark
+   is a check, not a dot: this is a choice, not a toggle. */
+.fy-policy {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 11px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease-out;
+}
+.fy-policy:hover:not(:disabled) {
+  background: var(--fy-surf);
+}
+.fy-policy[aria-checked="true"] {
+  background: var(--fy-surf);
+}
+.fy-policy:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.fy-policy-label {
+  display: block;
+  font: 400 13px/1.3 var(--fy-sans);
+  color: var(--fy-ink2);
+}
+.fy-policy[aria-checked="true"] .fy-policy-label {
+  font-weight: 500;
+  color: var(--fy-ink);
+}
+.fy-policy-note {
+  display: block;
+  margin-top: 3px;
+  font: 400 11.5px/1.5 var(--fy-sans);
+  color: var(--fy-faint);
+  text-wrap: pretty;
+}
+.fy-policy-check {
+  flex: none;
+  opacity: 0;
+  transform: scale(0.7);
+  transition:
+    opacity 0.18s cubic-bezier(0.2, 0.8, 0.24, 1),
+    transform 0.18s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-policy[aria-checked="true"] .fy-policy-check {
+  opacity: 1;
+  transform: none;
+}
+
+/* A rule inside the right-hand column of the policy panel. */
+.fy-rule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+}
+.fy-rule-row + .fy-rule-row {
+  border-top: 1px solid var(--fy-rule2);
+}
+.fy-slabel {
+  font: 450 13px/1.3 var(--fy-sans);
+  color: var(--fy-ink);
+}
+.fy-snote {
+  margin-top: 4px;
+  font: 400 11.5px/1.5 var(--fy-sans);
+  color: var(--fy-faint);
+  text-wrap: pretty;
+}
+
+/* Desktop stepper for the timeout. */
+.fy-stepper {
+  flex: none;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--fy-rule);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.fy-stepper button {
+  border: 0;
+  background: transparent;
+  width: 26px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--fy-muted);
+  transition:
+    background 0.14s ease-out,
+    color 0.14s ease-out;
+}
+.fy-stepper button:hover:not(:disabled) {
+  background: var(--fy-surf);
+  color: var(--fy-ink);
+}
+.fy-stepper button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.fy-stepper button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.fy-stepper i {
+  width: 1px;
+  height: 28px;
+  background: var(--fy-rule2);
+}
+.fy-stepper output {
+  min-width: 74px;
+  text-align: center;
+  font: 400 12.5px/1 var(--fy-sans);
+  color: var(--fy-ink);
+  font-variant-numeric: tabular-nums;
+}
+.fy-stepper[data-unknown="true"] output {
+  color: var(--fy-faint);
+}
+
+/* The one setting the product will not let you change. */
+.fy-fixedpill {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--fy-rule);
+  background: transparent;
+  padding: 5px 9px;
+  border-radius: 7px;
+  cursor: help;
+  font-family: var(--fy-sans);
+  font-size: 12.5px;
+  color: var(--fy-ink2);
+  transition: background 0.14s ease-out;
+}
+.fy-fixedpill:hover {
+  background: var(--fy-surf);
+}
+.fy-tip {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 8;
+  width: 300px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  background: var(--fy-raised);
+  border: 1px solid var(--fy-rule2);
+  border-radius: 10px;
+  box-shadow: var(--fy-lift);
+  font: 400 12.5px/1.65 var(--fy-sans);
+  color: var(--fy-ink2);
+  text-align: left;
+  animation: fyIn 0.16s ease-out;
+}
+
+/* An amber block for the one rung that has to keep saying what it is. */
+.fy-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-top: 14px;
+  padding: 16px 18px;
+  background: var(--fy-amberSoft);
+  border-radius: 10px;
+}
+
+/* The connection in use: the one filled surface on the page. */
+.fy-insetcard {
+  margin-top: 15px;
+  background: var(--fy-inset);
+  border-radius: 11px;
+  padding: 17px 19px 15px;
+}
+.fy-endpoint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--fy-rule2);
+  flex-wrap: wrap;
+}
+.fy-endpoint-url {
+  flex: 1;
+  min-width: 180px;
+  font: 400 13.5px/1.4 var(--fy-mono);
+  color: var(--fy-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The other ways in: a row each, opening in place. */
+.fy-wayrow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 0;
+}
+.fy-wayname {
+  flex: none;
+  width: 168px;
+  font: 450 13px/1.3 var(--fy-sans);
+  color: var(--fy-ink);
+}
+.fy-waynote {
+  flex: 1;
+  min-width: 0;
+  font: 400 11.5px/1.5 var(--fy-sans);
+  color: var(--fy-faint);
+}
+@media (max-width: 760px) {
+  .fy-wayrow {
+    flex-wrap: wrap;
+  }
+  .fy-wayname {
+    width: auto;
+  }
+  .fy-waynote {
+    flex-basis: 100%;
+  }
+}
+.fy-waybody {
+  padding: 0 0 15px 21px;
+  animation: fyFade 0.22s ease-out;
+}
+
+/* What Fylane promises about this machine. Two cells, one hairline. */
+.fy-promises {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+  background: var(--fy-tint);
+  border-radius: 10px;
+  padding: 16px 20px 18px;
+}
+@media (max-width: 760px) {
+  .fy-promises {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.fy-promise {
+  padding: 2px 24px;
+  border-left: 1px solid var(--fy-rule2);
+}
+.fy-promise:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+@media (max-width: 760px) {
+  .fy-promise {
+    padding: 14px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--fy-rule2);
+  }
+  .fy-promise:first-child {
+    padding-top: 2px;
+    border-top: 0;
+  }
+}
+.fy-promise-tag {
+  font: 400 9.5px/1 var(--fy-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fy-faint);
+  opacity: 0.55;
+}
+.fy-promise-title {
+  margin-top: 8px;
+  font: 450 13.5px/1.3 var(--fy-sans);
+  color: var(--fy-ink2);
+}
+.fy-promise-body {
+  margin-top: 6px;
+  font: 400 12px/1.65 var(--fy-sans);
+  color: var(--fy-faint);
+  text-wrap: pretty;
+}
+
+/* A control row under the promises: what it is on the left, what you can do
+   about it on the right. */
+.fy-controlrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 15px;
+  padding: 16px 20px;
+  background: var(--fy-inset);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.fy-controlrow-title {
+  font: 450 15.5px/1.3 var(--fy-sans);
+  letter-spacing: -0.005em;
+  color: var(--fy-ink);
+}
+.fy-controlrow-note {
+  margin-top: 6px;
+  font: 400 12px/1.5 var(--fy-sans);
+  color: var(--fy-muted);
+}
+
+/* ── overlays: ⌘K, the pairing sheet, the error toast ─────────────────── */
+
+.fy-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  border: 0;
+  padding: 0;
+  background: rgba(20, 22, 18, 0.28);
+  animation: fyFade 0.16s ease-out both;
+}
+.fy-palette {
+  position: absolute;
+  left: 50%;
+  margin-left: -260px;
+  top: 96px;
+  width: 520px;
+  z-index: 11;
+  background: var(--fy-raised);
+  border: 1px solid var(--fy-rule2);
+  border-radius: 14px;
+  box-shadow: var(--fy-lift);
+  overflow: hidden;
+  animation: fyIn 0.18s ease-out both;
+}
+.fy-palette-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--fy-rule2);
+}
+.fy-palette-head input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--fy-ink);
+  font: 400 15px/1.2 var(--fy-sans);
+}
+.fy-cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--fy-ink);
+  font: 400 13.5px/1.2 var(--fy-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s ease-out;
+}
+.fy-cmd-item[data-at="true"] {
+  background: var(--fy-surf);
+}
+
+.fy-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 620px;
+  padding: 11px 16px;
+  border: 1px solid var(--fy-rule);
+  border-radius: 10px;
+  background: var(--fy-raised);
+  box-shadow: var(--fy-lift);
+  font: 400 12px/1.5 var(--fy-sans);
+  animation: wbIn 0.2s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* A filled button that is waiting: the label fades out and the 20px mark
+   takes its place, so the button keeps its width and height. */
+.fy-primary > .fy-jelly {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+/* Everything but the mark itself: the mark is a span too, and matching it
+   here made the busy button fade out the very thing it was showing. */
+.fy-primary[data-busy="true"] > span:not(.fy-jelly) {
+  opacity: 0;
+  transition: opacity 0.13s ease-out;
+}
+/* Same trick at small-button size, where the mark replaces the whole label. */
+.fy-smallbtn > .fy-jelly {
+  margin: -3px 0;
+}
+
+/* ── the Node dock (Fylane-V3 board 03) ──────────────────────────────────
+   Navigation is a floating dock at the bottom left, not a row of pills in the
+   title bar. Collapsed it is the mark alone at 40px; hovering or clicking it
+   opens the three page names. It leaves 600ms after the pointer does, so
+   crossing it on the way somewhere else does not collapse it under the
+   cursor. */
+
+.fy-dock {
+  position: absolute;
+  left: 8px;
+  bottom: 12px;
+  z-index: 30;
+  padding: 10px 16px 6px 0;
+  transition:
+    opacity 0.22s ease-out,
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-dock-shell {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 12px;
+  background: var(--fy-dock);
+  border: 1px solid var(--fy-rule2);
+  box-shadow: var(--fy-float);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  transition: width 0.2s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+/* The mark: the gate's two strokes, with the lane's dot between them. */
+.fy-dock-node {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 0;
+  background: var(--fy-ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3.5px;
+  transition: gap 0.2s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-dock[data-open="true"] .fy-dock-node {
+  gap: 5px;
+}
+.fy-dock-node i {
+  width: 1.8px;
+  border-radius: 1px;
+  background: var(--fy-bg);
+  opacity: 0.92;
+}
+.fy-dock-node i:first-of-type {
+  height: 13px;
+}
+.fy-dock-node i:last-of-type {
+  height: 9px;
+}
+.fy-dock-node b {
+  position: absolute;
+  left: 15.2px;
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 3px;
+  background: var(--fy-sage);
+}
+/* Something is waiting and the dock is closed: the badge is the only way the
+   collapsed mark can say so. */
+.fy-dock-badge {
+  position: absolute;
+  left: 31px;
+  top: 10px;
+  width: 9px;
+  height: 9px;
+  border-radius: 6px;
+  background: var(--fy-amber);
+  box-shadow: 0 0 0 2px var(--fy-dock);
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+.fy-dock[data-badge="true"] .fy-dock-badge {
+  opacity: 1;
+  transform: none;
+}
+.fy-dock-item {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  width: 0;
+  padding-left: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fy-muted);
+  cursor: pointer;
+  overflow: hidden;
+  font-family: var(--fy-sans);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+/* Width comes from the label, not from a number: 62px was two Chinese
+   characters, and "Settings" is wider than that. The shell measures the
+   items and sets its own width, so the two cannot disagree. */
+.fy-dock[data-open="true"] .fy-dock-item {
+  width: auto;
+  padding-left: 11px;
+  padding-right: 11px;
+}
+.fy-dock-item i {
+  flex: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--fy-faint);
+  opacity: 0.28;
+  transition: all 0.2s ease-out;
+}
+.fy-dock-item:hover i {
+  opacity: 0.6;
+}
+.fy-dock-item[aria-current="page"] {
+  background: var(--fy-surf);
+  color: var(--fy-ink);
+}
+.fy-dock-item[aria-current="page"] i {
+  background: var(--fy-sage);
+  opacity: 1;
+}
+.fy-dock-item span {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.18s ease-out;
+}
+.fy-dock[data-open="true"] .fy-dock-item span {
+  opacity: 1;
+}
+.fy-dock-item[aria-current="page"] span {
+  font-weight: 500;
+}
+/* Closed, the labels are not just invisible — they are not reachable either,
+   or tab would stop three times on nothing. */
+.fy-dock:not([data-open="true"]) .fy-dock-item {
+  pointer-events: none;
+}
+
+/* ── First run (Fylane-V3) ───────────────────────────────────────────────
+   The lane's skeleton, carrying four steps instead of a request: focus scene
+   on the left, rail on the right. Everything else on this screen is a part
+   the other three screens already draw. */
+.fr {
+  min-height: 100%;
+  display: flex;
+  align-items: stretch;
+  background: var(--fy-bg);
+  animation: fyPage 0.2s cubic-bezier(0.2, 0.8, 0.24, 1) both;
+}
+
+.fr-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 44px 0 26px 52px;
+}
+
+/* Same as the lane: grows into the free space so the scene sits centred, but
+   never shrinks below its own content. */
+.fr-scene {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-right: 40px;
+}
+
+.fr-tag {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--fy-ink2);
+}
+
+.fr-title {
+  font-size: 31px;
+  line-height: 1.15;
+  margin-top: 13px;
+  max-width: 560px;
+  animation: fyLine 0.3s cubic-bezier(0.2, 0.8, 0.24, 1) both;
+}
+
+.fr-body {
+  margin: 14px 0 0;
+  max-width: 440px;
+  font: 400 13.5px/1.7 var(--fy-sans);
+  color: var(--fy-muted);
+  text-wrap: pretty;
+}
+
+.fr-act {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+  animation: fyLine 0.32s cubic-bezier(0.2, 0.8, 0.24, 1) 0.14s both;
+}
+
+.fr-hint {
+  font-size: 12px;
+  color: var(--fy-faint);
+}
+
+.fr-rungs {
+  margin-top: 26px;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: fyLine 0.32s cubic-bezier(0.2, 0.8, 0.24, 1) 0.14s both;
+}
+
+.fr-foot {
+  flex: none;
+  margin-left: 34px;
+  padding: 8px 0;
+}
+
+.fr-quiet {
+  font-size: 12.5px;
+  color: var(--fy-faint);
+}
+
+/* ── the rail ─────────────────────────────────────────────────────────── */
+
+.fr-rail {
+  flex: none;
+  width: 250px;
+  border-left: 1px solid var(--fy-rule2);
+  padding: 44px 40px 26px 34px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 900px) {
+  .fr {
+    flex-direction: column;
+  }
+  .fr-col {
+    padding: 40px 28px 20px 32px;
+  }
+  .fr-rail {
+    width: auto;
+    border-left: 0;
+    border-top: 1px solid var(--fy-rule2);
+    padding: 24px 32px 28px;
+  }
+  .fr-foot {
+    margin-left: 0;
+  }
+}
+
+.fr-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fr-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 0.18s ease-out;
+}
+.fr-step[data-state="later"] {
+  opacity: 0.42;
+}
+
+.fr-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 400 11.5px/1 var(--fy-mono);
+  color: var(--fy-faint);
+  border: 1px solid var(--fy-rule);
+  transition:
+    background 0.18s ease-out,
+    border-color 0.18s ease-out,
+    color 0.18s ease-out;
+}
+.fr-step[data-state="now"] .fr-mark {
+  border-color: var(--fy-ink);
+  color: var(--fy-ink);
+}
+.fr-step[data-state="done"] .fr-mark {
+  background: var(--fy-sage);
+  border-color: var(--fy-sage);
+}
+
+.fr-tick {
+  width: 8px;
+  height: 4.5px;
+  border-left: 1.6px solid var(--fy-bg);
+  border-bottom: 1.6px solid var(--fy-bg);
+  border-radius: 1px;
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.fr-step-label {
+  font: 400 12.5px/1.4 var(--fy-sans);
+  color: var(--fy-muted);
+}
+.fr-step[data-state="now"] .fr-step-label {
+  font-weight: 500;
+  color: var(--fy-ink);
+}
+
+/* The gate at rail size. It is the one decorative thing on the screen, and it
+   is the drawing the product is named after. */
+.fr-gate {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.fr-gate i {
+  width: 2px;
+  height: 34px;
+  border-radius: 2px;
+  background: var(--fy-rule);
+}
+
+.fr-gate-note {
+  font: 400 11.5px/1.6 var(--fy-sans);
+  color: var(--fy-faint);
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fr,
+  .fr-title,
+  .fr-act,
+  .fr-rungs {
+    animation: none;
+  }
+}
+
+/* The granted folder, once there is one. */
+.fr-ws {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--fy-rule2);
+}
+
+/* What the test write actually did — including the gate stopping it, which
+   is the product working rather than a failure. */
+.fr-receipt {
+  margin-top: 20px;
+  max-width: 460px;
+  padding-left: 17px;
+  border-left: 1px solid var(--fy-rule);
+  font: 400 12.5px/1.7 var(--fy-mono);
+  color: var(--fy-muted);
+  word-break: break-word;
+}
+
+/* ── device pairing sheet ───────────────────────────────────────────────
+   One continuous surface over a dimmed window. Desktop → window → sheet is
+   two levels: no footer band, no inset card, no second pale block. */
+
+.fy-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  background: rgba(20, 22, 18, 0.14);
+  animation: fyFade 0.18s ease-out both;
+}
+:root[data-fy="dark"] .fy-dim {
+  background: rgba(0, 0, 0, 0.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-fy="light"]) .fy-dim {
+    background: rgba(0, 0, 0, 0.4);
+  }
+}
+
+@keyframes fySheetIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 3px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.fy-sheet {
+  position: absolute;
+  left: 50%;
+  top: 128px;
+  width: 640px;
+  max-width: calc(100% - 48px);
+  transform: translateX(-50%);
+  z-index: 13;
+  padding: 26px 30px 24px;
+  border-radius: 11px;
+  background: var(--fy-raised);
+  border: 1px solid var(--fy-rule2);
+  box-shadow:
+    0 10px 26px rgba(31, 33, 28, 0.13),
+    0 1px 3px rgba(31, 33, 28, 0.07);
+  animation: fySheetIn 0.18s cubic-bezier(0.2, 0.8, 0.24, 1) both;
+}
+:root[data-fy="dark"] .fy-sheet {
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-fy="light"]) .fy-sheet {
+    box-shadow:
+      0 10px 26px rgba(0, 0, 0, 0.45),
+      0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.fy-sheet-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fy-sheet-who {
+  font: 500 14.5px/1.2 var(--fy-sans);
+  color: var(--fy-ink);
+}
+.fy-sheet-state {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 400 12px/1 var(--fy-sans);
+  color: var(--fy-muted);
+}
+.fy-sheet-state i {
+  width: 5px;
+  height: 5px;
+  border-radius: 4px;
+}
+
+/* One sentence. The source line above already said who. */
+.fy-sheet-title {
+  margin-top: 13px;
+  font: 450 19px/1.35 var(--fy-sans);
+  letter-spacing: -0.005em;
+  color: var(--fy-ink);
+  animation: fySwap 0.26s cubic-bezier(0.2, 0.8, 0.24, 1);
+}
+@keyframes fySwap {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* No frame, no fill, no boxes. It is a token to read, not a field. */
+.fy-sheet-coderow {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-top: 26px;
+}
+.fy-sheet-code {
+  font: 450 29px/1 var(--fy-mono);
+  letter-spacing: 0.055em;
+  color: var(--fy-ink);
+  animation: fyLine 0.22s ease-out 60ms both;
+  transition:
+    color 0.28s ease-out,
+    opacity 0.28s ease-out;
+}
+.fy-sheet[data-done="approved"] .fy-sheet-code,
+.fy-sheet[data-done="rejected"] .fy-sheet-code {
+  color: var(--fy-muted);
+  opacity: 0.4;
+}
+/* Appears on hover, and on focus so a keyboard can reach it. */
+.fy-sheet-copy {
+  border: 0;
+  background: transparent;
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: 400 12px/1 var(--fy-sans);
+  color: var(--fy-faint);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition:
+    opacity 0.17s ease-out,
+    transform 0.17s ease-out,
+    color 0.17s ease-out;
+}
+.fy-sheet-coderow:hover .fy-sheet-copy,
+.fy-sheet-copy:focus-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.fy-sheet-guide {
+  margin-top: 22px;
+  font: 400 13px/1.6 var(--fy-sans);
+  color: var(--fy-ink2);
+}
+.fy-sheet-guide2 {
+  margin-top: 5px;
+  font: 400 11.5px/1.5 var(--fy-sans);
+  color: var(--fy-faint);
+}
+
+.fy-sheet-acts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 26px;
+}
+.fy-sheet-keys {
+  font: 400 11px/1 var(--fy-sans);
+  color: var(--fy-faint);
+  opacity: 0.8;
+}
+.fy-sheet-approve {
+  height: 36px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--fy-ink);
+  color: var(--fy-raised);
+  font: 500 13px/1 var(--fy-sans);
+  cursor: pointer;
+  transition:
+    transform 0.14s ease-out,
+    background 0.2s ease-out,
+    color 0.2s ease-out;
+}
+.fy-sheet-approve:hover {
+  transform: translateY(-1px);
+}
+.fy-sheet-approve:active {
+  transform: scale(0.985);
+}
+/* Once the decision is made this is the only control left, and it is quiet. */
+.fy-sheet-approve[data-quiet="true"] {
+  background: transparent;
+  color: var(--fy-muted);
+  border: 1px solid var(--fy-rule);
+}
+.fy-sheet-reject {
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fy-faint);
+  font: 400 13px/1 var(--fy-sans);
+  cursor: pointer;
+  transition:
+    color 0.15s ease-out,
+    background 0.15s ease-out;
+}
+.fy-sheet-reject:hover {
+  color: var(--fy-brick);
+  background: var(--fy-brickSoft);
+}
+/* A ring the window's own colours make, rather than the browser's blue. */
+.fy-sheet button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--fy-raised),
+    0 0 0 3.5px var(--fy-ink2);
+}

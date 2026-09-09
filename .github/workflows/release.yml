@@ -1,0 +1,147 @@
+# Builds every distributable artifact for a version tag and publishes them as
+# a GitHub Release.
+#
+# Three runners because the work needs three. The Companion and the Relay
+# cross-compile from one machine, so Linux builds all ten of those. The
+# desktop shell does not: Wails builds for the host it runs on, so the macOS
+# package can only be made on macOS and the Windows package only on Windows.
+#
+# Each runner runs scripts/release.sh, the same script a maintainer runs by
+# hand. The desktop runners rebuild the binaries too and throw most of them
+# away — a few wasted minutes buys a package whose Core is provably the one
+# that was built beside it, which is what the shell looks for at startup.
+#
+# Nothing here is signed. The hooks are in release.sh (FYLANE_MAC_SIGN_ID,
+# FYLANE_WIN_SIGN_CMD) and take effect as soon as those secrets exist; until
+# then macOS reports an unidentified developer and Windows shows SmartScreen.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # A tag that disagrees with the VERSION file would produce artifacts whose
+  # names and embedded version do not match the release they land in.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          version=$(cat VERSION)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME}" != "v$version" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match VERSION $version" >&2
+            exit 1
+          fi
+
+  binaries:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: build companion and relay for every platform
+        run: ./scripts/release.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            dist/${{ needs.check.outputs.version }}/fylane-companion-*
+            dist/${{ needs.check.outputs.version }}/fylane-relay-*
+          if-no-files-found: error
+
+  desktop:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macos
+          - os: windows-latest
+            label: windows
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # release.sh reads desktop/wails.json through node to check the version.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Pinned to the version desktop/go.mod depends on: a newer CLI can
+      # generate bindings the vendored runtime does not match.
+      - name: install the Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+
+      # The Windows package is a zip and Git Bash does not ship the tool.
+      - name: install zip
+        if: matrix.os == 'windows-latest'
+        run: choco install zip --no-progress -y
+
+      - name: build the desktop package
+        env:
+          FYLANE_BUILD_DESKTOP: "1"
+        run: ./scripts/release.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.label }}
+          path: dist/${{ needs.check.outputs.version }}/fylane-desktop-*
+          if-no-files-found: error
+
+  # workflow_dispatch builds and keeps the artifacts without publishing, which
+  # is how you find out whether a release would succeed before tagging one.
+  publish:
+    needs: [check, binaries, desktop]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: staging
+          merge-multiple: true
+
+      # Each runner wrote its own manifest over its own subset. One release
+      # gets one manifest, computed over what actually ships.
+      - name: checksum everything that ships
+        run: |
+          cd staging
+          rm -f SHA256SUMS
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" staging/* \
+            --title "Fylane ${{ needs.check.outputs.version }}" \
+            --notes "Artifacts are unsigned. macOS reports an unidentified developer and Windows shows a SmartScreen warning; verify the download against SHA256SUMS before opening it." \
+            --verify-tag

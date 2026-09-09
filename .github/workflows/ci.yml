@@ -1,0 +1,119 @@
+# Build, vet and test on every push and pull request.
+#
+# The matrix is not decoration: the Companion has per-platform files behind
+# build tags — the read boundary, process groups, the autostart entry, the
+# lock file — and a change that compiles on Linux can fail to compile on
+# Windows. Only three runners can say so.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: go / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: build
+        run: go build ./...
+
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test ./...
+
+  gofmt:
+    name: gofmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: every file is formatted
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "these files need gofmt:" >&2
+            echo "$unformatted" >&2
+            exit 1
+          fi
+
+  # The desktop shell is a separate module with a bootstrapping problem: its
+  # Go code embeds frontend/dist, the TypeScript imports bindings generated
+  # from that Go code, and neither is committed. So the order below is the
+  # only one that works from a clean checkout — and a clean checkout is what
+  # every contributor has.
+  #
+  # On macOS because Wails links against the system webview: the Linux build
+  # needs GTK and WebKit development packages whose names move between Ubuntu
+  # releases, and a runner that needs no apt line cannot break on one.
+  desktop:
+    name: desktop
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Node 18 runs the suite and silently skips every render test, which is
+      # worse than failing. Pin the major version rather than tracking latest.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/frontend/package-lock.json
+
+      - name: install the Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+
+      # An empty directory satisfies the embed so the Go code compiles; the
+      # bindings the frontend needs can only be generated from compiled Go.
+      - name: break the bootstrap cycle
+        run: |
+          mkdir -p desktop/frontend/dist
+          touch desktop/frontend/dist/.gitkeep
+
+      - name: build the desktop module
+        run: go build ./...
+        working-directory: desktop
+
+      - name: generate the Wails bindings
+        run: wails generate module
+        working-directory: desktop
+
+      - run: npm ci
+        working-directory: desktop/frontend
+
+      - name: typecheck
+        run: npx tsc --noEmit
+        working-directory: desktop/frontend
+
+      - name: test
+        run: npm test
+        working-directory: desktop/frontend

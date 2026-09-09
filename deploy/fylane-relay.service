@@ -1,0 +1,43 @@
+# Self-hosted Fylane relay without Docker. Install as:
+#
+#   install -m755 fylane-relay-linux-amd64 /usr/local/bin/fylane-relay
+#   useradd --system --home /var/lib/fylane --shell /usr/sbin/nologin fylane
+#   install -d -o fylane -g fylane -m 700 /var/lib/fylane
+#   install -m644 deploy/fylane-relay.service /etc/systemd/system/
+#   systemctl enable --now fylane-relay
+#
+# Edit ExecStart's -issuer to the public https URL before enabling. TLS is
+# terminated by whatever already renews certificates on this host (Caddy,
+# nginx, Traefik); the relay listens on loopback only.
+[Unit]
+Description=Fylane relay
+Documentation=https://github.com/fylane/fylane
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fylane
+Group=fylane
+Environment=FYLANE_RELAY_DB=/var/lib/fylane/relay.db
+ExecStart=/usr/local/bin/fylane-relay serve -addr 127.0.0.1:9000 -issuer https://relay.example.com
+Restart=on-failure
+RestartSec=5s
+
+# The relay reads no files but its own database and writes nothing else.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ReadWritePaths=/var/lib/fylane
+
+[Install]
+WantedBy=multi-user.target

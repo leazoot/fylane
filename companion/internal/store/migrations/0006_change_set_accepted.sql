@@ -1,0 +1,21 @@
+-- Record that a human looked at an applied change set and said it was right
+-- (2026-09-01).
+--
+-- Until now the only thing that ended a write's life was the rollback window
+-- closing. That conflates two different facts: "the user read the diff and
+-- said OK" and "the user never saw it, so the timer ran out". The whole point
+-- of this column is that those are not the same answer.
+--
+-- It is a column and not a `status` value, which revises the literal wording
+-- `status` records what the engine did — pending → approved →
+-- applied, or a terminal denied / failed / rolled_back. Acceptance is what the
+-- user did afterwards, and an accepted change set is still an applied one: it
+-- still counts as a lane carried, still shows in the day's activity, and can
+-- still be rolled back until its window closes. Spending the status column on
+-- it would have made "applied" and "accepted" mutually exclusive, which is
+-- false, and every read path that means "landed" would have had to be taught
+-- the difference — four of them, each a silent regression if missed.
+--
+-- Rows written before this column existed keep a NULL accepted_at. That is
+-- accurate: nobody was ever asked to accept them.
+ALTER TABLE change_sets ADD COLUMN accepted_at TEXT;

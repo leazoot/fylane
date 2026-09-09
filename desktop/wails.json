@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "desktop",
+  "outputfilename": "Fylane Companion",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "leazoot",
+    "email": "r.lz@anche.no"
+  },
+  "info": {
+    "productName": "Fylane Companion",
+    "productVersion": "0.0.1"
+  }
+}
