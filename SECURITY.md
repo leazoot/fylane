@@ -92,6 +92,12 @@ name-based and a renamed binary is a different name.
 design can use there. The path sandbox, rule table, approval gate, and audit
 log all still run; the kernel layer does not exist.
 
+**On Windows, file permissions are not enforced.** The control file that
+carries the local API token, and the settings file, are written owner-only
+(`0600`) on macOS and Linux. Windows has no such mode bits and Fylane sets no
+ACL there, so those files are exactly as private as the data directory that
+holds them — no more.
+
 **No independent audit has been done.** Everything above is the implementer's
 account of the implementer's code. Treat it accordingly until that changes.
 
