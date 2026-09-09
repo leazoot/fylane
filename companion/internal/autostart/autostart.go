@@ -27,8 +27,8 @@ type State struct {
 	// Supported is false where this build has no way to register an entry.
 	// The row is then shown disabled with Detail as its explanation, rather
 	// than offering a switch that would silently do nothing.
-	Supported bool `json:"supported"`
-	Enabled   bool `json:"enabled"`
+	Supported bool   `json:"supported"`
+	Enabled   bool   `json:"enabled"`
 	Detail    string `json:"detail,omitempty"`
 }
 

@@ -9,6 +9,23 @@ import (
 	"testing"
 )
 
+// On Linux the boundary is applied by re-executing this very binary as a shim
+// (box_linux.go), and under `go test` this binary is the test binary. Without
+// this interception the child would run the whole package again, which would
+// wrap another command, which would run the package again — a test that
+// never finishes rather than one that fails. This mirrors what the Core's
+// own main does before dispatching anything.
+func TestMain(m *testing.M) {
+	if IsShim(os.Args) {
+		if err := RunShim(os.Args); err != nil {
+			os.Stderr.WriteString("read boundary shim: " + err.Error() + "\n")
+			os.Exit(1)
+		}
+		return
+	}
+	os.Exit(m.Run())
+}
+
 func TestOffIsNotAbsentAndNeitherIsAFailure(t *testing.T) {
 	// Three states, three meanings. Off is the user's choice and says so;
 	// Absent is the platform's answer; a failure is neither and never

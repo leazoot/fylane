@@ -23,6 +23,7 @@ jobs:
   go:
     name: go / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -47,6 +48,7 @@ jobs:
   gofmt:
     name: gofmt
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -73,6 +75,7 @@ jobs:
   desktop:
     name: desktop
     runs-on: macos-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
