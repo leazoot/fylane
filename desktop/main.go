@@ -6,11 +6,13 @@ package main
 
 import (
 	"embed"
+	"runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed all:frontend/dist
@@ -37,9 +39,15 @@ func main() {
 		MinWidth:          860,
 		MinHeight:         620,
 		HideWindowOnClose: true,
-		BackgroundColour:  &options.RGBA{R: 0xF5, G: 0xF2, B: 0xEB, A: 1},
-		AssetServer:       &assetserver.Options{Assets: assets},
-		OnStartup:         app.startup,
+		// The title bar is the app's own on every platform. macOS keeps its
+		// native buttons and hides the bar behind them (TitleBarHiddenInset
+		// below); Windows has no such mode, so there the native frame is
+		// dropped and the bar draws its own minimise / maximise / close —
+		// otherwise both rows appear, one above the other.
+		Frameless:        runtime.GOOS == "windows",
+		BackgroundColour: &options.RGBA{R: 0xF5, G: 0xF2, B: 0xEB, A: 1},
+		AssetServer:      &assetserver.Options{Assets: assets},
+		OnStartup:        app.startup,
 		Mac: &mac.Options{
 			// Unified titlebar: no bar, no divider, no centred window
 			// title. The traffic lights float over the content on the same
@@ -47,6 +55,12 @@ func main() {
 			// the content reserves 86px on the left.
 			TitleBar: mac.TitleBarHiddenInset(),
 			About:    &mac.AboutInfo{Title: "Fylane"},
+		},
+		Windows: &windows.Options{
+			// Decorations stay on: a frameless window still gets its resize
+			// edges and shadow from the system, which is the part worth
+			// keeping.
+			DisableFramelessWindowDecorations: false,
 		},
 		Bind: []interface{}{app},
 	})
