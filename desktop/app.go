@@ -83,6 +83,7 @@ func (a *App) StartCore() (string, error) {
 	// explains itself and one that just sits there.
 	tail := &tailBuffer{limit: 4 << 10}
 	cmd := exec.Command(bin, args...)
+	hideChildConsole(cmd)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = io.MultiWriter(os.Stderr, tail)
 	if err := cmd.Start(); err != nil {
