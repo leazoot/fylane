@@ -139,12 +139,13 @@ func TestTheAnnouncerReplacesTheCodeWhenItExpires(t *testing.T) {
 
 	(&shareAnnouncer{ctx: ctx, out: out}).announce("https://example.test/mcp", mint)
 
+	// Wait for what the assertion reads, not for the counter: mint returns
+	// — and mints is incremented — before the caller has printed the code,
+	// so a loop that stops at mints == 2 can read the buffer a beat too
+	// early. A loaded runner is where that beat is long enough to matter.
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		mu.Lock()
-		n := mints
-		mu.Unlock()
-		if n >= 2 {
+		if strings.Contains(out.String(), "code-b") {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
