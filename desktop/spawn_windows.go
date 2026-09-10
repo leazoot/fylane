@@ -11,5 +11,9 @@ import (
 // window is suppressed here, at the one place the shell starts it, rather
 // than by making the Core a GUI program and losing its output everywhere.
 func hideChildConsole(cmd *exec.Cmd) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: syscall.CREATE_NO_WINDOW}
+	// CREATE_NO_WINDOW. Go's syscall package does not name the constant and
+	// x/sys is not a dependency of this module; the value is documented and
+	// has not changed since it was introduced.
+	const createNoWindow = 0x08000000
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow}
 }
