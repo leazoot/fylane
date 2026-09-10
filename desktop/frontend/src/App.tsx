@@ -301,6 +301,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
       case "settings":
         return (
           <SettingsScreen
+            online={snapshot.online}
             lang={lang}
             onLang={onLang}
             theme={theme}

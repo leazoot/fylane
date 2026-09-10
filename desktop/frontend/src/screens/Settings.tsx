@@ -280,6 +280,13 @@ export interface SettingsProps {
    *  version", and silence keeps it either way. Claiming "up to date" would
    *  not, because with the check off nobody looked. */
   update?: { version: string; page?: string };
+  /** Whether the Core is reachable. The page reads its settings when it
+   *  mounts and again each time this turns true, so a page opened while the
+   *  Core was starting — or after it was killed — recovers on its own. While
+   *  false, a failed read raises no message: the shell is already saying the
+   *  Core is down, and a second sentence about "approval settings" would be
+   *  the same fact wearing a different name. */
+  online?: boolean;
   deps?: SettingsDeps;
 }
 
@@ -296,6 +303,7 @@ export function SettingsScreen({
   onError,
   version,
   update,
+  online = true,
   deps = CORE,
 }: SettingsProps) {
   const tr = useT();
@@ -338,12 +346,16 @@ export function SettingsScreen({
       setServers(read.servers);
       setGrants(read.grants);
       setLoading(false);
-      read.errors.forEach((key) => onError(t(key)));
+      if (online) {
+        read.errors.forEach((key) => onError(t(key)));
+      }
     });
     return () => {
       alive = false;
     };
-  }, []);
+    // Re-read when the Core comes back, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
 
   const setNetwork = async (id: string, allow: boolean) => {
     try {

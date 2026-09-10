@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { DICT, LangContext } from "../lib/i18n";
 import type {
@@ -1489,6 +1489,56 @@ describe("the update notice", () => {
 // Hiding the Dock icon is a shell setting: it lives with the window, not the
 // Core, and where there is no Dock the row has to say so rather than offer a
 // switch that would do nothing.
+// The settings page used to read once, on mount, and never again: opened
+// while the Core was starting — or after its console window was closed on
+// Windows, which kills it — every read failed, one toast fired, and nothing
+// recovered until the page was remounted.
+describe("settings while the Core is unreachable", () => {
+  const down = async () => {
+    throw new Error("companion core is not reachable");
+  };
+  const unreachable = () => deps({ prefs: down, commands: down, status: down, dock: down });
+
+  it("raises no message while the shell already says the Core is down", async () => {
+    const raised: string[] = [];
+    draw(<SettingsScreen {...settingsProps} online={false} deps={unreachable()} onError={(m) => raised.push(m)} />);
+    await settle();
+    expect(raised).toEqual([]);
+  });
+
+  it("still raises it when the Core is supposedly up and the read fails", async () => {
+    // The quiet is for a Core the shell knows is down, not for every failure.
+    const raised: string[] = [];
+    draw(<SettingsScreen {...settingsProps} online={true} deps={unreachable()} onError={(m) => raised.push(m)} />);
+    await settle();
+    expect(raised.length).toBeGreaterThan(0);
+  });
+
+  it("reads again on its own when the Core comes back", async () => {
+    // Driven through state rather than two draws: a second draw reuses the
+    // instance and would not exercise the effect's dependency.
+    let reads = 0;
+    let setOnline: (v: boolean) => void = () => {};
+    const good = deps({
+      commands: async () => {
+        reads += 1;
+        return { rung: "workspace" as const, grants: [] };
+      },
+    });
+    function Host() {
+      const [online, set] = useState(false);
+      setOnline = set;
+      return <SettingsScreen {...settingsProps} online={online} deps={good} />;
+    }
+    draw(<Host />);
+    await settle();
+    const before = reads;
+    act(() => setOnline(true));
+    await settle();
+    expect(reads).toBeGreaterThan(before);
+  });
+});
+
 describe("hiding the Dock icon", () => {
   const sw = (label: string) =>
     buttons().find((b) => b.getAttribute("role") === "switch" && b.getAttribute("aria-label") === label);
