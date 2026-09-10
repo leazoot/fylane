@@ -221,7 +221,6 @@ export const DICT = {
   "set.presence": { en: "Startup & presence", zh: "启动与常驻" },
   "set.dock": { en: "Hide Dock icon", zh: "隐藏 Dock 图标" },
   "set.dockNote": { en: "Menu bar only", zh: "只留菜单栏" },
-  "set.dockUnsupported": { en: "This system has no Dock icon to hide.", zh: "这个系统没有 Dock 图标可隐藏。" },
   // Beside the switch in a third-width cell. The design puts a short state
   // label there, not a sentence: the cell's own title already says what the
   // setting is, and an explanation wraps to three lines at this width.

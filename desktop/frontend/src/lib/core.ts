@@ -598,12 +598,12 @@ export type ReadBoundaryInfo = {
  *  about how this window presents itself and has to be applied before the
  *  Core has answered anything, so the shell keeps it in its own file.
  *
- *  Same shape as AutostartInfo for the same reason: where a platform has no
- *  Dock, the row explains instead of offering a switch that would do nothing. */
+ *  `supported` false means there is no Dock on this platform and the page
+ *  draws no row at all: this is a convenience, not a boundary, so its absence
+ *  is not something a person needs told. */
 export type DockInfo = {
   supported: boolean;
   hidden: boolean;
-  detail?: string;
 };
 
 export async function fetchDock(): Promise<DockInfo> {

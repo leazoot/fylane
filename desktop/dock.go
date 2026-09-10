@@ -18,12 +18,12 @@ type shellPrefs struct {
 	DockHidden bool `json:"dock_hidden"`
 }
 
-// DockInfo mirrors AutostartInfo on the wire: a switch the page may draw,
-// or a sentence explaining why there is none.
+// DockInfo is what the settings page draws from. Where there is no Dock the
+// page draws nothing — hiding an icon is a convenience, not a defence, so an
+// absent option needs no explanation the way an absent boundary does.
 type DockInfo struct {
-	Supported bool   `json:"supported"`
-	Hidden    bool   `json:"hidden"`
-	Detail    string `json:"detail,omitempty"`
+	Supported bool `json:"supported"`
+	Hidden    bool `json:"hidden"`
 }
 
 func (a *App) readShellPrefs() shellPrefs {
@@ -51,7 +51,7 @@ func (a *App) writeShellPrefs(p shellPrefs) error {
 
 func (a *App) dockInfo() DockInfo {
 	if !dockSupported {
-		return DockInfo{Supported: false, Detail: "There is no Dock icon to hide on this system."}
+		return DockInfo{Supported: false}
 	}
 	return DockInfo{Supported: true, Hidden: a.readShellPrefs().DockHidden}
 }

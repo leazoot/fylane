@@ -544,19 +544,12 @@ export function SettingsScreen({
             </div>
             {/* Hidden from the Dock, the app is reached from the menu bar's
                 own item, which every platform has — so this can never strand
-                the window. Where there is no Dock the row says so, in the
-                same words the login switch uses when it cannot register. */}
-            {dock && (
+                the window. Where there is no Dock there is no row: unlike a
+                boundary, a missing convenience is not news. */}
+            {dock?.supported && (
               <div className="fy-cell-body" style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
-                <Switch
-                  label={t("set.dock")}
-                  on={dock.hidden}
-                  disabled={!dock.supported}
-                  onToggle={() => void chooseDock(!dock.hidden)}
-                />
-                <span className="fy-snote">
-                  {dock.supported ? t("set.dock") : dock.detail || t("set.dockUnsupported")}
-                </span>
+                <Switch label={t("set.dock")} on={dock.hidden} onToggle={() => void chooseDock(!dock.hidden)} />
+                <span className="fy-snote">{t("set.dock")}</span>
               </div>
             )}
           </div>

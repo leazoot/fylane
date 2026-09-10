@@ -1535,18 +1535,20 @@ describe("hiding the Dock icon", () => {
     expect(sw("Hide Dock icon")?.getAttribute("aria-checked")).toBe("false");
   });
 
-  it("says so, and disables the switch, on a system with no Dock", async () => {
+  it("draws no row at all on a system with no Dock", async () => {
+    // Windows and Linux have a taskbar, not a Dock. A disabled switch with an
+    // explanation would be an option that exists only to say it does not.
     draw(
       <SettingsScreen
         {...settingsProps}
-        deps={deps({
-          dock: async () => ({ supported: false, hidden: false, detail: "There is no Dock icon to hide on this system." }),
-        })}
+        deps={deps({ dock: async () => ({ supported: false, hidden: false }) })}
       />,
     );
     await settle();
-    expect(sw("Hide Dock icon")?.hasAttribute("disabled")).toBe(true);
-    expect(text()).toContain("no Dock icon to hide");
+    expect(sw("Hide Dock icon")).toBeUndefined();
+    expect(text()).not.toContain("Dock");
+    // The login switch it shares a cell with is unaffected.
+    expect(sw("Start at login")).toBeTruthy();
   });
 
   it("leaves the login switch alone in the cell it now shares", async () => {
