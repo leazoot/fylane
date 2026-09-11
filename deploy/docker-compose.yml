@@ -13,7 +13,7 @@
 # is already renewing certificates on the host.
 services:
   relay:
-    image: ${FYLANE_RELAY_IMAGE:-ghcr.io/fylane/fylane-relay:latest}
+    image: ${FYLANE_RELAY_IMAGE:-ghcr.io/leazoot/fylane-relay:latest}
     restart: unless-stopped
     command: ["-issuer", "https://${FYLANE_RELAY_HOST:?set FYLANE_RELAY_HOST}"]
     environment:
