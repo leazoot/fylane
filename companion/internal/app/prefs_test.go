@@ -17,6 +17,7 @@ func testPrefs(t *testing.T) *prefs {
 	p := newPrefs(t.TempDir(), readbox.New(true))
 	// The login entry must land in the test's own home, not the developer's.
 	p.autostartCfg = autostart.Config{Home: t.TempDir(), Exe: "/opt/fylane/fylane-companion", Args: []string{"serve"}}
+	t.Cleanup(func() { _ = autostart.Set(p.autostartCfg, false) })
 	return p
 }
 

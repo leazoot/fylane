@@ -17,7 +17,11 @@ func cfg(t *testing.T) Config {
 	// XDG_CONFIG_HOME would win over Home on the non-darwin, non-windows
 	// implementation and put the entry outside the temp directory.
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
-	return Config{Home: home, Exe: "/opt/fylane/fylane-companion", Args: []string{"serve"}}
+	c := Config{Home: home, Exe: "/opt/fylane/fylane-companion", Args: []string{"serve"}}
+	// A test that fails or skips after Set(true) must still leave nothing
+	// behind: the home is temporary, but on Windows the entry is not in it.
+	t.Cleanup(func() { _ = Set(c, false) })
+	return c
 }
 
 func TestOffByDefault(t *testing.T) {
