@@ -132,6 +132,39 @@ func TestLookupPrefersTheShippedBinary(t *testing.T) {
 	}
 }
 
+// The vendor installer's folder counts even when PATH does not know it: on
+// Windows a Fylane that was running during the install still has the old
+// PATH, and on macOS the app bundle never adds the CLI to PATH at all.
+func TestLookupFindsTheInstallerLocationOffPath(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	root := t.TempDir()
+	var want string
+	switch runtime.GOOS {
+	case "windows":
+		t.Setenv("ProgramFiles", root)
+		t.Setenv("ProgramFiles(x86)", "")
+		want = filepath.Join(root, "Tailscale", "tailscale.exe")
+	case "darwin":
+		applicationsDir = root
+		t.Cleanup(func() { applicationsDir = "/Applications" })
+		want = filepath.Join(root, "Tailscale.app", "Contents", "MacOS", "Tailscale")
+	default:
+		t.Skip("no vendor install location to check on this platform")
+	}
+	if got, ok := lookup("tailscale", t.TempDir()); ok {
+		t.Fatalf("lookup = %q before anything is installed", got)
+	}
+	if err := os.MkdirAll(filepath.Dir(want), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(want, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := lookup("tailscale", t.TempDir()); !ok || got != want {
+		t.Errorf("lookup = %q, %v; want the installed %q", got, ok, want)
+	}
+}
+
 // Three places, in this order: what shipped with this release, what the user
 // consented to download, and whatever is on PATH. The order is the
 // point — shipped was checksummed and signed together with us, downloaded was

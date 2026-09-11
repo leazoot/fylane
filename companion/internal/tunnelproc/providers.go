@@ -282,7 +282,7 @@ func shippedDir() string {
 
 // lookup resolves a provider binary in the order Fylane trusts them: the copy
 // shipped beside this executable, then one the user consented to download,
-// then whatever is on PATH.
+// then whatever is on PATH, then where the vendor's installer puts it.
 //
 // Shipped comes first because it is the version this release was built,
 // checksummed and signed against, so it is the one whose behaviour is known.
@@ -299,8 +299,47 @@ func lookup(binary string, dirs ...string) (string, bool) {
 			return candidate, true
 		}
 	}
-	path, err := exec.LookPath(binary)
-	return path, err == nil
+	if path, err := exec.LookPath(binary); err == nil {
+		return path, true
+	}
+	for _, candidate := range installedCopies(binary) {
+		if info, err := os.Stat(candidate); err == nil && runnable(info) {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
+// applicationsDir is where macOS app bundles live. A variable so a test can
+// point it at a directory it owns.
+var applicationsDir = "/Applications"
+
+// installedCopies is where each vendor's installer puts the binary when it is
+// not on PATH — or not on the PATH this process has. Windows installers add
+// their folder to the system PATH, but a process already running keeps the
+// PATH it started with, so a Fylane that was open during the install would
+// report the tool missing until relaunched. macOS app bundles never touch
+// PATH at all: the Tailscale CLI sits inside the bundle.
+func installedCopies(binary string) []string {
+	switch runtime.GOOS {
+	case "windows":
+		folder := map[string]string{"tailscale": "Tailscale", "cloudflared": "cloudflared"}[binary]
+		if folder == "" {
+			return nil
+		}
+		var paths []string
+		for _, env := range []string{"ProgramFiles", "ProgramFiles(x86)"} {
+			if root := os.Getenv(env); root != "" {
+				paths = append(paths, filepath.Join(root, folder, tunnelget.ExeName(binary)))
+			}
+		}
+		return paths
+	case "darwin":
+		if binary == "tailscale" {
+			return []string{filepath.Join(applicationsDir, "Tailscale.app", "Contents", "MacOS", "Tailscale")}
+		}
+	}
+	return nil
 }
 
 // runnable reports whether a directory entry is something we could execute.
