@@ -13,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -44,7 +45,20 @@ func main() {
 		// below); Windows has no such mode, so there the native frame is
 		// dropped and the bar draws its own minimise / maximise / close —
 		// otherwise both rows appear, one above the other.
-		Frameless:        runtime.GOOS == "windows",
+		Frameless: runtime.GOOS == "windows",
+		// One Core, one tray, one control API per machine: a second shell
+		// would only be a second window onto the same state. macOS enforces
+		// this for .app bundles; Windows enforces nothing, so the lock does,
+		// and a second launch brings the existing window forward instead.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "io.fylane.companion",
+			OnSecondInstanceLaunch: func(options.SecondInstanceData) {
+				if app.ctx != nil {
+					wruntime.WindowUnminimise(app.ctx)
+					wruntime.WindowShow(app.ctx)
+				}
+			},
+		},
 		BackgroundColour: &options.RGBA{R: 0xF5, G: 0xF2, B: 0xEB, A: 1},
 		AssetServer:      &assetserver.Options{Assets: assets},
 		OnStartup:        app.startup,
