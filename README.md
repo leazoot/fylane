@@ -104,8 +104,8 @@ you get asked.
 </tr>
 </table>
 
-Currently packaged for macOS. The companion itself builds for macOS, Linux and
-Windows.
+Packaged for macOS and Windows. The companion and the relay also ship for
+Linux; there is no Linux desktop package yet.
 
 ## Running your own relay
 

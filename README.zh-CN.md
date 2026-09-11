@@ -96,7 +96,7 @@ Companion 本身可以无界面运行,但审批发生在桌面端:一条通道�
 </tr>
 </table>
 
-目前只打包了 macOS 版本。Companion 本身可在 macOS、Linux、Windows 上构建。
+提供 macOS 和 Windows 桌面包;Companion 与 relay 另有 Linux 版本,Linux 桌面包暂未提供。
 
 ## 自建 relay
 
