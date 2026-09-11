@@ -372,8 +372,8 @@ export const DICT = {
   // No command to copy: the panel above opens the vendor's download page,
   // because the Core never downloads an executable itself.
   "set.installFirst": {
-    en: "Run the command above first; Fylane starts it once it is installed.",
-    zh: "先执行上面的命令安装,装好后 Fylane 会替你启动。",
+    en: "Install it from the download page above first; once it is there, Fylane starts it for you.",
+    zh: "先从上面的下载页安装,装好后 Fylane 会替你启动。",
   },
   "set.privacy": { en: "Privacy & this machine", zh: "隐私与本地" },
   "set.privacyNote": { en: "A few things Fylane will not do.", zh: "Fylane 的几条硬性原则。" },
