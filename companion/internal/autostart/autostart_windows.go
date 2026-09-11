@@ -14,7 +14,7 @@ const runKey = `Software\Microsoft\Windows\CurrentVersion\Run`
 
 // valueName is what the user sees in Task Manager. It is a display name, not
 // an identifier, which is why it is not `label`.
-const valueName = "Fylane Companion"
+const valueName = "Fylane"
 
 // Status reports whether the Run value exists.
 func Status(cfg Config) State {

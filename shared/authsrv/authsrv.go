@@ -451,14 +451,14 @@ h1{margin:0;font-family:var(--serif);font-weight:400;letter-spacing:-.015em;colo
   <section id="confirm" hidden>
    <div class="tag" id="ctag" data-pulse="1"><i></i><span data-k="cTag">Waiting for confirmation in the app</span></div>
    <h1 data-k="cTitle">Check that the code matches</h1>
-   <p class="lede" data-k="cLede">A short code is shown in the Fylane Companion app on this computer. Compare it with the one below, then approve it there.</p>
+   <p class="lede" data-k="cLede">A short code is shown in the Fylane app on this computer. Compare it with the one below, then approve it there.</p>
 
    <div class="stage" id="stage">
     <div class="top"><span data-k="cCode">Code for this connection</span><span class="ttl" id="cttl"></span></div>
     <div class="codewrap" id="codewrap" data-wait="1">
      <i></i><span id="shortcode"></span><i></i>
     </div>
-    <div class="bot"><span class="track" aria-hidden="true"></span><span id="cstate" data-k="cFinding">Contacting the Fylane Companion app…</span></div>
+    <div class="bot"><span class="track" aria-hidden="true"></span><span id="cstate" data-k="cFinding">Contacting the Fylane app…</span></div>
    </div>
 
    <div class="steps" aria-hidden="true">
@@ -544,19 +544,19 @@ h1{margin:0;font-family:var(--serif);font-weight:400;letter-spacing:-.015em;colo
  var D = {
   en: {
    cTag:"Waiting for confirmation in the app", cTitle:"Check that the code matches",
-   cLede:"A short code is shown in the Fylane Companion app on this computer. Compare it with the one below, then approve it there.",
-   cCode:"Code for this connection", cFinding:"Contacting the Fylane Companion app…",
+   cLede:"A short code is shown in the Fylane app on this computer. Compare it with the one below, then approve it there.",
+   cCode:"Code for this connection", cFinding:"Contacting the Fylane app…",
    cFound:"Companion found · waiting for you to approve in the app",
    cStep1:"Contact the app", cStep2:"Device found", cStep3:"Confirm in the app",
    cAlt:"Use a pairing code instead",
    cNoAnswer:"The Companion app is not answering on this computer",
-   cNoAnswerLede:"Nothing on this machine responded. Open the Fylane Companion app, or connect with a pairing code instead.",
+   cNoAnswerLede:"Nothing on this machine responded. Open the Fylane app, or connect with a pairing code instead.",
    cRejected:"That request was declined in the app",
    cRejectedLede:"Nothing was connected. You can start again from the platform.",
    nTag:"Link this browser to your computer", nTitle:"Connect this device",
    nPanel:"Pairing code", nGo:"Connect", nOr:"or",
    nApp:"Approve in the Companion app", nNew:"Get a new code",
-   nHint:"Open the Fylane Companion app and enter the code it shows.",
+   nHint:"Open the Fylane app and enter the code it shows.",
    nBad:"That code was not accepted. Check it and try again.",
    xTtl:"Expires in", xGone:"Expired",
    xExpired:"This request has expired. Generate a new code and try again.",
@@ -572,19 +572,19 @@ h1{margin:0;font-family:var(--serif);font-weight:400;letter-spacing:-.015em;colo
   },
   zh: {
    cTag:"等待在 App 中确认", cTitle:"核对短码是否一致",
-   cLede:"本机的 Fylane Companion 中会显示一组短码。核对无误后，在那边确认。",
-   cCode:"本次连接短码", cFinding:"正在联系本机的 Fylane Companion…",
+   cLede:"本机的 Fylane 中会显示一组短码。核对无误后，在那边确认。",
+   cCode:"本次连接短码", cFinding:"正在联系本机的 Fylane…",
    cFound:"已找到 Companion · 等待你在 App 中确认",
    cStep1:"联系 Companion", cStep2:"找到设备", cStep3:"在 App 中确认",
    cAlt:"改为输入配对码",
    cNoAnswer:"Companion 没有回应",
-   cNoAnswerLede:"本机没有任何程序应答。请打开 Fylane Companion，或改用配对码连接。",
+   cNoAnswerLede:"本机没有任何程序应答。请打开 Fylane，或改用配对码连接。",
    cRejected:"这次请求已在 App 中被拒绝",
    cRejectedLede:"什么都没有连接。可以从平台那边重新开始。",
    nTag:"把这个浏览器连接到你的电脑", nTitle:"连接这台设备",
    nPanel:"配对码", nGo:"连接", nOr:"或",
    nApp:"在 Companion 中批准", nNew:"获取新配对码",
-   nHint:"打开本机的 Fylane Companion，输入它显示的配对码。",
+   nHint:"打开本机的 Fylane，输入它显示的配对码。",
    nBad:"配对码不正确。核对后重试。",
    xTtl:"有效期", xGone:"已过期",
    xExpired:"这次请求已经过期。生成一组新的短码再试。",
@@ -930,7 +930,7 @@ func (s *Server) handleAuthorizePost(w http.ResponseWriter, r *http.Request) {
 			name = client.Name
 		}
 		s.renderPairingPage(w, name, req.ID, req.VerifyCode,
-			"That pairing code is not valid or has expired. Generate a new code in Fylane Companion and try again.",
+			"That pairing code is not valid or has expired. Generate a new code in Fylane and try again.",
 			time.Until(req.ExpiresAt))
 		return
 	}

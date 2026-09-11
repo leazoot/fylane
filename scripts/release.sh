@@ -110,10 +110,10 @@ if [ "${FYLANE_BUILD_DESKTOP:-}" = "1" ]; then
     # Wails names the bundle after the project; users install "Fylane
     # Companion.app". The bundle directory name is display-only.
     if [ -d desktop/build/bin/desktop.app ]; then
-      rm -rf "desktop/build/bin/Fylane Companion.app"
-      mv desktop/build/bin/desktop.app "desktop/build/bin/Fylane Companion.app"
+      rm -rf "desktop/build/bin/Fylane.app"
+      mv desktop/build/bin/desktop.app "desktop/build/bin/Fylane.app"
     fi
-    app="desktop/build/bin/Fylane Companion.app"
+    app="desktop/build/bin/Fylane.app"
     [ -d "$app" ] || { echo "error: wails produced no .app in desktop/build/bin" >&2; exit 1; }
     # Self-contained install: the Core ships inside the bundle, where the
     # shell's auto-start looks first (next to its own executable), and
@@ -132,13 +132,13 @@ if [ "${FYLANE_BUILD_DESKTOP:-}" = "1" ]; then
       codesign --force -s - "$app/Contents/MacOS/fylane-companion" "$app/Contents/MacOS/cloudflared" "$app" 2>/dev/null || true
     fi
     # Archive the bundle so the checksum manifest only ever lists flat files.
-    (cd desktop/build/bin && zip -qry "../../../$out/fylane-desktop-macos.zip" "Fylane Companion.app")
+    (cd desktop/build/bin && zip -qry "../../../$out/fylane-desktop-macos.zip" "Fylane.app")
     # Drag-install DMG (unsigned until credentials exist; notarization is
     # wired here once an Apple Developer account is available).
     staging=$(mktemp -d)
     cp -R "$app" "$staging/"
     ln -s /Applications "$staging/Applications"
-    hdiutil create -quiet -volname "Fylane Companion" -srcfolder "$staging" -ov -format UDZO "$out/fylane-desktop-macos.dmg"
+    hdiutil create -quiet -volname "Fylane" -srcfolder "$staging" -ov -format UDZO "$out/fylane-desktop-macos.dmg"
     rm -rf "$staging"
   else
     # Windows and Linux have no bundle to hide the pieces in, so the package is
@@ -156,7 +156,7 @@ if [ "${FYLANE_BUILD_DESKTOP:-}" = "1" ]; then
     pkgd="$stage/$name"
     mkdir -p "$pkgd"
     if [ "$hostos" = windows ]; then
-      cp "$shell" "$pkgd/Fylane Companion.exe"
+      cp "$shell" "$pkgd/Fylane.exe"
     else
       cp "$shell" "$pkgd/fylane-desktop"
     fi

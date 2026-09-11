@@ -38,7 +38,7 @@ func startTray(app *App) func() {
 		} else {
 			systray.SetTemplateIcon(trayIcon, trayIcon)
 		}
-		systray.SetTooltip("Fylane Companion")
+		systray.SetTooltip("Fylane")
 		open := systray.AddMenuItem("Open Fylane", "Show the Fylane window")
 		systray.AddSeparator()
 		quit := systray.AddMenuItem("Quit Fylane UI", "Close the UI shell (the Core keeps running)")

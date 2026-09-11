@@ -176,7 +176,7 @@ func New(deps Deps, opts *Options) *mcp.Server {
 func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{
 		Name:    "fylane-companion",
-		Title:   "Fylane Companion",
+		Title:   "Fylane",
 		Version: serverVersion,
 	}, nil)
 

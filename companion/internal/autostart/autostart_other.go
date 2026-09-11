@@ -53,7 +53,7 @@ func Set(cfg Config, enable bool) error {
 	}
 	body := "[Desktop Entry]\n" +
 		"Type=Application\n" +
-		"Name=Fylane Companion\n" +
+		"Name=Fylane\n" +
 		"Exec=" + cfg.commandLine() + "\n" +
 		"Terminal=false\n" +
 		"X-GNOME-Autostart-enabled=true\n"
