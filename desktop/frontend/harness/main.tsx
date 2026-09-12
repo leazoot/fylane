@@ -66,7 +66,17 @@ function active(): string {
   return "lane";
 }
 
+/** A held board's title bar says so, the way the window's does: the one
+ *  line up there is about the request, not the page. */
+const HELD_BOARDS = new Set([
+  "lane-held",
+  "lane-command",
+  "lane-disclosure",
+  "lane-remote-held",
+]);
+
 function Header({ active }: { active: string }) {
+  const held = HELD_BOARDS.has(board);
   return (
     <div className="fy-titlebar">
       <span style={{ flex: "none", width: 86 }} />
@@ -74,7 +84,7 @@ function Header({ active }: { active: string }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
           className="fy-dot fy-dot-sm"
-          style={{ background: "var(--fy-sage)" }}
+          style={{ background: held ? "var(--fy-amber)" : "var(--fy-sage)" }}
         />
         <span
           style={{
@@ -83,7 +93,7 @@ function Header({ active }: { active: string }) {
             letterSpacing: ".01em",
           }}
         >
-          {en.t("shell.titleCalm")}
+          {held ? en.tn("shell.titleHeld", 1) : en.t("shell.titleCalm")}
         </span>
       </div>
       <span style={{ flex: 1 }} />
