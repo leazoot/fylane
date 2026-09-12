@@ -82,6 +82,8 @@ type Status struct {
 	Machine
 	State  State  `json:"state"`
 	Detail string `json:"detail,omitempty"`
+	// Reason is a code for Detail when the window has its own words for it.
+	Reason string `json:"reason,omitempty"`
 	// Version is the remote Companion's version, once probed.
 	Version string    `json:"version,omitempty"`
 	Since   time.Time `json:"since"`
@@ -190,6 +192,56 @@ func (m *Manager) Add(mc Machine) (Status, error) {
 	l := m.newLinkLocked(mc)
 	l.start(m.ctx)
 	return l.status(), nil
+}
+
+// Update replaces how a machine is reached and reconnects with the new
+// details. A typo in a host is fixed here, not by removing the machine.
+func (m *Manager) Update(mc Machine) (Status, error) {
+	if err := validate(mc); err != nil {
+		return Status{}, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	l, ok := m.links[mc.ID]
+	if !ok {
+		return Status{}, ErrUnknown
+	}
+	mc.Name = strings.TrimSpace(mc.Name)
+	l.stop()
+	l.m = mc
+	if err := m.store.Save(m.listLocked()); err != nil {
+		return Status{}, fmt.Errorf("saving machines: %w", err)
+	}
+	l.start(m.ctx)
+	return l.status(), nil
+}
+
+// ProbeResult answers "what is at this address" for a machine that is not
+// saved yet: the add sheet asks while the user types, so the answer arrives
+// before the decision instead of after. Nothing is stored and no forward is
+// opened; a machine that does not answer is a sentence, not an error.
+type ProbeResult struct {
+	Reachable bool   `json:"reachable"`
+	Detail    string `json:"detail,omitempty"`
+	Reason    string `json:"reason,omitempty"`
+	Version   string `json:"version,omitempty"`
+	// Running is whether a Companion there has a live control file.
+	Running bool `json:"running"`
+	// Compatible is whether that version can be driven by this one.
+	Compatible bool `json:"compatible"`
+}
+
+func (m *Manager) Probe(ctx context.Context, mc Machine) (ProbeResult, error) {
+	if err := validate(mc); err != nil {
+		return ProbeResult{}, err
+	}
+	l := &link{mgr: m, m: mc}
+	p, err := l.probe(ctx)
+	if err != nil {
+		return ProbeResult{Detail: err.Error(), Reason: reasonOf(err)}, nil
+	}
+	return ProbeResult{Reachable: true, Version: p.version, Running: p.control != nil,
+		Compatible: compatible(p.version, m.version)}, nil
 }
 
 // Remove disconnects a machine and forgets it. The remote Companion keeps
@@ -345,6 +397,7 @@ type link struct {
 	// Guarded by mgr.mu.
 	state   State
 	detail  string
+	reason  string
 	version string
 	since   time.Time
 	cancel  context.CancelFunc
@@ -357,12 +410,16 @@ type link struct {
 }
 
 func (l *link) status() Status {
-	return Status{Machine: l.m, State: l.state, Detail: l.detail, Version: l.version, Since: l.since}
+	return Status{Machine: l.m, State: l.state, Detail: l.detail, Reason: l.reason, Version: l.version, Since: l.since}
 }
 
 // set is called from the loop goroutine. A loop whose ctx has ended has been
 // stopped or replaced, and its last words must not overwrite the new state.
 func (l *link) set(ctx context.Context, state State, detail string) {
+	l.setWithReason(ctx, state, detail, "")
+}
+
+func (l *link) setWithReason(ctx context.Context, state State, detail, reason string) {
 	l.mgr.mu.Lock()
 	defer l.mgr.mu.Unlock()
 	if ctx.Err() != nil {
@@ -371,7 +428,7 @@ func (l *link) set(ctx context.Context, state State, detail string) {
 	if l.state != state || l.detail != detail {
 		l.since = time.Now()
 	}
-	l.state, l.detail = state, detail
+	l.state, l.detail, l.reason = state, detail, reason
 	if state != StateOnline {
 		l.proxy, l.mcpBase, l.ctlBase, l.token = nil, "", "", ""
 	}
@@ -388,7 +445,7 @@ func (l *link) setVersion(v string) {
 func (l *link) start(parent context.Context) {
 	ctx, cancel := context.WithCancel(parent)
 	l.cancel = cancel
-	l.state, l.detail, l.since = StateConnecting, "", time.Now()
+	l.state, l.detail, l.reason, l.since = StateConnecting, "", "", time.Now()
 	go l.loop(ctx)
 }
 
@@ -398,7 +455,7 @@ func (l *link) stop() {
 		l.cancel()
 		l.cancel = nil
 	}
-	l.state, l.detail, l.since = StateOff, "", time.Now()
+	l.state, l.detail, l.reason, l.since = StateOff, "", "", time.Now()
 	l.proxy, l.mcpBase, l.ctlBase, l.token = nil, "", "", ""
 }
 
@@ -426,7 +483,7 @@ func (l *link) loop(ctx context.Context) {
 			return
 		}
 		if err != nil {
-			l.set(ctx, StateError, err.Error())
+			l.setWithReason(ctx, StateError, err.Error(), reasonOf(err))
 		} else {
 			// A session that was up and dropped reconnects promptly.
 			backoff = minBackoff
@@ -742,6 +799,23 @@ func compatible(remote, local string) bool {
 	return remote != "" && baseVersion(remote) == baseVersion(local)
 }
 
+// Failure is one ssh outcome the user can act on, with a code the window
+// can put into its own words and the sentence the Core would say.
+type Failure struct {
+	Code string
+	Msg  string
+}
+
+func (f *Failure) Error() string { return f.Msg }
+
+// Reason codes. Anything else is "" and the detail is the only reading.
+const (
+	ReasonHostKey     = "host_key"
+	ReasonAuth        = "auth"
+	ReasonResolve     = "resolve"
+	ReasonUnreachable = "unreachable"
+)
+
 // explain turns ssh's stderr into the one sentence the user needs. The
 // raw text is kept after it: a diagnosis should never hide its evidence.
 func explain(err error, stderr string) error {
@@ -752,17 +826,26 @@ func explain(err error, stderr string) error {
 	}
 	switch {
 	case strings.Contains(s, "Host key verification failed"):
-		return errors.New("this machine is not in known_hosts yet; ssh to it once from a terminal")
+		return &Failure{ReasonHostKey, "this machine is not in known_hosts yet; ssh to it once from a terminal"}
 	case strings.Contains(s, "Permission denied"):
-		return errors.New("ssh refused the login; key-based login is required (no password prompts here)")
+		return &Failure{ReasonAuth, "ssh refused the login; key-based login is required (no password prompts here)"}
 	case strings.Contains(s, "Could not resolve hostname"):
-		return errors.New("could not resolve the host name")
+		return &Failure{ReasonResolve, "could not resolve the host name"}
 	case strings.Contains(s, "Connection refused"), strings.Contains(s, "Connection timed out"),
 		strings.Contains(s, "No route to host"), strings.Contains(s, "Operation timed out"):
-		return errors.New("could not reach the machine: " + last)
+		return &Failure{ReasonUnreachable, "could not reach the machine: " + last}
 	case last != "":
 		return fmt.Errorf("%s", last)
 	default:
 		return err
 	}
+}
+
+// reasonOf is the code behind an error, if it has one.
+func reasonOf(err error) string {
+	var f *Failure
+	if errors.As(err, &f) {
+		return f.Code
+	}
+	return ""
 }

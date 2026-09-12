@@ -1,6 +1,7 @@
 package ctlapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -17,7 +18,28 @@ type MachineControl interface {
 	Connect(id string) error
 	Disconnect(id string) error
 	Install(id string) error
+	Update(machines.Machine) (machines.Status, error)
 	Proxy(id string) (http.Handler, error)
+	Probe(ctx context.Context, m machines.Machine) (machines.ProbeResult, error)
+}
+
+// handleMachineProbe answers what is at an address without saving it.
+func (s *Server) handleMachineProbe(w http.ResponseWriter, r *http.Request) {
+	if s.Machines == nil {
+		http.Error(w, "remote machines are not configured", http.StatusNotFound)
+		return
+	}
+	var req machines.Machine
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	res, err := s.Machines.Probe(r.Context(), req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, res)
 }
 
 func (s *Server) handleMachines(w http.ResponseWriter, _ *http.Request) {
@@ -45,6 +67,28 @@ func (s *Server) handleMachineAdd(w http.ResponseWriter, r *http.Request) {
 	st, err := s.Machines.Add(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, st)
+}
+
+func (s *Server) handleMachineUpdate(w http.ResponseWriter, r *http.Request) {
+	if s.Machines == nil {
+		http.Error(w, "remote machines are not configured", http.StatusNotFound)
+		return
+	}
+	var req machines.Machine
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	st, err := s.Machines.Update(req)
+	if err != nil {
+		code := http.StatusBadRequest
+		if errors.Is(err, machines.ErrUnknown) {
+			code = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), code)
 		return
 	}
 	writeJSON(w, st)

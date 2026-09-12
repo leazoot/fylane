@@ -42,6 +42,22 @@ func (s *stubMachines) act(what, id string) error {
 	}
 	return machines.ErrUnknown
 }
+func (s *stubMachines) Update(m machines.Machine) (machines.Status, error) {
+	for i := range s.list {
+		if s.list[i].ID == m.ID {
+			s.list[i].Machine = m
+			s.actions = append(s.actions, "update:"+m.ID)
+			return s.list[i], nil
+		}
+	}
+	return machines.Status{}, machines.ErrUnknown
+}
+func (s *stubMachines) Probe(_ context.Context, m machines.Machine) (machines.ProbeResult, error) {
+	if m.Host == "" {
+		return machines.ProbeResult{}, machines.ErrUnknown
+	}
+	return machines.ProbeResult{Reachable: true, Version: "0.0.4", Running: true, Compatible: true}, nil
+}
 func (s *stubMachines) Proxy(id string) (http.Handler, error) {
 	for _, m := range s.list {
 		if m.ID == id && m.State == machines.StateOnline {
@@ -72,14 +88,22 @@ func TestMachineEndpointsListAddAndAct(t *testing.T) {
 	if st.ID != "m_new" || st.State != machines.StateConnecting || st.User != "me" {
 		t.Errorf("add returned %+v", st)
 	}
+	resp, body = f.call(t, "POST", "/v1/machines/update", f.token, map[string]any{"id": "m_1", "name": "vps", "host": "new.example", "port": 2222})
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"new.example"`) {
+		t.Errorf("update = %d %s", resp.StatusCode, body)
+	}
 	for _, action := range []string{"connect", "disconnect", "install", "remove"} {
 		resp, body = f.call(t, "POST", "/v1/machines/"+action, f.token, map[string]string{"id": "m_1"})
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("%s = %d %s", action, resp.StatusCode, body)
 		}
 	}
-	if got := strings.Join(stub.actions, ","); got != "connect:m_1,disconnect:m_1,install:m_1,remove:m_1" {
+	if got := strings.Join(stub.actions, ","); got != "update:m_1,connect:m_1,disconnect:m_1,install:m_1,remove:m_1" {
 		t.Errorf("actions = %s", got)
+	}
+	resp, body = f.call(t, "POST", "/v1/machines/probe", f.token, map[string]any{"name": "x", "host": "box.example"})
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"reachable":true`) {
+		t.Errorf("probe = %d %s", resp.StatusCode, body)
 	}
 	resp, _ = f.call(t, "POST", "/v1/machines/connect", f.token, map[string]string{"id": "m_nope"})
 	if resp.StatusCode != http.StatusNotFound {

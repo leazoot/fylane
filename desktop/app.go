@@ -573,3 +573,24 @@ func (a *App) MachineCall(id, method, path, bodyJSON string) (string, error) {
 	}
 	return a.callWithin(method, "/v1/machines/"+id+path, body, 30*time.Second)
 }
+
+// ProbeMachine asks what is at an address without saving it: the add sheet
+// calls it as the user types, so the answer is on screen before the click.
+func (a *App) ProbeMachine(requestJSON string) (string, error) {
+	var body any
+	if err := json.Unmarshal([]byte(requestJSON), &body); err != nil {
+		return "", fmt.Errorf("invalid machine payload: %w", err)
+	}
+	// ssh's own connect timeout is ten seconds; the probe script is quick
+	// once it is in.
+	return a.callWithin("POST", "/v1/machines/probe", body, 30*time.Second)
+}
+
+// UpdateMachine replaces how a machine is reached and reconnects it.
+func (a *App) UpdateMachine(requestJSON string) (string, error) {
+	var body any
+	if err := json.Unmarshal([]byte(requestJSON), &body); err != nil {
+		return "", fmt.Errorf("invalid machine payload: %w", err)
+	}
+	return a.call("POST", "/v1/machines/update", body)
+}

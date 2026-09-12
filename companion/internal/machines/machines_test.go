@@ -333,8 +333,8 @@ func TestAnUnreachableMachineSaysWhyAndKeepsTrying(t *testing.T) {
 	m, _ := harness(t, remote)
 	s, _ := m.Add(Machine{Name: "new", Host: "new.example"})
 	got := waitState(t, m, s.ID, StateError)
-	if !strings.Contains(got.Detail, "known_hosts") {
-		t.Errorf("detail = %q", got.Detail)
+	if !strings.Contains(got.Detail, "known_hosts") || got.Reason != ReasonHostKey {
+		t.Errorf("detail = %q reason = %q", got.Detail, got.Reason)
 	}
 	if _, err := m.Proxy(s.ID); err == nil {
 		t.Error("Proxy on an errored machine should fail")
@@ -487,5 +487,58 @@ func TestCompatibleIgnoresTheDevSuffixOnly(t *testing.T) {
 	}
 	if installURL("v0.0.4") != "https://raw.githubusercontent.com/leazoot/fylane/v0.0.4/scripts/install.sh" {
 		t.Error(installURL("v0.0.4"))
+	}
+}
+
+func TestProbeAnswersWithoutSavingOrForwarding(t *testing.T) {
+	remote := newFakeRemote(t)
+	remote.version, remote.running = "0.0.4", true
+	m, st := harness(t, remote)
+	res, err := m.Probe(context.Background(), Machine{Name: "x", Host: "vps.example"})
+	if err != nil || !res.Reachable || res.Version != "0.0.4" || !res.Running || !res.Compatible {
+		t.Fatalf("probe = %+v, %v", res, err)
+	}
+	if saved, _ := st.Load(); len(saved) != 0 || len(m.List()) != 0 || len(remote.links) != 0 {
+		t.Error("a probe saved or connected something")
+	}
+	remote.mu.Lock()
+	remote.version, remote.running = "", false
+	remote.mu.Unlock()
+	if res, _ = m.Probe(context.Background(), Machine{Name: "x", Host: "vps.example"}); !res.Reachable || res.Version != "" || res.Running || res.Compatible {
+		t.Errorf("bare machine = %+v", res)
+	}
+	remote.mu.Lock()
+	remote.reachable, remote.stderr = false, "Permission denied (publickey)."
+	remote.mu.Unlock()
+	if res, _ = m.Probe(context.Background(), Machine{Name: "x", Host: "vps.example"}); res.Reachable || !strings.Contains(res.Detail, "key-based") {
+		t.Errorf("refused machine = %+v", res)
+	}
+	if _, err := m.Probe(context.Background(), Machine{Name: "x", Host: "-oBad"}); err == nil {
+		t.Error("an option-shaped host must be refused before ssh sees it")
+	}
+}
+
+func TestUpdateReconnectsWithTheCorrectedDetails(t *testing.T) {
+	remote := newFakeRemote(t)
+	remote.reachable, remote.stderr = false, "ssh: Could not resolve hostname vsp.example: nodename nor servname provided"
+	m, st := harness(t, remote)
+	s, _ := m.Add(Machine{Name: "HK", Host: "vsp.example", Port: 2222})
+	got := waitState(t, m, s.ID, StateError)
+	if got.Reason != ReasonResolve {
+		t.Fatalf("reason = %q", got.Reason)
+	}
+	remote.mu.Lock()
+	remote.reachable, remote.version, remote.running = true, "0.0.4", true
+	remote.mu.Unlock()
+	fixed, err := m.Update(Machine{ID: s.ID, Name: "HK", Host: "vps.example", User: "deploy", Port: 2222})
+	if err != nil || fixed.State != StateConnecting || fixed.Host != "vps.example" {
+		t.Fatalf("update = %+v, %v", fixed, err)
+	}
+	waitState(t, m, s.ID, StateOnline)
+	if saved, _ := st.Load(); len(saved) != 1 || saved[0].Host != "vps.example" || saved[0].User != "deploy" {
+		t.Errorf("store = %+v", saved)
+	}
+	if _, err := m.Update(Machine{ID: "m_nope", Name: "x", Host: "h"}); !errors.Is(err, ErrUnknown) {
+		t.Errorf("unknown = %v", err)
 	}
 }
