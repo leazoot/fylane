@@ -15,14 +15,15 @@ import type { Key, Translator } from "./i18n";
 // View model for the lane and the record. It maps the Core's documents onto
 // the design's vocabulary so the screen components stay presentation only.
 
-export type Provider = "chatgpt" | "claude" | "grok";
+export type Provider = "chatgpt" | "claude" | "grok" | "gemini";
 
-export const PROVIDERS: Provider[] = ["chatgpt", "claude", "grok"];
+export const PROVIDERS: Provider[] = ["chatgpt", "claude", "grok", "gemini"];
 
 export const PROVIDER_NAMES: Record<Provider, string> = {
   chatgpt: "ChatGPT",
   claude: "Claude",
   grok: "Grok",
+  gemini: "Gemini",
 };
 
 /** One poll of the Core. `online` is control-API reachability. */

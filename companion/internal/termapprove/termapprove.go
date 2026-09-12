@@ -206,6 +206,8 @@ func providerName(p string) string {
 		return "Claude"
 	case "grok":
 		return "Grok"
+	case "gemini":
+		return "Gemini"
 	case "":
 		return "A platform"
 	}

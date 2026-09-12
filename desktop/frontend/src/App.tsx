@@ -22,6 +22,7 @@ import {
   resolveApproval,
   resolvePairClaim,
   resumeWorkspace,
+  savePrefs,
   rollbackChangeSet,
   selectMachine,
   selectWorkspace,
@@ -81,9 +82,13 @@ const NAV: { key: Screen; label: Key }[] = [
 const POLL_MS = 2000;
 export default function App() {
   const [lang, setLang] = useState<Lang>(storedLang);
+  // The Core is told too, so what it says on its own — a system
+  // notification — is in the window's language. Best-effort: a Core that
+  // is not up yet hears it on the first poll instead.
   const chooseLang = useCallback((next: Lang) => {
     setLang(next);
     storeLang(next);
+    void savePrefs({ language: next }).catch(() => {});
   }, []);
   return (
     <LangContext.Provider value={{ lang, setLang: chooseLang }}>
@@ -138,6 +143,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
 
   const inFlight = useRef(false);
   const choosing = useRef(0);
+  const toldLang = useRef(false);
   const lastHeld = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -147,6 +153,14 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
       const poll = await pollCore();
       setTasks(poll.tasks);
       setCommands(poll.commands);
+      if (poll.prefs.language !== lang && !toldLang.current) {
+        toldLang.current = true;
+        void savePrefs({ language: lang })
+          .catch(() => {})
+          .finally(() => {
+            toldLang.current = false;
+          });
+      }
       setCanStopTasks(poll.prefs.allow_stop_tasks);
       setWorkspaces(poll.workspaces);
       setCurrentID(poll.currentWorkspaceID);

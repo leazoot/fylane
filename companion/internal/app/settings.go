@@ -93,6 +93,9 @@ type settings struct {
 	// CurrentMachine is the machine the window stands on; "" is this
 	// computer. It decides which folder workspace_info calls current.
 	CurrentMachine string `json:"current_machine,omitempty"`
+	// Language is the window's language ("en" or "zh"), kept here so what
+	// the Core says on its own — a system notification — is in it too.
+	Language string `json:"language,omitempty"`
 }
 
 // MachineStore adapts the settings file to machines.Store.

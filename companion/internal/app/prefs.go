@@ -87,7 +87,22 @@ func (p *prefs) Prefs() ctlapi.PrefDoc {
 			State:  string(p.box.State()),
 			Detail: p.box.Why(),
 		},
+		Language: s.Language,
 	}
+}
+
+// languages are the ones the window offers; the Core's own sentences exist
+// in exactly these.
+var languages = map[string]bool{"en": true, "zh": true}
+
+// Language is the window's language as the Core last heard it, for what
+// the Core says on its own. English until the window has said.
+func Language(dataDir string) string {
+	s, err := loadSettings(dataDir)
+	if err != nil || !languages[s.Language] {
+		return "en"
+	}
+	return s.Language
 }
 
 func (p *prefs) SetPrefs(patch ctlapi.PrefPatch) (ctlapi.PrefDoc, error) {
@@ -113,6 +128,12 @@ func (p *prefs) SetPrefs(patch ctlapi.PrefPatch) (ctlapi.PrefDoc, error) {
 		if err := autostart.Set(p.autostartCfg, *patch.Autostart); err != nil {
 			return ctlapi.PrefDoc{}, err
 		}
+	}
+	if patch.Language != nil {
+		if !languages[*patch.Language] {
+			return ctlapi.PrefDoc{}, fmt.Errorf("language must be one of en, zh")
+		}
+		s.Language = *patch.Language
 	}
 	if patch.ReadBoundary != nil {
 		v := *patch.ReadBoundary

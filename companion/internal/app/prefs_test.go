@@ -59,6 +59,22 @@ func TestPrefsChangeOnlyWhatThePatchNames(t *testing.T) {
 	}
 }
 
+func TestPrefsKeepTheWindowsLanguageForTheCoresOwnSentences(t *testing.T) {
+	p := testPrefs(t)
+	if Language(p.dataDir) != "en" {
+		t.Errorf("before the window has said anything the Core speaks English, got %q", Language(p.dataDir))
+	}
+	zh := "zh"
+	got, err := p.SetPrefs(ctlapi.PrefPatch{Language: &zh})
+	if err != nil || got.Language != "zh" || Language(p.dataDir) != "zh" {
+		t.Fatalf("language = %q / %q, %v", got.Language, Language(p.dataDir), err)
+	}
+	bad := "fr"
+	if _, err := p.SetPrefs(ctlapi.PrefPatch{Language: &bad}); err == nil {
+		t.Error("a language the window does not offer was accepted")
+	}
+}
+
 func TestPrefsRefuseATimeoutTheSettingsPageDoesNotOffer(t *testing.T) {
 	p := testPrefs(t)
 	// A free-form number would let a caller pin a process open for as long as

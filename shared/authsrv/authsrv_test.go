@@ -515,10 +515,29 @@ func TestInferProvider(t *testing.T) {
 		{"Grok", []string{"https://grok.com/callback"}, "grok"},
 		{"", []string{"https://accounts.x.ai/callback"}, "grok"},
 		{"Some IDE", []string{"https://ide.example/cb"}, "unknown"},
+		{"Google", []string{"https://oauth-redirect.googleusercontent.com/r/x"}, "gemini"},
+		{"Gemini", nil, "gemini"},
 	}
 	for _, tc := range cases {
 		if got := inferProvider(tc.name, tc.uris); got != tc.want {
 			t.Errorf("inferProvider(%q, %v) = %q, want %q", tc.name, tc.uris, got, tc.want)
+		}
+	}
+}
+
+func TestCallerFromClientNamesWhatItCannotPlace(t *testing.T) {
+	cases := []struct{ name, want string }{
+		{"Some IDE", "Some IDE"},
+		{"  Cursor\n(beta) \"v2\"  ", "Cursorbeta v2"},
+		{"ChatGPT Connector", "chatgpt"},
+		{"unknown", "unknown"},
+		{"", "unknown"},
+		{"$(rm -rf ~)", "rm -rf"},
+		{"A very long client name that goes on and on", "A very long client name"},
+	}
+	for _, tc := range cases {
+		if got := CallerFromClient(tc.name, nil); got != tc.want {
+			t.Errorf("CallerFromClient(%q) = %q, want %q", tc.name, got, tc.want)
 		}
 	}
 }

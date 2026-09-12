@@ -158,9 +158,10 @@ func (a *App) Run(ctx context.Context) error {
 		a.log.Info("workspace selected", "workspace_id", ws.ID(), "name", ws.Name())
 	}
 
+	notes := newNotifier(a.log, func() string { return Language(a.cfg.DataDir) })
 	var approvals *approval.Service
 	approvals, err = newApprovals(a.cfg.ApprovalMode, st, a.log, func(p *approval.Pending) {
-		notifyApprovalRequested(a.log, p.Request.Provider)
+		notes.Approval(p.Request.Provider)
 		if a.Ask != nil {
 			go a.Ask(p, approvals.Resolve)
 		}
@@ -415,7 +416,7 @@ func (a *App) Run(ctx context.Context) error {
 	// in the desktop app and is executed against the relay with the device
 	// credentials. Only same-machine pages on the relay's origin get through.
 	paired := pairedRecorder(ctx, st, a.log)
-	announce := func(clientName string) { notifyPairingRequested(a.log, clientName) }
+	announce := func(clientName string) { notes.Pairing(clientName) }
 	if a.cfg.RelayURL != "" {
 		if base, err := BaseURLFromTunnel(a.cfg.RelayURL); err == nil {
 			claims := newPairClaims(a.log, paired, announce)

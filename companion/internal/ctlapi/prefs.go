@@ -51,15 +51,19 @@ type PrefDoc struct {
 	AllowStopTasks     bool            `json:"allow_stop_tasks"`
 	Autostart          AutostartDoc    `json:"autostart"`
 	ReadBoundary       ReadBoundaryDoc `json:"read_boundary"`
+	// Language is the window's language as last told to the Core; "" until
+	// the window has said.
+	Language string `json:"language,omitempty"`
 }
 
 // PrefPatch carries only what the caller is changing. Every field is a
 // pointer: a settings page that flips one switch must not restate — and so
 // risk overwriting — the values it did not touch.
 type PrefPatch struct {
-	TaskTimeoutSeconds *int  `json:"task_timeout_seconds,omitempty"`
-	AllowStopTasks     *bool `json:"allow_stop_tasks,omitempty"`
-	Autostart          *bool `json:"autostart,omitempty"`
+	TaskTimeoutSeconds *int    `json:"task_timeout_seconds,omitempty"`
+	AllowStopTasks     *bool   `json:"allow_stop_tasks,omitempty"`
+	Autostart          *bool   `json:"autostart,omitempty"`
+	Language           *string `json:"language,omitempty"`
 	// ReadBoundary is the one field here that touches a defence rather than a
 	// convenience. It is still a preference and not a bypass: turning it off
 	// restores the product as it shipped before the boundary existed, and the

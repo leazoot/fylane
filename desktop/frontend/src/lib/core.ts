@@ -652,6 +652,10 @@ export type PrefsInfo = {
   allow_stop_tasks: boolean;
   autostart: AutostartInfo;
   read_boundary: ReadBoundaryInfo;
+  /** The window's language as the Core last heard it; absent until told.
+   *  The Core speaks it in what it says on its own (a system
+   *  notification). */
+  language?: string;
 };
 
 /** Only the fields being changed. A page that flips one switch must not
@@ -661,6 +665,7 @@ export type PrefsPatch = {
   allow_stop_tasks?: boolean;
   autostart?: boolean;
   read_boundary?: boolean;
+  language?: string;
 };
 
 export async function fetchPrefs(): Promise<PrefsInfo> {

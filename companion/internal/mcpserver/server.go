@@ -23,6 +23,7 @@ import (
 	"github.com/leazoot/fylane/companion/internal/tasks"
 	"github.com/leazoot/fylane/companion/internal/txn"
 	"github.com/leazoot/fylane/companion/internal/workspace"
+	"github.com/leazoot/fylane/shared/authsrv"
 	"github.com/leazoot/fylane/shared/buildinfo"
 	"github.com/leazoot/fylane/shared/tunnel"
 )
@@ -354,14 +355,24 @@ func Handler(deps Deps, opts *Options) http.Handler {
 		&mcp.StreamableHTTPOptions{Stateless: true})
 }
 
-// knownProviders are the platforms with their own approval budgets
-// (approval.DefaultBudgets). Anything else falls back to "unknown".
-var knownProviders = map[string]bool{"claude": true, "chatgpt": true, "grok": true}
+// knownProviders are the platforms the product knows by name. Anything
+// else keeps the name its client registered under (the direct surface and
+// the relay stamp that after checking the token) or falls back to
+// "unknown"; either way it gets the generic approval budget.
+var knownProviders = map[string]bool{"claude": true, "chatgpt": true, "grok": true, "gemini": true}
+
+// maxNamedCallers bounds how many differently named unknown clients get a
+// toolset of their own; registration is open, so the map must not grow with
+// it. Past the bound a caller is served as "unknown".
+const maxNamedCallers = 16
 
 func normalizeProvider(header string) string {
 	p := strings.ToLower(strings.TrimSpace(header))
 	if knownProviders[p] {
 		return p
+	}
+	if n := authsrv.CallerName(header); n != "" {
+		return n
 	}
 	return "unknown"
 }
@@ -378,13 +389,19 @@ func providerPicker(deps Deps, opts *Options) func(*http.Request) *mcp.Server {
 		// Both modes land here — the relay stamps the header on the way in,
 		// and direct mode stamps it in its own handler — so this is the one
 		// place that sees every call whoever carried it.
-		if deps.Seen != nil && p != "unknown" {
+		if deps.Seen != nil && knownProviders[p] {
 			deps.Seen(p)
 		}
 		mu.Lock()
 		defer mu.Unlock()
 		srv, ok := servers[p]
 		if !ok {
+			if !knownProviders[p] && p != "unknown" && len(servers) >= len(knownProviders)+1+maxNamedCallers {
+				p = "unknown"
+				if srv, ok = servers[p]; ok {
+					return srv
+				}
+			}
 			srv = newWithProvider(deps, opts, p)
 			servers[p] = srv
 		}

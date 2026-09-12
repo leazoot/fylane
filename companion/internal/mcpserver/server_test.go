@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -97,11 +98,25 @@ func TestProviderPicker(t *testing.T) {
 	if claude == pick(req("chatgpt")) {
 		t.Fatal("different providers must get distinct servers")
 	}
-	// Absent, unknown, and hostile header values all share the generic
-	// budget server — the header can select a budget, nothing else.
+	// Absent and placeholder header values share the generic budget
+	// server; a named caller the product does not know gets a server under
+	// its own name (it has the generic budget too — the name is only what
+	// the user is told), and hostile characters in that name do not
+	// survive. Past a bound, named callers share the generic server so an
+	// open registration endpoint cannot grow the map.
 	fallback := pick(req(""))
-	if fallback == claude || fallback != pick(req("evil-platform")) || fallback != pick(req("unknown")) {
-		t.Fatal("unrecognized providers must share the generic server")
+	if fallback == claude || fallback != pick(req("unknown")) {
+		t.Fatal("absent and placeholder providers must share the generic server")
+	}
+	ide := pick(req("Some IDE"))
+	if ide == fallback || ide == claude || ide != pick(req("Some\x00 IDE")) {
+		t.Fatal("a named caller is served under its own sanitized name")
+	}
+	for i := 0; i < maxNamedCallers+5; i++ {
+		pick(req(fmt.Sprintf("client-%d", i)))
+	}
+	if pick(req("one-too-many")) != fallback {
+		t.Fatal("named callers past the bound must share the generic server")
 	}
 }
 
@@ -129,11 +144,13 @@ func TestProviderPickerReportsWhoCalled(t *testing.T) {
 		t.Fatalf("reported %v; want the normalized provider for each call", seen)
 	}
 
-	// A caller the product does not know is not a source. Recording it would
-	// put a row on a screen that only ever lists the three it supports.
+	// A caller the product does not know is not a source, named or not.
+	// Recording it would put a row on a screen that only ever lists the
+	// platforms it supports.
 	before := len(seen)
 	pick(req(""))
 	pick(req("evil-platform"))
+	pick(req("Some IDE"))
 	if len(seen) != before {
 		t.Fatalf("reported %v; an unknown caller is not a connected source", seen[before:])
 	}

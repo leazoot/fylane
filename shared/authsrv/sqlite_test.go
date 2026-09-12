@@ -157,8 +157,8 @@ func TestFullOAuthFlowOverSQLite(t *testing.T) {
 	if err != nil || deviceID != dev.DeviceID {
 		t.Fatalf("ValidateBearerProvider = %q, %v; want %q", deviceID, err, dev.DeviceID)
 	}
-	if provider != "unknown" {
-		t.Errorf("provider = %q; want unknown for an unrecognized client", provider)
+	if provider != "SQLite Test" {
+		t.Errorf("provider = %q; want the registered name for an unrecognized client", provider)
 	}
 
 	// An authorization code is single use even though it now lives in a file.

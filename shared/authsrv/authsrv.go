@@ -28,6 +28,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -1370,9 +1371,44 @@ func (s *Server) ValidateBearerProvider(r *http.Request) (deviceID, provider str
 	}
 	provider = "unknown"
 	if client, cerr := s.Store.GetClient(token.ClientID); cerr == nil && client != nil {
-		provider = inferProvider(client.Name, client.RedirectURIs)
+		provider = CallerFromClient(client.Name, client.RedirectURIs)
 	}
 	return token.DeviceID, provider, nil
+}
+
+// CallerFromClient is ProviderFromClient for naming rather than budgeting:
+// a platform this table knows gets its id, and any other client gets the
+// name it registered under, made safe for a notification and a log line.
+// "unknown" is left for a client that gave no usable name at all. The
+// name is a label, never a key into anything that grants.
+func CallerFromClient(name string, redirectURIs []string) string {
+	if p := ProviderFromClient(name, redirectURIs); p != "unknown" {
+		return p
+	}
+	if n := CallerName(name); n != "" {
+		return n
+	}
+	return "unknown"
+}
+
+// callerChars is what survives of a client's self-reported name: letters,
+// digits, space, underscore and hyphen. Everything a shell, a notification
+// script or a log line could misread is dropped rather than escaped.
+var callerChars = regexp.MustCompile(`[^A-Za-z0-9 _-]+`)
+
+// CallerName makes a client's self-reported name safe to show: unsafe
+// characters dropped, spaces collapsed, at most 24 characters. Empty when
+// nothing is left, or when the name would pose as an absent one.
+func CallerName(name string) string {
+	n := callerChars.ReplaceAllString(name, "")
+	n = strings.Join(strings.Fields(n), " ")
+	if len(n) > 24 {
+		n = strings.TrimSpace(n[:24])
+	}
+	if strings.EqualFold(n, "unknown") {
+		return ""
+	}
+	return n
 }
 
 // inferProvider maps DCR client metadata to a known platform name. Values
@@ -1397,6 +1433,8 @@ func ProviderFromClient(name string, redirectURIs []string) string {
 		return "chatgpt"
 	case strings.Contains(blob, "grok") || strings.Contains(blob, "x.ai"):
 		return "grok"
+	case strings.Contains(blob, "gemini") || strings.Contains(blob, "google"):
+		return "gemini"
 	}
 	return "unknown"
 }
