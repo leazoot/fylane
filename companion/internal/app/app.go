@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/leazoot/fylane/companion/internal/approval"
 	"io"
 	"log/slog"
 	"net"
@@ -55,6 +56,13 @@ type App struct {
 	// the control API; `share` is a foreground command with no window to poll
 	// from, so it is told instead.
 	Ready func(connectorURL string, code func(context.Context) (string, time.Duration, error))
+
+	// Ask, when set, is handed every approval request as it arrives, with
+	// the function that decides it. The desktop app finds requests by
+	// polling the control API; a Companion in a terminal has no window and
+	// is told instead, so a write or a command can be answered where it
+	// was started. A request answered from either place is settled for both.
+	Ask func(p *approval.Pending, resolve func(changeSetID string, approved bool, reason string) bool)
 
 	// restart is closed when the connection mode changed. Switching between a
 	// relay and this machine's own public surface swaps the listeners, the
@@ -149,8 +157,13 @@ func (a *App) Run(ctx context.Context) error {
 		a.log.Info("workspace selected", "workspace_id", ws.ID(), "name", ws.Name())
 	}
 
-	approvals, err := newApprovals(a.cfg.ApprovalMode, st, a.log,
-		func(provider string) { notifyApprovalRequested(a.log, provider) })
+	var approvals *approval.Service
+	approvals, err = newApprovals(a.cfg.ApprovalMode, st, a.log, func(p *approval.Pending) {
+		notifyApprovalRequested(a.log, p.Request.Provider)
+		if a.Ask != nil {
+			go a.Ask(p, approvals.Resolve)
+		}
+	})
 	if err != nil {
 		return err
 	}

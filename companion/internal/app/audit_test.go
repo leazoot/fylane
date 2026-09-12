@@ -196,7 +196,7 @@ func TestTheApprovalServiceIsBornWithARecorder(t *testing.T) {
 	// reach it. Deleting that line broke nothing and silenced the audit; this
 	// is the guard for that, not for the recorder's own behaviour.
 	st, db := auditStore(t, t.TempDir())
-	svc, err := newApprovals("safe", st, testLogger(), func(string) {})
+	svc, err := newApprovals("safe", st, testLogger(), func(*approval.Pending) {})
 	if err != nil {
 		t.Fatal(err)
 	}

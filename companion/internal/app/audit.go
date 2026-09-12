@@ -87,13 +87,13 @@ func decisionRecorder(st *store.Store, log *slog.Logger) func(*approval.Pending,
 // Run() it could not be, and an OnDecision nobody assigned is silent — the
 // refusal simply never reaches the audit log, which is how three of the four
 // approval kinds went unrecorded until 2026-08-30.
-func newApprovals(mode string, st *store.Store, log *slog.Logger, announce func(provider string)) (*approval.Service, error) {
+func newApprovals(mode string, st *store.Store, log *slog.Logger, onRequest func(*approval.Pending)) (*approval.Service, error) {
 	svc, err := approval.New(mode, approval.DefaultBudgets(), func(p *approval.Pending) {
 		log.Info("approval requested",
 			"change_set_id", p.Request.ChangeSetID,
 			"workspace_id", p.Request.WorkspaceID,
 			"operations", len(p.Request.Operations))
-		announce(p.Request.Provider)
+		onRequest(p)
 	})
 	if err != nil {
 		return nil, err

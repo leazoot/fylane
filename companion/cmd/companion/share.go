@@ -88,6 +88,7 @@ func share(args []string) error {
 	fmt.Printf("sharing %s — starting a tunnel, this takes a few seconds\n", filepath.Base(dir))
 	a := app.New(cfg, slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel})))
 	a.Ready = (&shareAnnouncer{ctx: ctx, out: os.Stdout}).announce
+	a.Ask = terminalApprover()
 	return a.Run(ctx)
 }
 

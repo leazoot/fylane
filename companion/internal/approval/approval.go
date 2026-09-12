@@ -62,6 +62,11 @@ type Pending struct {
 	done      chan struct{}
 }
 
+// Done is closed once the request has been decided, by whichever surface
+// answered it. A prompt that is still asking can stop when another one has
+// already answered.
+func (p *Pending) Done() <-chan struct{} { return p.done }
+
 func (p *Pending) resolve(d txn.Decision) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()

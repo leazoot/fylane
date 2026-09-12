@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/leazoot/fylane/companion/internal/approval"
+	"github.com/leazoot/fylane/companion/internal/termapprove"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -266,5 +268,19 @@ func serve(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	return app.New(cfg, logger).Run(ctx)
+	a := app.New(cfg, logger)
+	a.Ask = terminalApprover()
+	return a.Run(ctx)
+}
+
+// terminalApprover answers approvals on stdin when stdin is a terminal — a
+// person is at this command — and leaves them to the desktop app otherwise.
+// A service unit or a pipe has nobody to type y, and a prompt that could
+// never be answered would only hide the request from the window that can.
+func terminalApprover() func(*approval.Pending, func(string, bool, string) bool) {
+	fi, err := os.Stdin.Stat()
+	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+		return nil
+	}
+	return termapprove.New(os.Stdin, os.Stdout).Ask
 }
