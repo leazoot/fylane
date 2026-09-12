@@ -61,7 +61,7 @@ func testDeps(t *testing.T, root string) Deps {
 	t.Helper()
 	m, st := testSource(t, root)
 	engine := &txn.Engine{Store: st, BackupRoot: filepath.Join(t.TempDir(), "backups"), Approver: autoApprover{}}
-	return Deps{Source: m, Engine: engine, Activity: st}
+	return Deps{Source: m, Engine: engine, Activity: st, Memory: st}
 }
 
 // startSession spins up a Streamable HTTP server over a temp workspace and
@@ -191,6 +191,7 @@ func TestHandshakeAndToolList(t *testing.T) {
 		"list_directory": true, "search_files": true, "read_file": true,
 		"read_files": true, "write_file": true, "apply_patch": true,
 		"edit_file": true, "change_manage": true,
+		"memory_recall": true, "memory_note": true, "memory_search": true, "memory_read": true,
 	}
 	if len(names) != len(want) {
 		t.Fatalf("got tools %v, want exactly %v", names, want)

@@ -274,6 +274,7 @@ func (a *App) Run(ctx context.Context) error {
 		ExecAudit:  execAuditor{store: st, log: a.log},
 		Runs:       st,
 		Activity:   st,
+		Memory:     st,
 		Agents:     agents,
 		Providers:  providers,
 		Navigators: navigators,

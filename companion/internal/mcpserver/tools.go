@@ -53,6 +53,8 @@ type toolset struct {
 	runs RunJournal
 	// activityLog backs the last-activity answer of workspace_info.
 	activityLog ActivityJournal
+	// memory backs the memory_* tools; nil leaves them unregistered.
+	memory MemoryStore
 	// agents backs code_task; nil means no delegation is configured.
 	agents AgentRegistry
 	// providers backs mcp_gateway; nil means no local MCP server is
@@ -167,6 +169,9 @@ type workspaceInfoOutput struct {
 	// workspace, from this Companion's own records. Absent when nothing
 	// has happened in it yet, and for a workspace on another machine.
 	LastActivity *lastActivity `json:"last_activity,omitempty" jsonschema:"Where work in this workspace was left: the newest changes and commands on record, bounded. Read it before asking the user what was done last time."`
+	// Memory says that earlier conversations left something, and the two
+	// lines of it that matter most. Absent when nothing was remembered.
+	Memory *memoryHint `json:"memory,omitempty" jsonschema:"Earlier conversations remembered things about this workspace. Call memory_recall for the page and recent notes."`
 }
 
 func (t *toolset) workspaceInfo(ctx context.Context, _ *mcp.CallToolRequest, in workspaceInfoInput) (*mcp.CallToolResult, workspaceInfoOutput, error) {
@@ -212,6 +217,9 @@ func (t *toolset) workspaceInfo(ctx context.Context, _ *mcp.CallToolRequest, in 
 			return nil, workspaceInfoOutput{}, err
 		}
 		out.LastActivity = act
+		if out.Memory, err = t.memoryPreview(ctx, ws.ID()); err != nil {
+			return nil, workspaceInfoOutput{}, err
+		}
 	} else {
 		out.WorkspaceID, out.Name, out.Mode = standIn.WorkspaceID, standIn.Name, standIn.Mode
 		out.Writable = standIn.Mode == store.ModeReadWrite

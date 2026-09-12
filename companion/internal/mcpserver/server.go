@@ -113,6 +113,8 @@ type Deps struct {
 	// Activity lets workspace_info say where the last session left off,
 	// from the change sets and commands on record. Nil leaves that out.
 	Activity ActivityJournal
+	// Memory backs the memory_* tools. Nil leaves them unregistered.
+	Memory MemoryStore
 	// Agents backs code_task. Nil leaves the tool unregistered — a
 	// Companion with no coding agent installed should not advertise one.
 	Agents AgentRegistry
@@ -206,7 +208,7 @@ func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 	tools := &toolset{src: deps.Source, engine: deps.Engine, reads: deps.Reads,
 		rules: deps.Rules, provider: provider, remotes: deps.Remotes,
 		exec: deps.Exec, tasks: deps.Tasks, approver: deps.Approve, gate: deps.Gate,
-		execAudit: deps.ExecAudit, runs: deps.Runs, activityLog: deps.Activity, agents: deps.Agents,
+		execAudit: deps.ExecAudit, runs: deps.Runs, activityLog: deps.Activity, memory: deps.Memory, agents: deps.Agents,
 		providers: deps.Providers, navigators: deps.Navigators, box: deps.Box}
 	if opts != nil {
 		tools.inlineBudget = opts.MaxInlineBytes
@@ -229,6 +231,29 @@ func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 		Description: "Get workspace information and limits, plus the list of all available workspaces with their opaque IDs. Call this first to obtain the workspace_id required by all other tools. Entries with a machine name live on another computer; their files, commands and approvals happen there, and their workspace_id works with every tool. Absolute paths are never returned.",
 		Annotations: readOnly,
 	}, tools.workspaceInfo)
+
+	if deps.Memory != nil {
+		mcp.AddTool(srv, &mcp.Tool{
+			Name:        "memory_recall",
+			Description: "What earlier conversations left for this workspace: the current-state page (goal, progress, next, decisions, open questions) and the newest note titles. Call it at the start of work on a workspace that has memory; workspace_info says whether it does. Bounded; read a note in full with memory_read.",
+			Annotations: readOnly,
+		}, tools.memoryRecall)
+		mcp.AddTool(srv, &mcp.Tool{
+			Name:        "memory_note",
+			Description: "Remember something for the next conversation: a note (title, body; optionally the change_set_id or run_id it is about) and/or a rewrite of the current-state page. Write a note when a task is finished, a decision is taken, or something was learned the hard way; rewrite the page when the plan changes. Fields have byte limits and are cut to them; the answer names what was cut. Nothing is written into the project's files.",
+			Annotations: &mcp.ToolAnnotations{ReadOnlyHint: false, DestructiveHint: ptr(false), OpenWorldHint: ptr(false)},
+		}, tools.memoryNote)
+		mcp.AddTool(srv, &mcp.Tool{
+			Name:        "memory_search",
+			Description: "Find notes by words in their title or body. Returns ids, titles and a bounded snippet; read the full note with memory_read.",
+			Annotations: readOnly,
+		}, tools.memorySearch)
+		mcp.AddTool(srv, &mcp.Tool{
+			Name:        "memory_read",
+			Description: "Read notes in full: by ids, or page through the trail newest first with before_id. Answers stop at the inline budget and say where to continue.",
+			Annotations: readOnly,
+		}, tools.memoryRead)
+	}
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "stat_path",
