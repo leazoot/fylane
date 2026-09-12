@@ -3243,6 +3243,34 @@ describe("the machine anchor", () => {
     expect(button("Update Fylane")).toBeDefined();
   });
 
+  it("offers to edit a machine and says why it cannot connect in the window's words", () => {
+    const edited: string[] = [];
+    const refused = {
+      ...VPS,
+      info: {
+        ...VPS.info,
+        state: "error" as const,
+        reason: "auth",
+        detail: "ssh refused the login; key-based login is required",
+      },
+    };
+    draw(
+      <LaneScreen
+        {...laneProps}
+        {...machineProps}
+        machines={[refused]}
+        machineID="m_vps1"
+        onEditMachine={(id) => edited.push(id)}
+        snapshot={snap({ workspace: null })}
+        tasks={[]}
+      />,
+    );
+    expect(text()).toContain("It refused the login");
+    expect(text()).not.toContain("key-based login is required");
+    click(button("Edit"));
+    expect(edited).toEqual(["m_vps1"]);
+  });
+
   it("removing asks once more before it goes", () => {
     const removed: string[] = [];
     draw(

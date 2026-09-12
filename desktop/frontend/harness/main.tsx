@@ -9,6 +9,7 @@ import { CommandPalette } from "../src/components/CommandPalette";
 import { Jelly } from "../src/components/Jelly";
 import { Dock } from "../src/components/Dock";
 import { PairClaimSheet } from "../src/components/PairClaimSheet";
+import { AddMachineSheet } from "../src/components/AddMachineSheet";
 import { translatorFor, type Key } from "../src/lib/i18n";
 import type { Approval } from "../src/lib/core";
 import * as fx from "./fixtures";
@@ -243,6 +244,36 @@ function Board() {
           <Scroller>
             <Lane />
           </Scroller>
+        </>
+      );
+    case "machine-add":
+    case "machine-edit":
+      // The sheet over the lane. The probe answers after a beat so the
+      // knock, the gate opening and the sentence can all be seen.
+      return (
+        <>
+          <Header active="lane" />
+          <Scroller>
+            <Lane />
+          </Scroller>
+          <AddMachineSheet
+            editing={
+              board === "machine-edit"
+                ? { ...fx.MACHINES[0].info, state: "error", reason: "auth" }
+                : undefined
+            }
+            probe={async () => {
+              await fx.wait(1200);
+              return {
+                reachable: true,
+                running: true,
+                compatible: true,
+                version: "0.0.4",
+              };
+            }}
+            onSubmit={async () => {}}
+            onCancel={noop}
+          />
         </>
       );
     case "tasks":

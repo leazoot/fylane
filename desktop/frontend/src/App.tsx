@@ -10,6 +10,8 @@ import {
   disconnectMachine,
   installMachine,
   openWorkspaceDir,
+  probeMachine,
+  updateMachine,
   fetchPairClaims,
   pauseWorkspace,
   raiseWindow,
@@ -27,6 +29,7 @@ import {
   type TaskInfo,
 } from "./lib/core";
 import { MachineSheet } from "./components/MachineSheet";
+import { AddMachineSheet } from "./components/AddMachineSheet";
 import { storeMachine, storedMachine } from "./lib/theme";
 import {
   WindowHide,
@@ -116,6 +119,8 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
   const [machines, setMachines] = useState<MachineView[]>([]);
   const [machineID, setMachineID] = useState<string>(storedMachine);
   const [sheet, setSheet] = useState<"none" | "machine" | "folder">("none");
+  // The machine being edited, when the machine sheet is open for one.
+  const [editing, setEditing] = useState<MachineView["info"] | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [error, setError] = useState("");
@@ -382,7 +387,16 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
             machines={machines}
             machineID={machineID}
             onSelectMachine={chooseMachine}
-            onAddMachine={() => setSheet("machine")}
+            onAddMachine={() => {
+              setEditing(null);
+              setSheet("machine");
+            }}
+            onEditMachine={(id) => {
+              const m = machines.find((k) => k.info.id === id);
+              if (!m) return;
+              setEditing(m.info);
+              setSheet("machine");
+            }}
             onRemoveMachine={(id) =>
               void act(async () => {
                 await removeMachine(id);
@@ -670,42 +684,20 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
       )}
 
       {sheet === "machine" && (
-        <MachineSheet
-          title={t("machine.addTitle")}
-          body={t("machine.addBody")}
-          action={t("machine.addAction")}
-          fields={[
-            {
-              key: "name",
-              label: t("machine.fieldName"),
-              placeholder: t("machine.fieldNamePlaceholder"),
-              required: true,
-            },
-            {
-              key: "host",
-              label: t("machine.fieldHost"),
-              placeholder: t("machine.fieldHostPlaceholder"),
-              required: true,
-            },
-            { key: "user", label: t("machine.fieldUser"), half: true },
-            {
-              key: "port",
-              label: t("machine.fieldPort"),
-              half: true,
-              numeric: true,
-              placeholder: "22",
-            },
-          ]}
-          onCancel={() => setSheet("none")}
-          onSubmit={async (v) => {
-            const added = await addMachine({
-              name: v.name,
-              host: v.host,
-              user: v.user || undefined,
-              port: v.port ? Number(v.port) : undefined,
-            });
+        <AddMachineSheet
+          editing={editing ?? undefined}
+          probe={probeMachine}
+          onCancel={() => {
             setSheet("none");
-            chooseMachine(added.id);
+            setEditing(null);
+          }}
+          onSubmit={async (m) => {
+            const saved = editing
+              ? await updateMachine({ id: editing.id, ...m })
+              : await addMachine(m);
+            setSheet("none");
+            setEditing(null);
+            chooseMachine(saved.id);
             await refresh();
           }}
         />

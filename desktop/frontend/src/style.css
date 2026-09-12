@@ -2947,3 +2947,28 @@ a {
   font: 400 12.5px/1.5 var(--fy-sans);
   color: var(--fy-brick);
 }
+
+/* The machine sheet carries the lane's command band. Inside a sheet the
+   band cannot bleed to the window edge, so it keeps its tint and its gate
+   and takes the sheet's own rhythm. */
+.fy-sheet-band {
+  margin: 20px 0 0;
+  padding: 16px 20px 18px 20px;
+  border-radius: 10px;
+  max-width: none;
+  gap: 16px;
+}
+.fy-sheet-band .fy-band-cmd {
+  font-size: 17px;
+}
+.fy-sheet-band .fy-gate i {
+  height: 40px;
+}
+.fy-sheet-knock {
+  min-height: 20px;
+  margin-top: 12px;
+  font: 400 13px/1.55 var(--fy-sans);
+}
+.fy-sheet-machine .fy-sheet-title {
+  margin-top: 12px;
+}

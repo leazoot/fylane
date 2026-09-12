@@ -47,6 +47,8 @@ import {
   DisconnectMachine,
   InstallMachine,
   MachineCall,
+  ProbeMachine,
+  UpdateMachine,
 } from "../../wailsjs/go/main/App";
 
 // Typed wrappers over the Core control API bridge. Every payload is JSON
@@ -802,9 +804,30 @@ export type MachineInfo = {
   /** The Core's own sentence about a state that needs one (why it cannot
    *  connect, which version it found). */
   detail?: string;
+  /** A code for `detail` when the window has its own words for it:
+   *  "host_key", "auth", "resolve", "unreachable". */
+  reason?: string;
   version?: string;
   since: string;
 };
+
+/** What is at an address, asked before the machine is saved. */
+export type ProbeResult = {
+  reachable: boolean;
+  detail?: string;
+  reason?: string;
+  version?: string;
+  running: boolean;
+  compatible: boolean;
+};
+
+export async function probeMachine(req: MachineRequest): Promise<ProbeResult> {
+  return JSON.parse(await ProbeMachine(JSON.stringify(req)));
+}
+
+export async function updateMachine(req: MachineRequest & { id: string }): Promise<MachineInfo> {
+  return JSON.parse(await UpdateMachine(JSON.stringify(req)));
+}
 
 export async function fetchMachines(): Promise<MachineInfo[]> {
   let raw: string;

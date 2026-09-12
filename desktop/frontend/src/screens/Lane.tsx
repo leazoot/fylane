@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { MachineState, TaskInfo, Workspace } from "../lib/core";
 import type { MachineView } from "../lib/poll";
+import { reasonText } from "../components/AddMachineSheet";
 import {
   asksFor,
   clock,
@@ -47,6 +48,7 @@ export interface LaneProps {
   machineID?: string;
   onSelectMachine?: (id: string) => void;
   onAddMachine?: () => void;
+  onEditMachine?: (id: string) => void;
   onRemoveMachine?: (id: string) => void;
   onInstallMachine?: (id: string) => void;
   onReconnectMachine?: (id: string) => void;
@@ -560,7 +562,9 @@ function Calm(props: LaneProps & { tr: Translator }) {
           dot: machineDot(away.info.state),
           tag: t(machineWord(away.info.state, away.info.detail)),
           title: away.info.name,
-          body: away.info.detail || t("machine.addBody"),
+          body:
+            reasonText(tr, away.info.reason, away.info.detail) ||
+            t("machine.addBody"),
         }
       : !ws
         ? {
@@ -1065,7 +1069,7 @@ function MachineAnchor(props: LaneProps & { tr: Translator }) {
             color: "var(--fy-muted)",
           }}
         >
-          {machine.info.detail}
+          {reasonText(tr, machine.info.reason, machine.info.detail)}
         </div>
       )}
 
@@ -1087,6 +1091,15 @@ function MachineAnchor(props: LaneProps & { tr: Translator }) {
           {t("machine.switch")}
         </button>
         {machine && <MachineAction {...props} machine={machine} />}
+        {machine && props.onEditMachine && (
+          <button
+            type="button"
+            className="fy-underbtn"
+            onClick={() => props.onEditMachine!(machine.info.id)}
+          >
+            {t("machine.edit")}
+          </button>
+        )}
         {machine && props.onRemoveMachine && (
           <button
             type="button"

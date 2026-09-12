@@ -426,7 +426,7 @@ export const ALL_SOURCES: Source[] = SOURCES.map((s) => ({
   connected: true,
 }));
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function pickFolder(): Promise<Workspace> {
   await wait(200);
