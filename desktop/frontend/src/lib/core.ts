@@ -807,7 +807,16 @@ export type MachineInfo = {
 };
 
 export async function fetchMachines(): Promise<MachineInfo[]> {
-  const res = JSON.parse(await Machines());
+  let raw: string;
+  try {
+    raw = await Machines();
+  } catch (e) {
+    // A Core from before this endpoint answers 404. That is "no machines",
+    // not an unreachable Core — the rest of the window must keep drawing.
+    if (e instanceof Error && /\(404\)/.test(e.message)) return [];
+    throw e;
+  }
+  const res = JSON.parse(raw);
   return res.machines ?? [];
 }
 
