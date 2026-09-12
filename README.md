@@ -274,6 +274,12 @@ sent it and what happened.
 
 ![Task history](assets/tasks.png)
 
+What the AI wrote down about a folder is yours too. The Memory page shows the
+state page it keeps (goal, progress, next step, decisions, open questions) and
+the trail of notes behind it; you can correct the page by hand, delete a note,
+export the lot as Markdown, or clear it. A folder on a remote machine shows
+its memory the same way.
+
 ## Remote machines
 
 The project lives on a VPS, you sit at a Mac, and you want the AI to edit and
