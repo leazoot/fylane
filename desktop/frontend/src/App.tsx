@@ -267,12 +267,17 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
   // One source per machine: the screen refetches when it changes, and it
   // must not change on every poll.
   const memory = useMemo(() => memorySource(machineID), [machineID]);
+  // True from the click until the Core has answered and the next poll has
+  // landed: the rail shows the mark that long, not just for the request.
+  const [switching, setSwitching] = useState(false);
   const chooseMachine = useCallback(
     (id: string) => {
       setMachineID(id);
       choosing.current++;
+      setSwitching(true);
       void act(() => selectMachine(id), t("shell.errMachine")).finally(() => {
         choosing.current--;
+        if (choosing.current === 0) setSwitching(false);
       });
     },
     [act],
@@ -420,6 +425,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
             onGotoTasks={() => setScreen("tasks")}
             machines={machines}
             machineID={machineID}
+            switchingMachine={switching}
             onSelectMachine={chooseMachine}
             onAddMachine={() => {
               setEditing(null);

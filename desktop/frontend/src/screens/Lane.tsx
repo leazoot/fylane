@@ -47,6 +47,9 @@ export interface LaneProps {
   machines?: MachineView[];
   machineID?: string;
   onSelectMachine?: (id: string) => void;
+  /** A machine switch is on its way to the Core. The rail says so where the
+   *  click landed, because the folder below may take seconds to follow. */
+  switchingMachine?: boolean;
   onAddMachine?: () => void;
   onEditMachine?: (id: string) => void;
   onRemoveMachine?: (id: string) => void;
@@ -1101,14 +1104,20 @@ function MachineAnchor(props: LaneProps & { tr: Translator }) {
           flexWrap: "wrap",
         }}
       >
-        <button
-          type="button"
-          className="fy-underbtn"
-          aria-expanded={menu}
-          onClick={() => setMenu((v) => !v)}
-        >
-          {t("machine.switch")}
-        </button>
+        {props.switchingMachine ? (
+          <span className="fy-rail-wait">
+            <Jelly size={20} busyLabel={t("machine.switching")} />
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="fy-underbtn"
+            aria-expanded={menu}
+            onClick={() => setMenu((v) => !v)}
+          >
+            {t("machine.switch")}
+          </button>
+        )}
         {machine && <MachineAction {...props} machine={machine} />}
         {machine && props.onEditMachine && (
           <button

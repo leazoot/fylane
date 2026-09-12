@@ -2316,6 +2316,13 @@ a {
   opacity: 0;
   transition: opacity 0.13s ease-out;
 }
+/* The rail's "switch machine" word gives its place to the mark while the
+   switch is on its way; the row keeps its height. */
+.fy-rail-wait {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+}
 /* Same trick at small-button size, where the mark replaces the whole label. */
 .fy-smallbtn > .fy-jelly {
   margin: -3px 0;

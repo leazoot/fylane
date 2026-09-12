@@ -3470,6 +3470,53 @@ describe("folders on other machines on the settings page", () => {
   });
 });
 
+describe("machine switch", () => {
+  it("shows the mark where the click landed while the switch is on its way", () => {
+    const machines: MachineView[] = [
+      {
+        info: {
+          id: "m_1",
+          name: "HK",
+          host: "hk.example",
+          user: "deploy",
+          state: "online",
+          version: "0.0.4",
+          since: "2026-09-12T08:00:00Z",
+        },
+        workspaces: [WS],
+        currentWorkspaceID: WS.id,
+        reachable: true,
+      },
+    ];
+    draw(
+      <LaneScreen
+        {...laneProps}
+        snapshot={snap()}
+        tasks={[]}
+        machines={machines}
+        machineID="m_1"
+        onSelectMachine={() => {}}
+      />,
+    );
+    expect(button("Switch machine")).not.toBeUndefined();
+    expect(host.querySelector(".fy-rail-wait")).toBeNull();
+
+    draw(
+      <LaneScreen
+        {...laneProps}
+        snapshot={snap()}
+        tasks={[]}
+        machines={machines}
+        machineID="m_1"
+        onSelectMachine={() => {}}
+        switchingMachine
+      />,
+    );
+    expect(button("Switch machine")).toBeUndefined();
+    expect(host.querySelector(".fy-rail-wait .fy-jelly")).not.toBeNull();
+  });
+});
+
 // ── memory (Fylane-V3 board 17) ─────────────────────────────────────────
 
 const MEM_NOW = new Date(2026, 8, 12, 14, 30);

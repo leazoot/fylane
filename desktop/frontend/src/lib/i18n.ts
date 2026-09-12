@@ -216,6 +216,7 @@ export const DICT = {
   "machine.eyebrow": { en: "MACHINE", zh: "机器" },
   "machine.local": { en: "This computer", zh: "本机" },
   "machine.switch": { en: "Switch machine", zh: "切换机器" },
+  "machine.switching": { en: "Switching machine", zh: "正在切换机器" },
   "machine.list": { en: "MACHINES", zh: "机器" },
   "machine.add": { en: "Add a remote machine…", zh: "添加远程机器…" },
   "machine.online": { en: "Connected", zh: "已连接" },
