@@ -191,6 +191,9 @@ function deps(over: Partial<SettingsDeps> = {}): SettingsDeps {
     cancelDownload: async () => connect(),
     signOut: async () => connect(),
     mintCode: async () => ({ code: "7K4M-2QB9", expires_in_seconds: 600 }),
+    remote: () => {
+      throw new Error("no remote machines in this test");
+    },
     ...over,
   };
 }
@@ -3363,5 +3366,102 @@ describe("the tasks page with other machines", () => {
       (r) => r.textContent,
     );
     expect(rows).toEqual(["vps-1go test ./...", "npm test"]);
+  });
+});
+
+describe("folders on other machines on the settings page", () => {
+  const vps: MachineView = {
+    info: {
+      id: "m_vps1",
+      name: "vps-1",
+      host: "vps.example.com",
+      state: "online",
+      since: "2026-09-12T08:00:00Z",
+    },
+    workspaces: [{ ...WS, id: "ws_r1", name: "api" }],
+    currentWorkspaceID: "ws_r1",
+    reachable: true,
+  };
+  const remoteFor = (log: string[]) => (id: string) => {
+    if (id !== "m_vps1") throw new Error("unexpected machine " + id);
+    const refuse = () => Promise.reject(new Error("not in this test"));
+    return {
+      status: refuse,
+      workspaces: async () => ({ workspaces: vps.workspaces, currentWorkspaceID: "ws_r1" }),
+      approvals: async () => [],
+      tasks: async () => [],
+      changeSets: async () => [],
+      resolveApproval: refuse,
+      addWorkspace: refuse,
+      selectWorkspace: refuse,
+      pauseWorkspace: refuse,
+      resumeWorkspace: refuse,
+      cancelTask: refuse,
+      acceptChangeSet: refuse,
+      rollbackChangeSet: refuse,
+      commandSettings: async () => ({
+        rung: "workspace" as const,
+        grants: [{ workspace_id: "ws_r1", rung: "workspace", granted_at: "2026-09-05T09:00:00Z" }],
+      }),
+      revokeGrant: async (wsID: string) => {
+        log.push("revoke " + wsID);
+        return { rung: "workspace" as const, grants: [] };
+      },
+      setNetwork: async (wsID: string, allow: boolean) => {
+        log.push(`network ${wsID} ${allow}`);
+        return {
+          workspaces: vps.workspaces.map((w) =>
+            w.id === wsID ? { ...w, network_reach: allow ? "allowed" : "denied" } : w,
+          ),
+          currentWorkspaceID: "ws_r1",
+        };
+      },
+    };
+  };
+
+  it("lists them under the same headings, marked with the machine, and acts on that machine", async () => {
+    const log: string[] = [];
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        machines={[vps]}
+        deps={deps({
+          commands: async () => ({
+            rung: "workspace",
+            grants: [{ workspace_id: "ws_1", rung: "workspace", granted_at: "2026-09-01T09:00:00Z" }],
+          }),
+          remote: remoteFor(log),
+        })}
+      />,
+    );
+    await settle();
+    await settle();
+
+    // The group headings are eyebrows, not rows.
+    const heads = Array.from(host.querySelectorAll(".fy-rule-group")).map((h) => h.textContent);
+    expect(heads).toContain("Folders already authorized");
+    expect(heads).toContain("Outbound network");
+
+    // The remote folder sits under both headings with the machine on it.
+    const chips = Array.from(host.querySelectorAll(".fy-mchip")).map((c) => c.textContent);
+    expect(chips).toEqual(["vps-1", "vps-1"]);
+    expect(text()).toContain("On vps-1 · Authorized");
+    expect(text()).toContain("On vps-1 · can reach the network");
+
+    // Withdrawing and the switch go to that machine's Core, not this one's.
+    const withdraws = buttons().filter((b) => (b.textContent ?? "").trim() === "Withdraw");
+    expect(withdraws.length).toBe(2);
+    click(withdraws[1]);
+    await settle();
+    expect(log).toEqual(["revoke ws_r1"]);
+    expect(Array.from(host.querySelectorAll(".fy-mchip")).length).toBe(1);
+
+    const remoteSwitch = Array.from(host.querySelectorAll('[role="switch"]')).find((el) =>
+      (el.getAttribute("aria-label") ?? "").includes("On vps-1"),
+    );
+    click(remoteSwitch);
+    await settle();
+    expect(log).toEqual(["revoke ws_r1", "network ws_r1 false"]);
+    expect(text()).toContain("On vps-1 · no network");
   });
 });

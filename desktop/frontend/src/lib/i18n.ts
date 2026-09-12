@@ -544,6 +544,7 @@ export const DICT = {
     zh: "改回更严格的设置时会重新生效。现在收回不影响任何事。",
   },
   "set.grantWithdraw": { en: "Withdraw", zh: "收回" },
+  "set.onMachine": { en: "On {name}", zh: "在 {name} 上" },
   "set.undoClear": { en: "Clear the undo copies", zh: "清除撤销副本" },
   "set.undoAsk": {
     en: "Clearing them cannot be reversed: the writes stay on disk and stop being undoable. The records of what was written remain.",

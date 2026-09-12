@@ -447,6 +447,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
             workspaces={workspaces.filter(
               (w): w is NonNullable<typeof w> => w !== null,
             )}
+            machines={machines}
             recordCount={tasks.length + snapshot.changeSets.length}
             onClearRecords={() =>
               void act(

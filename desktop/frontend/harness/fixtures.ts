@@ -413,6 +413,41 @@ export const SETTINGS_DEPS: SettingsDeps = {
   cancelDownload: async () => CONNECT,
   signOut: async () => CONNECT,
   mintCode: async () => ({ code: "7K4M-2QB9", expires_in_seconds: 600 }),
+  // The remote machines' own Cores: one folder on vps-1 authorized a week
+  // ago, the network switches answer as pressed.
+  remote: (id) => {
+    const view = MACHINES.find((m) => m.info.id === id);
+    const folders = view?.workspaces ?? [];
+    const commands: CommandSettingsInfo = {
+      rung: "workspace",
+      grants:
+        id === "m_vps1"
+          ? [{ workspace_id: "ws_r1", rung: "workspace", granted_at: "2026-09-05T09:00:00Z" }]
+          : [],
+    };
+    const refuse = () => Promise.reject(new Error("not in the harness"));
+    return {
+      status: refuse,
+      workspaces: async () => ({ workspaces: folders, currentWorkspaceID: folders[0]?.id ?? "" }),
+      approvals: async () => [],
+      tasks: async () => [],
+      changeSets: async () => [],
+      resolveApproval: refuse,
+      addWorkspace: refuse,
+      selectWorkspace: refuse,
+      pauseWorkspace: refuse,
+      resumeWorkspace: refuse,
+      cancelTask: refuse,
+      acceptChangeSet: refuse,
+      rollbackChangeSet: refuse,
+      commandSettings: async () => commands,
+      revokeGrant: async () => ({ rung: "workspace", grants: [] }),
+      setNetwork: async (wsID, allow) => ({
+        workspaces: folders.map((w) => (w.id === wsID ? { ...w, network_reach: allow ? "allowed" : "denied" } : w)),
+        currentWorkspaceID: folders[0]?.id ?? "",
+      }),
+    };
+  },
 };
 
 // First run. The onboarding boards stand in for the native folder picker and

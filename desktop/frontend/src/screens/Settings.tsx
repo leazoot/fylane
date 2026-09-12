@@ -22,8 +22,10 @@ import {
   startTunnelSetup,
   type ClearedBackups,
   revokeCommandGrant,
+  remoteCore,
   type CommandGrant,
   type CommandRung,
+  type MachineInfo,
   type LanguageServer,
   setWorkspaceNetwork,
   type ProxyProvider,
@@ -49,6 +51,7 @@ import {
   stepTimeout,
 } from "../lib/settings";
 import type { Theme } from "../lib/theme";
+import type { MachineView } from "../lib/poll";
 import { detectOS } from "../lib/platform";
 import { Jelly } from "../components/Jelly";
 
@@ -76,7 +79,7 @@ import { Jelly } from "../components/Jelly";
 /** A rule's label. Its explanation is a tooltip on hover or focus, the
  * same one the fixed pill uses, so the column reads as a list of settings
  * and the manual is one pointer away. */
-function Label({ text, help, id }: { text: string; help?: string; id: string }) {
+function Label({ text, help, id }: { text: ReactNode; help?: string; id: string }) {
   const [open, setOpen] = useState(false);
   if (!help) {
     return <div className="fy-slabel">{text}</div>;
@@ -103,6 +106,26 @@ function Label({ text, help, id }: { text: string; help?: string; id: string }) 
   );
 }
 
+/** The heading over a group of rows: the column's eyebrow, so the rows
+ *  under it read as its contents and not as its neighbours. */
+function GroupHead({ text, help, id }: { text: ReactNode; help?: string; id: string }) {
+  return (
+    <div className="fy-rule-group">
+      <Label text={text} help={help} id={id} />
+    </div>
+  );
+}
+
+/** Folders on one remote machine, with what its own Core says about them.
+ *  The machine's folders come with every poll; its rung and grants are
+ *  read once, the way this computer's are. */
+export interface RemoteFolders {
+  machine: MachineInfo;
+  folders: Workspace[];
+  rung: CommandRung | null;
+  grants: CommandGrant[];
+}
+
 /** The name on the vendor's download page, not the binary's. */
 function productName(binary: string): string {
   return { tailscale: "Tailscale", cloudflared: "cloudflared", ngrok: "ngrok" }[binary] ?? binary;
@@ -116,12 +139,7 @@ function ProxyRows({ proxies, tr }: { proxies: ProxyProvider[]; tr: Translator }
   const following = proxies.filter((p) => p.trust !== "ask");
   return (
     <>
-      <div className="fy-rule-row">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="fy-slabel">{t("set.proxies")}</div>
-          <div className="fy-snote">{t("set.proxiesNote")}</div>
-        </div>
-      </div>
+      <GroupHead text={t("set.proxies")} help={t("set.proxiesNote")} id="fy-help-proxies" />
       {proxies.map((p) => (
         <div className="fy-rule-row" key={p.name}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -272,6 +290,8 @@ export interface SettingsDeps {
   setMode: typeof setWriteMode;
   dock: typeof fetchDock;
   setDock: typeof setDockHidden;
+  /** The control API of one remote machine, for its folders' rows. */
+  remote: typeof remoteCore;
 }
 
 const CORE: SettingsDeps = {
@@ -292,9 +312,13 @@ const CORE: SettingsDeps = {
   setMode: setWriteMode,
   dock: fetchDock,
   setDock: setDockHidden,
+  remote: remoteCore,
 };
 
 export interface SettingsProps {
+  /** Remote machines as the window sees them; their granted folders are
+   *  listed beside this computer's. */
+  machines?: MachineView[];
   lang: Lang;
   onLang(lang: Lang): void;
   theme: Theme;
@@ -331,6 +355,7 @@ export function SettingsScreen({
   theme,
   onTheme,
   workspaces,
+  machines = [],
   recordCount,
   onClearRecords,
   undoCount,
@@ -355,6 +380,57 @@ export function SettingsScreen({
   // echoing the click locally would put a guess on the screen.
   const [folders, setFolders] = useState<Workspace[]>(workspaces);
   useEffect(() => setFolders(workspaces), [workspaces]);
+  // What each online machine's own Core says about its folders. Read when
+  // the set of online machines changes, not on every poll; the folder
+  // lists themselves ride along with the poll.
+  const online_ = machines.filter((m) => m.info.state === "online");
+  const onlineKey = online_.map((m) => m.info.id).join(",");
+  const [remoteRead, setRemoteRead] = useState<
+    Record<string, { rung: CommandRung | null; grants: CommandGrant[]; folders?: Workspace[] }>
+  >({});
+  useEffect(() => {
+    let alive = true;
+    for (const m of online_) {
+      const id = m.info.id;
+      void deps
+        .remote(id)
+        .commandSettings()
+        .then((res) => {
+          if (alive) setRemoteRead((r) => ({ ...r, [id]: { rung: res.rung, grants: res.grants } }));
+        })
+        .catch(() => {
+          if (alive) setRemoteRead((r) => ({ ...r, [id]: { rung: null, grants: [] } }));
+        });
+    }
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineKey, online]);
+  const remote: RemoteFolders[] = online_
+    .filter((m) => remoteRead[m.info.id])
+    .map((m) => ({
+      machine: m.info,
+      folders: remoteRead[m.info.id].folders ?? m.workspaces,
+      rung: remoteRead[m.info.id].rung,
+      grants: remoteRead[m.info.id].grants,
+    }));
+  const withdrawRemote = async (machineID: string, workspaceID: string) => {
+    try {
+      const res = await deps.remote(machineID).revokeGrant(workspaceID);
+      setRemoteRead((r) => ({ ...r, [machineID]: { ...r[machineID], rung: res.rung, grants: res.grants } }));
+    } catch (e) {
+      onError(e instanceof Error ? e.message : t("shell.errGate"));
+    }
+  };
+  const setRemoteNetwork = async (machineID: string, id: string, allow: boolean) => {
+    try {
+      const res = await deps.remote(machineID).setNetwork(id, allow);
+      setRemoteRead((r) => ({ ...r, [machineID]: { ...r[machineID], folders: res.workspaces } }));
+    } catch (e) {
+      onError(e instanceof Error ? e.message : t("shell.errPrefs"));
+    }
+  };
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -744,13 +820,17 @@ export function SettingsScreen({
               grants={grants}
               folders={folders}
               rung={rung}
+              remote={remote}
               tr={tr}
               onWithdraw={(id) => void withdraw(id)}
+              onWithdrawRemote={(machineID, id) => void withdrawRemote(machineID, id)}
             />
             <NetworkRows
               workspaces={folders}
+              remote={remote}
               tr={tr}
               onToggle={(id, allow) => void setNetwork(id, allow)}
+              onToggleRemote={(machineID, id, allow) => void setRemoteNetwork(machineID, id, allow)}
             />
           </div>
         </div>
@@ -918,14 +998,18 @@ function GrantRows({
   grants,
   folders,
   rung,
+  remote,
   tr,
   onWithdraw,
+  onWithdrawRemote,
 }: {
   grants: CommandGrant[];
   folders: Workspace[];
   rung: CommandRung | null;
+  remote: RemoteFolders[];
   tr: Translator;
   onWithdraw: (id: string) => void;
+  onWithdrawRemote: (machineID: string, id: string) => void;
 }) {
   const { t } = tr;
   if (rung === null) {
@@ -937,7 +1021,7 @@ function GrantRows({
   // A grant can outlive the folder's place in the list. Falling back to the
   // id keeps the row visible and therefore clearable; dropping it would leave
   // an authorization on the machine with nothing on screen to remove it.
-  const nameOf = (id: string) => folders.find((w) => w.id === id)?.name ?? id;
+  const nameIn = (list: Workspace[], id: string) => list.find((w) => w.id === id)?.name ?? id;
   const note: Record<CommandRung, Key> = {
     strict: "set.grantsNoteStrict",
     workspace: "set.grantsNoteWorkspace",
@@ -949,14 +1033,41 @@ function GrantRows({
     const known = RUNGS.find((x) => x.key === r);
     return known ? t(known.label) : r;
   };
-  return (
-    <>
-      <div className="fy-rule-row">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Label text={t("set.grants")} help={t(note[rung])} id="fy-help-grants" />
+  // What the row says about one grant, under the rung of the machine that
+  // holds it: each machine's own setting decides whether it is in effect.
+  const wording = (g: CommandGrant, under: CommandRung | null): [string, string | undefined] => {
+    const ago = agoShort(new Date(g.granted_at).getTime(), now, tr);
+    return under === "open"
+      ? [t("set.grantInert", { ago }), t("set.grantInertDetail")]
+      : g.rung === under
+        ? [t("set.grantSince", { ago }), undefined]
+        : [t("set.grantStale", { ago }), t("set.grantStaleDetail", { rung: rungName(g.rung) })];
+  };
+  const row = (
+    key: string,
+    name: ReactNode,
+    line: string,
+    more: string | undefined,
+    inEffect: boolean,
+    withdraw: () => void,
+  ) => (
+    <div className="fy-rule-row" key={key}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Label text={name} help={more} id={"fy-help-grant-" + key} />
+        <div className="fy-snote" style={{ color: inEffect ? undefined : "var(--fy-ink2)" }}>
+          {line}
         </div>
       </div>
-      {grants.length === 0 && (
+      <button type="button" className="fy-smallbtn" onClick={withdraw}>
+        {t("set.grantWithdraw")}
+      </button>
+    </div>
+  );
+  const none = grants.length === 0 && remote.every((r) => r.grants.length === 0);
+  return (
+    <>
+      <GroupHead text={t("set.grants")} help={t(note[rung])} id="fy-help-grants" />
+      {none && (
         <div className="fy-rule-row">
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="fy-snote">{t("set.grantsNone")}</div>
@@ -964,31 +1075,27 @@ function GrantRows({
         </div>
       )}
       {grants.map((g) => {
-        const ago = agoShort(new Date(g.granted_at).getTime(), now, tr);
-        const [line, more] =
-          rung === "open"
-            ? [t("set.grantInert", { ago }), t("set.grantInertDetail")]
-            : g.rung === rung
-              ? [t("set.grantSince", { ago }), undefined]
-              : [t("set.grantStale", { ago }), t("set.grantStaleDetail", { rung: rungName(g.rung) })];
-        return (
-          <div className="fy-rule-row" key={g.workspace_id}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Label text={nameOf(g.workspace_id)} help={more} id={"fy-help-grant-" + g.workspace_id} />
-              <div className="fy-snote" style={{ color: g.rung === rung ? undefined : "var(--fy-ink2)" }}>
-                {line}
-              </div>
-            </div>
-            <button
-              type="button"
-              className="fy-smallbtn"
-              onClick={() => onWithdraw(g.workspace_id)}
-            >
-              {t("set.grantWithdraw")}
-            </button>
-          </div>
+        const [line, more] = wording(g, rung);
+        return row(g.workspace_id, nameIn(folders, g.workspace_id), line, more, g.rung === rung, () =>
+          onWithdraw(g.workspace_id),
         );
       })}
+      {remote.map((r) =>
+        r.grants.map((g) => {
+          const [line, more] = wording(g, r.rung);
+          return row(
+            r.machine.id + ":" + g.workspace_id,
+            <>
+              <span className="fy-mchip">{r.machine.name}</span>
+              {nameIn(r.folders, g.workspace_id)}
+            </>,
+            `${t("set.onMachine", { name: r.machine.name })} · ${line}`,
+            more,
+            g.rung === r.rung,
+            () => onWithdrawRemote(r.machine.id, g.workspace_id),
+          );
+        }),
+      )}
     </>
   );
 }
@@ -1008,16 +1115,22 @@ function GrantRows({
  */
 function NetworkRows({
   workspaces,
+  remote,
   tr,
   onToggle,
+  onToggleRemote,
 }: {
   workspaces: Workspace[];
+  remote: RemoteFolders[];
   tr: Translator;
   onToggle: (id: string, allow: boolean) => void;
+  onToggleRemote: (machineID: string, id: string, allow: boolean) => void;
 }) {
   const { t } = tr;
-  const granted = workspaces.filter((w) => w.status !== "revoked");
-  if (granted.length === 0) {
+  const live = (list: Workspace[]) => list.filter((w) => w.status !== "revoked");
+  const granted = live(workspaces);
+  const elsewhere = remote.map((r) => ({ machine: r.machine, folders: live(r.folders) }));
+  if (granted.length === 0 && elsewhere.every((r) => r.folders.length === 0)) {
     return null;
   }
   const reachOf = (w: Workspace) => w.network_reach ?? "allowed";
@@ -1029,37 +1142,49 @@ function NetworkRows({
     partial: "set.netPartial",
     unbounded: "set.netUnbounded",
   };
+  const row = (key: string, w: Workspace, name: ReactNode, prefix: string, toggle: (allow: boolean) => void) => {
+    const reach = reachOf(w);
+    const allowed = reach === "allowed";
+    return (
+      <div className="fy-rule-row" key={key}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="fy-slabel">{name}</div>
+          <div
+            className="fy-snote"
+            style={{
+              color: reach === "unbounded" ? "var(--fy-amber)" : undefined,
+            }}
+          >
+            {prefix}
+            {t(word[reach] ?? "set.netAllowed")}
+          </div>
+        </div>
+        <Switch
+          label={`${t("set.network")} — ${prefix}${w.name}`}
+          on={allowed}
+          onToggle={() => toggle(!allowed)}
+        />
+      </div>
+    );
+  };
   return (
     <>
-      <div className="fy-rule-row">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Label text={t("set.network")} help={t("set.networkNote")} id="fy-help-network" />
-        </div>
-      </div>
-      {granted.map((w) => {
-        const reach = reachOf(w);
-        const allowed = reach === "allowed";
-        return (
-          <div className="fy-rule-row" key={w.id}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="fy-slabel">{w.name}</div>
-              <div
-                className="fy-snote"
-                style={{
-                  color: reach === "unbounded" ? "var(--fy-amber)" : undefined,
-                }}
-              >
-                {t(word[reach] ?? "set.netAllowed")}
-              </div>
-            </div>
-            <Switch
-              label={`${t("set.network")} — ${w.name}`}
-              on={allowed}
-              onToggle={() => onToggle(w.id, !allowed)}
-            />
-          </div>
-        );
-      })}
+      <GroupHead text={t("set.network")} help={t("set.networkNote")} id="fy-help-network" />
+      {granted.map((w) => row(w.id, w, w.name, "", (allow) => onToggle(w.id, allow)))}
+      {elsewhere.map((r) =>
+        r.folders.map((w) =>
+          row(
+            r.machine.id + ":" + w.id,
+            w,
+            <>
+              <span className="fy-mchip">{r.machine.name}</span>
+              {w.name}
+            </>,
+            `${t("set.onMachine", { name: r.machine.name })} · `,
+            (allow) => onToggleRemote(r.machine.id, w.id, allow),
+          ),
+        ),
+      )}
       {unbounded.length > 0 && (
         <div className="fy-warn">
           <div style={{ flex: 1 }}>
@@ -1127,11 +1252,7 @@ function ServerRows({ servers, tr }: { servers: LanguageServer[]; tr: Translator
   }
   return (
     <>
-      <div className="fy-rule-row">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Label text={t("set.servers")} help={t("set.serversNote")} id="fy-help-servers" />
-        </div>
-      </div>
+      <GroupHead text={t("set.servers")} help={t("set.serversNote")} id="fy-help-servers" />
       {servers.map((s) => (
         <div className="fy-rule-row" key={s.name}>
           <div style={{ flex: 1, minWidth: 0 }}>

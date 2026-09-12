@@ -337,6 +337,7 @@ function Board() {
               theme="light"
               onTheme={noop}
               workspaces={fx.WORKSPACES}
+              machines={fx.MACHINES}
               undoCount={2}
               onClearBackups={async () => ({ cleared: 2, backups_removed: 2 })}
               recordCount={fx.TASKS.length + fx.CHANGE_SETS.length}
