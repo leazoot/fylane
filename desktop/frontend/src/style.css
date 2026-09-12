@@ -2969,6 +2969,11 @@ a {
   margin-top: 12px;
   font: 400 13px/1.55 var(--fy-sans);
 }
+/* The machine sheets are tall, so they stand higher in a short window and
+   at the pairing sheet's height in a tall one. */
+.fy-sheet-machine {
+  top: clamp(44px, calc(50vh - 300px), 128px);
+}
 .fy-sheet-machine .fy-sheet-title {
   margin-top: 12px;
 }
@@ -3048,7 +3053,7 @@ a {
   transform: none;
 }
 .fy-sheet-dirs {
-  height: 248px;
+  height: clamp(150px, calc(100vh - 420px), 248px);
   margin-top: 10px;
   padding: 6px 0;
   overflow-y: auto;
