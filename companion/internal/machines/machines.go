@@ -635,14 +635,33 @@ type probeResult struct {
 	control *remoteControl
 }
 
+// listeningAddr reads the address out of a Companion's own "listening" log
+// line, e.g. `... msg="mcp server listening" addr=127.0.0.1:40499`.
+func listeningAddr(line string) string {
+	for _, f := range strings.Fields(line) {
+		if v, ok := strings.CutPrefix(f, "addr="); ok {
+			return v
+		}
+	}
+	return ""
+}
+
 // remoteHome is where the Companion lives on a remote machine. Fixed so
 // nothing here has to guess a config directory over ssh.
 const remoteHome = "$HOME/.fylane"
 
+// The probe also reads the two "listening" lines from the Companion's log:
+// a 0.0.4 Companion has an MCP listener but writes no mcp_addr into its
+// control file, and its log is the only place the port is said.
 const probeScript = `b="` + remoteHome + `/bin/fylane-companion"
 if [ -x "$b" ]; then echo "version $("$b" version 2>/dev/null)"; else echo "version none"; fi
 c="` + remoteHome + `/data/control.json"
 if [ -f "$c" ]; then echo "control $(cat "$c")"; else echo "control none"; fi
+l="` + remoteHome + `/serve.log"
+if [ -f "$l" ]; then
+  echo "logctl $(grep 'control api listening' "$l" 2>/dev/null | tail -1)"
+  echo "logmcp $(grep 'mcp server listening' "$l" 2>/dev/null | tail -1)"
+fi
 `
 
 func (l *link) probe(ctx context.Context) (probeResult, error) {
@@ -653,8 +672,13 @@ func (l *link) probe(ctx context.Context) (probeResult, error) {
 		return probeResult{}, explain(err, stderr)
 	}
 	var p probeResult
+	var logCtl, logMCP string
 	for _, line := range strings.Split(out, "\n") {
 		switch {
+		case strings.HasPrefix(line, "logctl "):
+			logCtl = listeningAddr(line)
+		case strings.HasPrefix(line, "logmcp "):
+			logMCP = listeningAddr(line)
 		case strings.HasPrefix(line, "version "):
 			// "fylane-companion 0.0.4" or "none".
 			fields := strings.Fields(line)
@@ -671,6 +695,12 @@ func (l *link) probe(ctx context.Context) (probeResult, error) {
 				p.control = &c
 			}
 		}
+	}
+	// A control file that does not say where MCP listens (0.0.4 wrote none)
+	// is completed from the log, when the log's last start is the one the
+	// control file belongs to.
+	if p.control != nil && p.control.MCPAddr == "" && logMCP != "" && logCtl == p.control.Addr {
+		p.control.MCPAddr = logMCP
 	}
 	return p, nil
 }

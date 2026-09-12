@@ -3,6 +3,7 @@ package machines
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -176,4 +177,49 @@ func TestRouterAnswersForAMachineThatWentAway(t *testing.T) {
 	if len(m.Workspaces(context.Background())) != 0 {
 		t.Error("an offline machine's workspaces are still offered")
 	}
+}
+
+func TestARemoteThatWritesNoMCPAddressIsReadFromItsLog(t *testing.T) {
+	// The released 0.0.4 Companion has an MCP listener but writes only the
+	// control address into its control file; its log is where the MCP port
+	// is said. A machine running it must route, not read as online-but-mute.
+	remote := newFakeRemote(t)
+	remote.version, remote.running = "0.0.4", true
+	remote.logMCP = remote.ctl.MCPAddr
+	remote.ctl.MCPAddr = ""
+	m, _ := harness(t, remote)
+	s, _ := m.Add(Machine{Name: "vps", Host: "vps.example"})
+	waitState(t, m, s.ID, StateOnline)
+	local := &localMCP{}
+	h := m.MCPHandler(local)
+	rec := post(h, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"read_file","arguments":{"workspace_id":"ws_remote1","path":"a.txt"}}}`)
+	if rec.Code != http.StatusOK || len(remote.mcpSeen) != 1 || strings.Contains(rec.Body.String(), "not connected") {
+		t.Fatalf("forwarded call = %d %s; remote saw %d", rec.Code, rec.Body.String(), len(remote.mcpSeen))
+	}
+
+	// A log from an earlier start does not get to name the port of a later
+	// one: the control address in the log has to match the control file.
+	canned := dialerFunc(func(script string) string {
+		return `version fylane-companion 0.0.4
+control {"addr":"127.0.0.1:44435","token":"t","pid":7}
+logctl time=x level=INFO msg="control api listening" addr=127.0.0.1:40000
+logmcp time=x level=INFO msg="mcp server listening" addr=127.0.0.1:40499
+`
+	})
+	p, err := (&link{mgr: New(Options{Store: &memStore{}, Dialer: canned, Version: "0.0.4-dev"}), m: Machine{Host: "x"}}).probe(context.Background())
+	if err != nil || p.control == nil || p.control.MCPAddr != "" {
+		t.Errorf("a log from another start must not name the port: %+v, %v", p.control, err)
+	}
+}
+
+// dialerFunc is a Dialer whose Run answers from a function; Forward is never
+// reached.
+type dialerFunc func(script string) string
+
+func (d dialerFunc) Run(_ context.Context, _ Machine, script string) (string, string, error) {
+	return d(script), "", nil
+}
+
+func (d dialerFunc) Forward(context.Context, Machine, []Forward) (Link, error) {
+	return nil, errors.New("not in this test")
 }

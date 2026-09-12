@@ -36,6 +36,9 @@ type fakeRemote struct {
 	// home, when set, is a real directory that stands in for the remote
 	// $HOME: the browse script runs in a local sh against it.
 	home string
+	// logMCP, when set, is what the remote's serve.log says the MCP
+	// listener is on — the only place a 0.0.4 Companion says it.
+	logMCP string
 
 	srv   *httptest.Server
 	mcp   *httptest.Server
@@ -93,6 +96,10 @@ func (f *fakeRemote) Run(_ context.Context, _ Machine, script string) (string, s
 		} else {
 			b.WriteString("control none\n")
 		}
+		if f.logMCP != "" {
+			fmt.Fprintf(&b, "logctl time=x level=INFO msg=\"control api listening\" addr=%s\n", f.ctl.Addr)
+			fmt.Fprintf(&b, "logmcp time=x level=INFO msg=\"mcp server listening\" addr=%s\n", f.logMCP)
+		}
 		return b.String(), "", nil
 	case strings.Contains(script, "install.sh"):
 		f.installs++
@@ -130,9 +137,15 @@ func (f *fakeRemote) Forward(_ context.Context, _ Machine, forwards []Forward) (
 			return nil, err
 		}
 		l.listeners = append(l.listeners, ln)
-		alive := f.running && (fw.RemoteAddr == f.ctl.Addr || fw.RemoteAddr == f.ctl.MCPAddr)
+		// The MCP port is where the control file says, or where the log
+		// says for a Companion that writes none.
+		mcpAddr := f.ctl.MCPAddr
+		if mcpAddr == "" {
+			mcpAddr = f.logMCP
+		}
+		alive := f.running && (fw.RemoteAddr == f.ctl.Addr || fw.RemoteAddr == mcpAddr)
 		target := f.srv.Listener.Addr().String()
-		if fw.RemoteAddr == f.ctl.MCPAddr {
+		if fw.RemoteAddr == mcpAddr {
 			target = f.mcp.Listener.Addr().String()
 		}
 		go func() {
