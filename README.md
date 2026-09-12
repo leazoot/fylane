@@ -249,6 +249,49 @@ sent it and what happened.
 
 ![Task history](assets/tasks.png)
 
+## Remote machines
+
+The project lives on a VPS, you sit at a Mac, and you want the AI to edit and
+run tests over there. Fylane can bring a remote machine in without changing
+anything on the platform side: it is still one connector, and `workspace_info`
+simply lists that machine's folders alongside your own, each with the
+machine's name.
+
+**Prerequisite**: from a terminal on this computer, `ssh user@host` already
+logs in with a key. Fylane uses the system ssh, so your keys, known_hosts and
+`~/.ssh/config` aliases all apply as they are. It never asks for a password.
+
+1. On the lane, under **Machine** in the rail, click **Switch machine → Add a
+   remote machine…**. Give it a name and a host (an ssh config alias works);
+   user and port are optional.
+2. If Fylane is not on that machine yet, the rail says so and offers
+   **Install Fylane**. One click runs `install.sh` there over ssh, pinned to
+   the same version as this app and checked against SHA256SUMS. Fylane then
+   starts the remote side itself, and checks it is running on every connect.
+3. Once it reads **Connected**, click **Choose a folder** under Workspace and
+   type an absolute path on that machine, such as `/home/you/project`.
+
+From there it works like a local folder. Reads, writes and commands in that
+folder happen on the VPS; approvals come back to the window on your Mac. On
+the Tasks page, a record from a remote machine carries the machine's name as
+a small chip before the command; local records carry none.
+
+Things to know:
+
+- **The remote Fylane publishes nothing.** No tunnel, no pairing; it listens
+  on that machine's loopback only, and this computer reaches it through an ssh
+  port forward. This computer is its tunnel, so the VPS is unreachable while
+  the Mac is off.
+- **Approval happens here only.** A remote machine's command setting defaults
+  to asking every time, and every question arrives in the Mac window.
+- **Switching machines moves the lane, not the record.** The Tasks page keeps
+  showing every machine, and a pending request is never hidden by the switch.
+- The remote side keeps its data in `~/.fylane/` on that machine (program,
+  database, audit record, `serve.log`). **Remove** only makes this computer
+  forget the machine; nothing there is touched.
+- Remote settings cannot be changed from the window yet; the remote side uses
+  its own defaults. The Windows desktop needs the built-in OpenSSH client.
+
 ## A fixed address
 
 The Cloudflare quick tunnel changes its address on every restart. For one that
