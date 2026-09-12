@@ -37,6 +37,12 @@ const (
 	// taskMemory is how long a forwarded task_id stays routable. Tasks
 	// themselves are forgotten by the remote after an hour.
 	taskMemory = 2 * time.Hour
+	// connectWait bounds how long a call waits for a machine that is on
+	// its way. A Core that just restarted has every link connecting for a
+	// few seconds, and the platform's retry lands inside them; "not
+	// connected" then is wrong by a moment. Platforms allow a tool call
+	// tens of seconds, so ten is spent here at most.
+	connectWait = 10 * time.Second
 )
 
 // Workspace is a remote workspace as workspace_info will list it.
@@ -183,23 +189,49 @@ func (r *router) taskOwner(id string) (string, bool) {
 }
 
 // workspace finds which machine a workspace id belongs to, refreshing the
-// lists once on a miss so a folder added a moment ago is found.
+// lists once on a miss so a folder added a moment ago is found. A miss
+// for an id that is not local, while a machine is still on its way, waits
+// for that machine and looks again: the folder may be on it.
 func (r *router) workspace(ctx context.Context, id string) (Workspace, bool) {
 	r.mu.Lock()
 	ws, ok := r.byID[id]
 	fresh := time.Since(r.listed) < listTTL
 	r.mu.Unlock()
-	if ok || fresh {
-		return ws, ok
+	if ok {
+		return ws, true
 	}
+	if !fresh {
+		if ws, ok = r.lookup(ctx, id); ok {
+			return ws, true
+		}
+	}
+	if r.mgr.isLocal(id) {
+		return Workspace{}, false
+	}
+	if r.mgr.settle(ctx, r.mgr.pending(""), connectWait) {
+		return r.lookup(ctx, id)
+	}
+	return Workspace{}, false
+}
+
+// lookup lists again and looks the id up.
+func (r *router) lookup(ctx context.Context, id string) (Workspace, bool) {
 	r.refresh(ctx)
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	ws, ok = r.byID[id]
+	ws, ok := r.byID[id]
 	return ws, ok
 }
 
+// Workspaces waits for the machine the window stands on if it is still
+// connecting: a list that leaves out the current machine names the wrong
+// folder as current.
 func (r *router) Workspaces(ctx context.Context) []Workspace {
+	if selected := r.mgr.Selected(); selected != "" {
+		if r.mgr.settle(ctx, r.mgr.pending(selected), connectWait) {
+			r.forget()
+		}
+	}
 	r.mu.Lock()
 	fresh := time.Since(r.listed) < listTTL
 	r.mu.Unlock()
@@ -297,11 +329,9 @@ var taskIDPattern = regexp.MustCompile(`"task_id"\s*:\s*"([^"]+)"`)
 // response is one message, and reading it lets a new task_id be remembered
 // for task_status.
 func (r *router) forward(w http.ResponseWriter, req *http.Request, body []byte, env envelope, machineID, name string) {
-	var base string
-	for _, e := range r.mgr.endpoints() {
-		if e.id == machineID {
-			base = e.mcpBase
-		}
+	base := r.mcpBase(machineID)
+	if base == "" && r.mgr.settle(req.Context(), r.mgr.pending(machineID), connectWait) {
+		base = r.mcpBase(machineID)
 	}
 	if base == "" {
 		r.unavailable(w, env, fmt.Sprintf("%s is not connected right now", name))
@@ -343,6 +373,15 @@ func (r *router) forward(w http.ResponseWriter, req *http.Request, body []byte, 
 	}
 	w.WriteHeader(resp.StatusCode)
 	w.Write(answer)
+}
+
+func (r *router) mcpBase(machineID string) string {
+	for _, e := range r.mgr.endpoints() {
+		if e.id == machineID {
+			return e.mcpBase
+		}
+	}
+	return ""
 }
 
 func (r *router) remember(answer []byte, machineID string) {

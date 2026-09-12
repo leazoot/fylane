@@ -39,6 +39,9 @@ type fakeRemote struct {
 	// logMCP, when set, is what the remote's serve.log says the MCP
 	// listener is on — the only place a 0.0.4 Companion says it.
 	logMCP string
+	// hold, when set, is what the probe waits on before answering: the
+	// machine stays "connecting" until the test closes it.
+	hold chan struct{}
 
 	srv   *httptest.Server
 	mcp   *httptest.Server
@@ -76,7 +79,17 @@ func newFakeRemote(t *testing.T) *fakeRemote {
 	return f
 }
 
-func (f *fakeRemote) Run(_ context.Context, _ Machine, script string) (string, string, error) {
+func (f *fakeRemote) Run(ctx context.Context, _ Machine, script string) (string, string, error) {
+	f.mu.Lock()
+	hold := f.hold
+	f.mu.Unlock()
+	if hold != nil && strings.Contains(script, "version 2>/dev/null") {
+		select {
+		case <-hold:
+		case <-ctx.Done():
+			return "", "", ctx.Err()
+		}
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if !f.reachable {

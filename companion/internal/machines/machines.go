@@ -103,6 +103,11 @@ type Options struct {
 	// a -dev suffix), and it is what an install pins.
 	Version string
 	Log     *slog.Logger
+	// Local, when set, says whether a workspace id is one of this machine's
+	// own. The router uses it to tell "not ours" from "not yet": a call for
+	// a workspace nobody lists while a machine is still connecting waits
+	// for that machine, unless the workspace is local.
+	Local func(id string) bool
 }
 
 // Manager owns the links to every configured machine.
@@ -111,6 +116,7 @@ type Manager struct {
 	dial    Dialer
 	version string
 	log     *slog.Logger
+	local   func(id string) bool
 
 	rt *router
 
@@ -131,7 +137,7 @@ func New(opt Options) *Manager {
 		opt.Log = slog.Default()
 	}
 	m := &Manager{store: opt.Store, dial: opt.Dialer, version: opt.Version, log: opt.Log,
-		links: map[string]*link{}}
+		local: opt.Local, links: map[string]*link{}}
 	m.rt = newRouter(m)
 	return m
 }
@@ -412,6 +418,62 @@ type endpoint struct {
 	id, name, mcpBase, ctlBase, token string
 }
 
+// settlePoll is how often a waiting call looks again. A variable so tests
+// do not wait on it.
+var settlePoll = 100 * time.Millisecond
+
+// pending lists the machines whose link is on its way: being connected,
+// being started, or reconnecting after a drop. Off, missing, installing
+// and failed links need the user, and nobody waits on them. An id
+// narrows the question to one machine; "" asks about all of them.
+func (m *Manager) pending(id string) []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []string
+	for _, mid := range m.order {
+		if id != "" && mid != id {
+			continue
+		}
+		if m.links[mid].pending() {
+			out = append(out, mid)
+		}
+	}
+	return out
+}
+
+// settle waits until no machine in ids is pending, ctx ends, or max
+// passes — whichever is first. It reports whether it waited at all.
+func (m *Manager) settle(ctx context.Context, ids []string, max time.Duration) bool {
+	if len(ids) == 0 {
+		return false
+	}
+	deadline := time.Now().Add(max)
+	for time.Now().Before(deadline) {
+		still := false
+		for _, id := range ids {
+			if len(m.pending(id)) > 0 {
+				still = true
+				break
+			}
+		}
+		if !still {
+			return true
+		}
+		select {
+		case <-ctx.Done():
+			return true
+		case <-time.After(settlePoll):
+		}
+	}
+	return true
+}
+
+// isLocal says whether a workspace id belongs to this machine. Without
+// the option nothing is known to be local, and every miss may wait.
+func (m *Manager) isLocal(id string) bool {
+	return m.local != nil && m.local(id)
+}
+
 // Online lists the machines whose links are up, for the router.
 func (m *Manager) Online() []Status {
 	all := m.List()
@@ -457,6 +519,19 @@ type link struct {
 	token   string
 
 	install chan struct{}
+}
+
+// pending is true while the link is between off and online on its own:
+// connecting, starting, or in the short retry after a session dropped.
+// Caller holds mgr.mu.
+func (l *link) pending() bool {
+	switch l.state {
+	case StateConnecting, StateStarting:
+		return true
+	case StateError:
+		return l.reason == ReasonLost
+	}
+	return false
 }
 
 func (l *link) status() Status {

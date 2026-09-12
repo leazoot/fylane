@@ -253,7 +253,11 @@ func (a *App) Run(ctx context.Context) error {
 	// below lists their workspaces and the router in front of it forwards
 	// calls to them.
 	remotes := machines.New(machines.Options{Store: MachineStore{DataDir: a.cfg.DataDir},
-		Version: buildinfo.Version, Log: a.log})
+		Version: buildinfo.Version, Log: a.log,
+		Local: func(id string) bool {
+			_, err := manager.Get(ctx, id)
+			return err == nil
+		}})
 	if err := remotes.Start(ctx); err != nil {
 		return err
 	}

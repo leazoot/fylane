@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 type localMCP struct{ seen []string }
@@ -222,4 +223,75 @@ func (d dialerFunc) Run(_ context.Context, _ Machine, script string) (string, st
 
 func (d dialerFunc) Forward(context.Context, Machine, []Forward) (Link, error) {
 	return nil, errors.New("not in this test")
+}
+
+func TestRouterWaitsForAMachineThatIsOnItsWay(t *testing.T) {
+	// Right after a restart every link is connecting, and the platform's
+	// retry of an interrupted call lands inside that window. The call waits
+	// for the machine instead of answering "not connected" a second early;
+	// a local call does not wait at all.
+	settlePoll = 5 * time.Millisecond
+	t.Cleanup(func() { settlePoll = 100 * time.Millisecond })
+	remote := newFakeRemote(t)
+	remote.version, remote.running = "0.0.4", true
+	remote.hold = make(chan struct{})
+	st := &memStore{}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	m := New(Options{Store: st, Dialer: remote, Version: "0.0.4-dev",
+		Local: func(id string) bool { return id == "ws_local" }})
+	if err := m.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s, _ := m.Add(Machine{Name: "vps", Host: "vps.example"})
+	waitState(t, m, s.ID, StateConnecting)
+	local := &localMCP{}
+	h := m.MCPHandler(local)
+
+	// A local call while the machine connects goes straight through.
+	post(h, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"read_file","arguments":{"workspace_id":"ws_local","path":"a"}}}`)
+	if len(local.seen) != 1 {
+		t.Fatalf("a local call waited on a remote link: %v", local.seen)
+	}
+
+	// A remote call waits; the machine comes up meanwhile.
+	go func() {
+		time.Sleep(60 * time.Millisecond)
+		close(remote.hold)
+	}()
+	rec := post(h, `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"read_file","arguments":{"workspace_id":"ws_remote1","path":"a"}}}`)
+	if rec.Code != http.StatusOK || len(remote.mcpSeen) != 1 || strings.Contains(rec.Body.String(), "not connected") {
+		t.Fatalf("call during the connect window = %d %s; remote saw %d", rec.Code, rec.Body.String(), len(remote.mcpSeen))
+	}
+	if len(local.seen) != 1 {
+		t.Errorf("the remote call fell through to local: %v", local.seen)
+	}
+}
+
+func TestWorkspacesWaitForTheMachineTheWindowStandsOn(t *testing.T) {
+	settlePoll = 5 * time.Millisecond
+	t.Cleanup(func() { settlePoll = 100 * time.Millisecond })
+	remote := newFakeRemote(t)
+	remote.version, remote.running = "0.0.4", true
+	remote.hold = make(chan struct{})
+	st := &memStore{}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	m := New(Options{Store: st, Dialer: remote, Version: "0.0.4-dev"})
+	if err := m.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s, _ := m.Add(Machine{Name: "vps", Host: "vps.example"})
+	if err := m.Select(s.ID); err != nil {
+		t.Fatal(err)
+	}
+	waitState(t, m, s.ID, StateConnecting)
+	go func() {
+		time.Sleep(60 * time.Millisecond)
+		close(remote.hold)
+	}()
+	list := m.Workspaces(context.Background())
+	if len(list) != 1 || !list[0].Current {
+		t.Fatalf("workspace_info during the connect window listed %+v", list)
+	}
 }
