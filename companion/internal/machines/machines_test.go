@@ -278,8 +278,8 @@ func TestAMachineWithoutFylaneWaitsForTheUserToInstall(t *testing.T) {
 	m, _ := harness(t, remote)
 	s, _ := m.Add(Machine{Name: "fresh", Host: "fresh.example"})
 	got := waitState(t, m, s.ID, StateMissing)
-	if !strings.Contains(got.Detail, "not installed") {
-		t.Errorf("detail = %q", got.Detail)
+	if !strings.Contains(got.Detail, "not installed") || got.Reason != ReasonMissing {
+		t.Errorf("detail = %q reason = %q", got.Detail, got.Reason)
 	}
 	time.Sleep(60 * time.Millisecond)
 	if remote.installs != 0 {
@@ -306,8 +306,8 @@ func TestAnOlderFylaneIsReportedAsMissingWithBothVersions(t *testing.T) {
 	if !strings.Contains(got.Detail, "0.0.3") || !strings.Contains(got.Detail, "0.0.4-dev") {
 		t.Errorf("detail = %q", got.Detail)
 	}
-	if got.Version != "0.0.3" {
-		t.Errorf("version = %q", got.Version)
+	if got.Version != "0.0.3" || got.Reason != ReasonOutdated {
+		t.Errorf("version = %q reason = %q", got.Version, got.Reason)
 	}
 }
 
@@ -355,7 +355,9 @@ func TestADroppedSessionReconnectsWithoutRestartingTheRemote(t *testing.T) {
 	first := remote.links[0]
 	remote.mu.Unlock()
 	first.Close()
-	waitState(t, m, s.ID, StateError)
+	if got := waitState(t, m, s.ID, StateError); got.Reason != ReasonLost {
+		t.Errorf("reason = %q", got.Reason)
+	}
 	waitState(t, m, s.ID, StateOnline)
 	remote.mu.Lock()
 	n, starts := len(remote.links), remote.starts

@@ -3121,6 +3121,7 @@ const BUILD_BOX: MachineView = {
     host: "10.0.0.7",
     state: "missing",
     detail: "Fylane is not installed on this machine",
+    reason: "missing",
     since: "2026-09-12T08:00:00",
   },
   workspaces: [],

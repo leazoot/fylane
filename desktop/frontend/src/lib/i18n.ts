@@ -270,6 +270,27 @@ export const DICT = {
   },
   "machine.reason.resolve": { en: "That host name does not resolve.", zh: "解析不到这个主机名。" },
   "machine.reason.unreachable": { en: "Nothing answered at that address.", zh: "这个地址没有回应。" },
+  "machine.reason.missing": {
+    en: "Fylane is not on this machine yet. Install puts the same version as this app there.",
+    zh: "这台机器上还没有 Fylane。点安装,会装上和本机一样的版本。",
+  },
+  "machine.reason.outdated": {
+    en: "It runs Fylane {version}, which this app cannot drive. Update puts this app's version there.",
+    zh: "那边是 Fylane {version},和本机对不上。点更新,会换成本机的版本。",
+  },
+  "machine.reason.install_failed": {
+    en: "The install did not finish there. Check that the machine can reach github.com, then try again.",
+    zh: "安装没有完成。看看那台机器能不能访问 github.com,再试一次。",
+  },
+  "machine.reason.start_failed": {
+    en: "Fylane did not start there. Its log is ~/.fylane/serve.log on that machine.",
+    zh: "那边的 Fylane 没能拉起来。日志在那台机器的 ~/.fylane/serve.log。",
+  },
+  "machine.reason.no_answer": {
+    en: "The connection is up, but Fylane there did not answer.",
+    zh: "连上了,但那边的 Fylane 没有回应。",
+  },
+  "machine.reason.lost": { en: "The connection dropped; reconnecting.", zh: "连接断开了,正在重连。" },
   "machine.addAction": { en: "Bring it in", zh: "接进来" },
   "machine.saveAction": { en: "Save", zh: "保存" },
   "machine.cancel": { en: "Cancel", zh: "取消" },

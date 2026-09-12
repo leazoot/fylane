@@ -487,7 +487,7 @@ func (l *link) loop(ctx context.Context) {
 		} else {
 			// A session that was up and dropped reconnects promptly.
 			backoff = minBackoff
-			l.set(ctx, StateError, "connection lost; reconnecting")
+			l.setWithReason(ctx, StateError, "connection lost; reconnecting", ReasonLost)
 		}
 		select {
 		case <-ctx.Done():
@@ -508,10 +508,10 @@ func (l *link) attempt(ctx context.Context) error {
 	}
 	if !compatible(p.version, l.mgr.version) {
 		if p.version == "" {
-			l.set(ctx, StateMissing, "Fylane is not installed on this machine")
+			l.setWithReason(ctx, StateMissing, "Fylane is not installed on this machine", ReasonMissing)
 		} else {
 			l.setVersion(p.version)
-			l.set(ctx, StateMissing, fmt.Sprintf("this machine runs Fylane %s; this app is %s", p.version, l.mgr.version))
+			l.setWithReason(ctx, StateMissing, fmt.Sprintf("this machine runs Fylane %s; this app is %s", p.version, l.mgr.version), ReasonOutdated)
 		}
 		select {
 		case <-ctx.Done():
@@ -520,7 +520,7 @@ func (l *link) attempt(ctx context.Context) error {
 		}
 		l.set(ctx, StateInstalling, "")
 		if err := l.doInstall(ctx); err != nil {
-			return fmt.Errorf("install failed: %w", err)
+			return &Failure{ReasonInstall, "install failed: " + err.Error()}
 		}
 		if p, err = l.probe(ctx); err != nil {
 			return err
@@ -538,7 +538,7 @@ func (l *link) attempt(ctx context.Context) error {
 	if errors.Is(err, errNotAnswering) || errors.Is(err, errNoControl) {
 		l.set(ctx, StateStarting, "")
 		if err := l.doStart(ctx, p.control); err != nil {
-			return err
+			return &Failure{ReasonStart, err.Error()}
 		}
 		if p, err = l.probe(ctx); err != nil {
 			return err
@@ -569,7 +569,7 @@ func (l *link) attempt(ctx context.Context) error {
 
 var (
 	errNoControl    = errors.New("no control file")
-	errNotAnswering = errors.New("the remote control API did not answer")
+	errNotAnswering = &Failure{ReasonNoAnswer, "the remote control API did not answer"}
 )
 
 // remoteControl is the remote Companion's control.json.
@@ -814,6 +814,12 @@ const (
 	ReasonAuth        = "auth"
 	ReasonResolve     = "resolve"
 	ReasonUnreachable = "unreachable"
+	ReasonMissing     = "missing"
+	ReasonOutdated    = "outdated"
+	ReasonInstall     = "install_failed"
+	ReasonStart       = "start_failed"
+	ReasonNoAnswer    = "no_answer"
+	ReasonLost        = "lost"
 )
 
 // explain turns ssh's stderr into the one sentence the user needs. The

@@ -98,8 +98,21 @@ export function reasonText(
   tr: Translator,
   reason: string | undefined,
   detail: string | undefined,
+  version = "",
 ): string {
   switch (reason) {
+    case "missing":
+      return tr.t("machine.reason.missing");
+    case "outdated":
+      return tr.t("machine.reason.outdated", { version });
+    case "install_failed":
+      return tr.t("machine.reason.install_failed");
+    case "start_failed":
+      return tr.t("machine.reason.start_failed");
+    case "no_answer":
+      return tr.t("machine.reason.no_answer");
+    case "lost":
+      return tr.t("machine.reason.lost");
     case "host_key":
       return tr.t("machine.reason.host_key");
     case "auth":

@@ -560,11 +560,17 @@ function Calm(props: LaneProps & { tr: Translator }) {
     : away
       ? {
           dot: machineDot(away.info.state),
-          tag: t(machineWord(away.info.state, away.info.detail)),
+          tag: t(
+            machineWord(away.info.state, away.info.detail, away.info.reason),
+          ),
           title: away.info.name,
           body:
-            reasonText(tr, away.info.reason, away.info.detail) ||
-            t("machine.addBody"),
+            reasonText(
+              tr,
+              away.info.reason,
+              away.info.detail,
+              away.info.version,
+            ) || t("machine.addBody"),
         }
       : !ws
         ? {
@@ -977,7 +983,15 @@ function machineDot(state: MachineState): string {
 /** The status word for a link state. A missing Fylane and an outdated one
  *  are the same state to the Core; the detail says which, and the word
  *  should too. */
-function machineWord(state: MachineState, detail?: string): Key {
+function outdated(info: { reason?: string; detail?: string }): boolean {
+  return info.reason === "outdated" || /runs Fylane/.test(info.detail ?? "");
+}
+
+function machineWord(
+  state: MachineState,
+  detail?: string,
+  reason?: string,
+): Key {
   switch (state) {
     case "online":
       return "machine.online";
@@ -1008,7 +1022,7 @@ function MachineAnchor(props: LaneProps & { tr: Translator }) {
   const state = machine?.info.state;
   const word = machine
     ? machine.reachable || state !== "online"
-      ? t(machineWord(state!, machine.info.detail))
+      ? t(machineWord(state!, machine.info.detail, machine.info.reason))
       : t("machine.unanswered")
     : t("laneV2.localConnected");
   const dot = machine
@@ -1069,7 +1083,12 @@ function MachineAnchor(props: LaneProps & { tr: Translator }) {
             color: "var(--fy-muted)",
           }}
         >
-          {reasonText(tr, machine.info.reason, machine.info.detail)}
+          {reasonText(
+            tr,
+            machine.info.reason,
+            machine.info.detail,
+            machine.info.version,
+          )}
         </div>
       )}
 
@@ -1208,14 +1227,12 @@ function MachineAction({
   ...props
 }: LaneProps & { tr: Translator; machine: MachineView; primary?: boolean }) {
   const { t } = tr;
-  const { state, detail, id } = machine.info;
+  const { state, id } = machine.info;
   let label: string;
   let act: (() => void) | undefined;
   switch (state) {
     case "missing":
-      label = t(
-        /runs Fylane/.test(detail ?? "") ? "machine.update" : "machine.install",
-      );
+      label = t(outdated(machine.info) ? "machine.update" : "machine.install");
       act = props.onInstallMachine && (() => props.onInstallMachine!(id));
       break;
     case "off":
