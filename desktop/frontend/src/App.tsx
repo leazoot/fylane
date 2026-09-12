@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addMachine,
   addWorkspace,
+  browseMachine,
   cancelTask,
   clearBackups,
   clearTasks,
@@ -28,7 +29,7 @@ import {
   type PairClaim,
   type TaskInfo,
 } from "./lib/core";
-import { MachineSheet } from "./components/MachineSheet";
+import { RemoteFolderSheet } from "./components/RemoteFolderSheet";
 import { AddMachineSheet } from "./components/AddMachineSheet";
 import { storeMachine, storedMachine } from "./lib/theme";
 import {
@@ -704,22 +705,13 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
       )}
 
       {sheet === "folder" && selected && (
-        <MachineSheet
-          title={t("machine.folderTitle", { name: selected.info.name })}
-          body={t("machine.folderBody")}
-          action={t("machine.folderAction")}
-          fields={[
-            {
-              key: "path",
-              label: t("machine.fieldPath"),
-              placeholder: t("machine.fieldPathPlaceholder"),
-              required: true,
-            },
-          ]}
+        <RemoteFolderSheet
+          machine={selected.info}
+          browse={(path) => browseMachine(selected.info.id, path)}
           onCancel={() => setSheet("none")}
-          onSubmit={async (v) => {
+          onSubmit={async (path) => {
             const core = remoteCore(selected.info.id);
-            const added = await core.addWorkspace(v.path);
+            const added = await core.addWorkspace(path);
             await core.selectWorkspace(added.id);
             setSheet("none");
             await refresh();

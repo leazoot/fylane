@@ -10,7 +10,8 @@ separate vite root and never enters the shipped bundle.
 
 Boards: `lane`, `lane-held`, `lane-command`, `lane-disclosure`, `lane-empty`,
 `lane-paused`, `lane-offline`, `lane-remote`, `lane-remote-held`,
-`lane-remote-missing`, `machine-add`, `machine-edit`, `tasks`, `tasks-empty`,
+`lane-remote-missing`, `machine-add`, `machine-edit`, `machine-folder`, `tasks`,
+`tasks-empty`,
 `tasks-remote`, `settings`,
 `settings-update`, `commands`, `pairing`, `first-run`, `first-run-write`,
 `first-run-rung`, `first-run-done`.

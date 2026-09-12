@@ -21,7 +21,6 @@ import { SettingsScreen, type SettingsDeps } from "./Settings";
 import { OnboardingScreen } from "./Onboarding";
 import { PairClaimSheet } from "../components/PairClaimSheet";
 import { Dock } from "../components/Dock";
-import { MachineSheet } from "../components/MachineSheet";
 import type { MachineView } from "../lib/poll";
 
 // The rendering layer, pinned.
@@ -3364,73 +3363,5 @@ describe("the tasks page with other machines", () => {
       (r) => r.textContent,
     );
     expect(rows).toEqual(["vps-1go test ./...", "npm test"]);
-  });
-});
-
-describe("the machine sheet", () => {
-  it("submits trimmed values, stays open on a refusal, and cancels on Escape", async () => {
-    const got: Record<string, string>[] = [];
-    let cancelled = 0;
-    let refuse = true;
-    draw(
-      <MachineSheet
-        title="Add a remote machine"
-        body="Key-based login must work."
-        action="Add"
-        fields={[
-          { key: "name", label: "Name", required: true },
-          { key: "host", label: "Host", required: true },
-          { key: "user", label: "User", half: true },
-          { key: "port", label: "Port", half: true, numeric: true },
-        ]}
-        onSubmit={async (v) => {
-          got.push(v);
-          if (refuse) throw new Error('host "x y": use a hostname');
-        }}
-        onCancel={() => cancelled++}
-      />,
-    );
-    const submit = host.querySelector(".fy-sheet-approve") as HTMLButtonElement;
-    expect(submit.disabled).toBe(true);
-    const type = (id: string, value: string) => {
-      const el = host.querySelector(`#fy-sheet-${id}`) as HTMLInputElement;
-      act(() => {
-        const setter = Object.getOwnPropertyDescriptor(
-          HTMLInputElement.prototype,
-          "value",
-        )!.set!;
-        setter.call(el, value);
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-      });
-    };
-    type("name", " vps-1 ");
-    type("host", "x y");
-    expect(submit.disabled).toBe(false);
-    await act(async () => {
-      (host.querySelector("form") as HTMLFormElement).dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
-      );
-      await Promise.resolve();
-    });
-    await settle();
-    expect(got).toEqual([{ name: "vps-1", host: "x y", user: "", port: "" }]);
-    expect(host.querySelector(".fy-sheet-error")?.textContent).toContain(
-      "use a hostname",
-    );
-    refuse = false;
-    type("host", "vps.example");
-    await act(async () => {
-      (host.querySelector("form") as HTMLFormElement).dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
-      );
-      await Promise.resolve();
-    });
-    expect(got[1].host).toBe("vps.example");
-    act(() => {
-      (host.querySelector("form") as HTMLFormElement).dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
-    });
-    expect(cancelled).toBe(1);
   });
 });

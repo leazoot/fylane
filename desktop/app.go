@@ -586,6 +586,17 @@ func (a *App) ProbeMachine(requestJSON string) (string, error) {
 	return a.callWithin("POST", "/v1/machines/probe", body, 30*time.Second)
 }
 
+// BrowseMachine lists the directories inside one on a remote machine, so
+// the folder sheet can walk to a folder instead of asking for a typed path.
+// An empty path is that machine's login home.
+func (a *App) BrowseMachine(id, path string) (string, error) {
+	if id == "" {
+		return "", errors.New("invalid machine call")
+	}
+	return a.callWithin("POST", "/v1/machines/browse",
+		map[string]string{"id": id, "path": path}, 30*time.Second)
+}
+
 // UpdateMachine replaces how a machine is reached and reconnects it.
 func (a *App) UpdateMachine(requestJSON string) (string, error) {
 	var body any

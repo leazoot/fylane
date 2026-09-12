@@ -2977,3 +2977,53 @@ a {
   font: 400 12px/1.5 var(--fy-sans);
   color: var(--fy-faint);
 }
+
+/* The folder sheet's browser: the workspace menu's rows, standing in the
+   sheet instead of floating over the rail, under a hairline. The list keeps
+   one height so stepping between folders does not move the buttons. */
+.fy-sheet-browse-status {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.fy-sheet-browse-status > span {
+  flex: 1;
+  min-width: 0;
+}
+.fy-sheet-browse-status .fy-textbtn {
+  flex: none;
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-color: var(--fy-rule2);
+  text-underline-offset: 3px;
+}
+.fy-sheet-dirs {
+  height: 248px;
+  margin-top: 10px;
+  padding: 6px 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--fy-rule);
+  transition: opacity 0.16s ease-out;
+}
+.fy-sheet-dirs[data-busy="true"] {
+  opacity: 0.45;
+}
+.fy-sheet-dirs .fy-wsitem {
+  padding: 8px 10px;
+}
+.fy-sheet-dirs .fy-wsitem:focus-visible {
+  outline: none;
+  background: var(--fy-surf);
+}
+.fy-sheet-dirs .fy-wsitem-name {
+  font-family: var(--fy-mono);
+  font-size: 12.5px;
+}
+.fy-sheet-dirs .fy-dir-up .fy-wsitem-name {
+  font-family: var(--fy-sans);
+  color: var(--fy-muted);
+}
+.fy-sheet-dirs .fy-wsitem-path {
+  direction: ltr;
+  color: var(--fy-sage);
+}

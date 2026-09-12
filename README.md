@@ -262,14 +262,18 @@ logs in with a key. Fylane uses the system ssh, so your keys, known_hosts and
 `~/.ssh/config` aliases all apply as they are. It never asks for a password.
 
 1. On the lane, under **Machine** in the rail, click **Switch machine → Add a
-   remote machine…**. Give it a name and a host (an ssh config alias works);
-   user and port are optional.
+   remote machine…**. Type the destination the way you would after `ssh`: an
+   alias, `user@host`, `host:2222`. Fylane knocks straight away and says what
+   is on the other side. The name defaults to the host and can be changed at
+   any time with **Edit** in the rail.
 2. If Fylane is not on that machine yet, the rail says so and offers
    **Install Fylane**. One click runs `install.sh` there over ssh, pinned to
    the same version as this app and checked against SHA256SUMS. Fylane then
    starts the remote side itself, and checks it is running on every connect.
-3. Once it reads **Connected**, click **Choose a folder** under Workspace and
-   type an absolute path on that machine, such as `/home/you/project`.
+3. Once it reads **Connected**, click **Choose a folder** under Workspace. The
+   sheet opens in that machine's home; step into folders (repositories are
+   marked `git`) or type a path such as `~/project`. Nothing is granted until
+   the machine confirms it is a folder, so a typo cannot be granted.
 
 From there it works like a local folder. Reads, writes and commands in that
 folder happen on the VPS; approvals come back to the window on your Mac. On

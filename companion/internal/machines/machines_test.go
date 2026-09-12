@@ -1,6 +1,7 @@
 package machines
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -29,6 +33,9 @@ type fakeRemote struct {
 	installs  int
 	starts    int
 	links     []*fakeLink
+	// home, when set, is a real directory that stands in for the remote
+	// $HOME: the browse script runs in a local sh against it.
+	home string
 
 	srv   *httptest.Server
 	mcp   *httptest.Server
@@ -91,6 +98,15 @@ func (f *fakeRemote) Run(_ context.Context, _ Machine, script string) (string, s
 		f.installs++
 		f.version = "0.0.4"
 		return "installed", "", nil
+	case strings.Contains(script, pathTerminator) && f.home != "":
+		cmd := exec.Command("sh", "-s")
+		cmd.Stdin = strings.NewReader(script)
+		cmd.Env = append(os.Environ(), "HOME="+f.home)
+		cmd.Dir = f.home
+		var out, errb bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &out, &errb
+		err := cmd.Run()
+		return out.String(), errb.String(), err
 	case strings.Contains(script, "serve -data-dir"):
 		f.starts++
 		f.running, f.stale = true, false
@@ -542,5 +558,79 @@ func TestUpdateReconnectsWithTheCorrectedDetails(t *testing.T) {
 	}
 	if _, err := m.Update(Machine{ID: "m_nope", Name: "x", Host: "h"}); !errors.Is(err, ErrUnknown) {
 		t.Errorf("unknown = %v", err)
+	}
+}
+
+func TestBrowseWalksDirectoriesOverSSH(t *testing.T) {
+	remote := newFakeRemote(t)
+	remote.home = t.TempDir()
+	for _, d := range []string{"proj/.git", "Notes", ".config", "it's here/sub", "$HOME"} {
+		if err := os.MkdirAll(filepath.Join(remote.home, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(remote.home, "a-file"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, _ := harness(t, remote)
+	st, err := m.Add(Machine{Name: "vps", Host: "vps.example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+
+	ls, err := m.Browse(ctx, st.ID, "")
+	if err != nil || ls.Reason != "" {
+		t.Fatalf("browse home = %+v, %v", ls, err)
+	}
+	if ls.Path != remote.home || ls.Home != remote.home || ls.Parent != filepath.Dir(remote.home) {
+		t.Errorf("home listing = %+v", ls)
+	}
+	var names []string
+	for _, e := range ls.Entries {
+		names = append(names, fmt.Sprintf("%s repo=%v hidden=%v", e.Name, e.Repo, e.Hidden))
+	}
+	want := []string{
+		"$HOME repo=false hidden=false",
+		".config repo=false hidden=true",
+		"it's here repo=false hidden=false",
+		"Notes repo=false hidden=false",
+		"proj repo=true hidden=false",
+	}
+	if strings.Join(names, "\n") != strings.Join(want, "\n") {
+		t.Errorf("entries:\n%s\nwant:\n%s", strings.Join(names, "\n"), strings.Join(want, "\n"))
+	}
+
+	// Awkward names travel intact, and ~ means the machine's home.
+	for _, dir := range []string{remote.home + "/it's here", "~/it's here", remote.home + "/$HOME"} {
+		ls, err = m.Browse(ctx, st.ID, dir)
+		if err != nil || ls.Reason != "" || !strings.HasPrefix(ls.Path, remote.home+"/") {
+			t.Errorf("browse %q = %+v, %v", dir, ls, err)
+		}
+	}
+	if ls, _ = m.Browse(ctx, st.ID, remote.home+"/it's here"); len(ls.Entries) != 1 || ls.Entries[0].Name != "sub" {
+		t.Errorf("subdir listing = %+v", ls)
+	}
+	if ls, _ = m.Browse(ctx, st.ID, "~"); ls.Path != remote.home {
+		t.Errorf("~ = %+v", ls)
+	}
+
+	// What is not a directory is a sentence, not an error.
+	for _, dir := range []string{remote.home + "/nope", remote.home + "/a-file"} {
+		if ls, err = m.Browse(ctx, st.ID, dir); err != nil || ls.Reason != ReasonNoDir || ls.Path != "" {
+			t.Errorf("browse %q = %+v, %v", dir, ls, err)
+		}
+	}
+	remote.mu.Lock()
+	remote.reachable, remote.stderr = false, "Permission denied (publickey)."
+	remote.mu.Unlock()
+	if ls, err = m.Browse(ctx, st.ID, ""); err != nil || ls.Reason != ReasonAuth {
+		t.Errorf("refused = %+v, %v", ls, err)
+	}
+	if _, err = m.Browse(ctx, "m_nope", ""); !errors.Is(err, ErrUnknown) {
+		t.Errorf("unknown machine = %v", err)
+	}
+	if _, err = m.Browse(ctx, st.ID, "/tmp\nrm -rf /"); err == nil {
+		t.Error("a path with a newline must be refused before the shell sees it")
 	}
 }

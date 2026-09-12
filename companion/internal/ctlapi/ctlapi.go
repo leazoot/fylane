@@ -496,6 +496,7 @@ func (s *Server) Start(ctx context.Context, dataDir string) (string, error) {
 	mux.HandleFunc("GET /v1/machines", s.handleMachines)
 	mux.HandleFunc("POST /v1/machines/add", s.handleMachineAdd)
 	mux.HandleFunc("POST /v1/machines/probe", s.handleMachineProbe)
+	mux.HandleFunc("POST /v1/machines/browse", s.handleMachineBrowse)
 	mux.HandleFunc("POST /v1/machines/update", s.handleMachineUpdate)
 	mux.HandleFunc("POST /v1/machines/remove", s.machineAction(func(c MachineControl, id string) error { return c.Remove(id) }))
 	mux.HandleFunc("POST /v1/machines/connect", s.machineAction(func(c MachineControl, id string) error { return c.Connect(id) }))

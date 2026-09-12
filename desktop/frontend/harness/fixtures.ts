@@ -6,6 +6,8 @@ import type {
   ConnectInfo,
   CoreStatusInfo,
   PrefsInfo,
+  RemoteEntry,
+  RemoteListing,
   TaskInfo,
   PairClaim,
   Source,
@@ -451,6 +453,45 @@ export function snapshot(over: Partial<LaneSnapshot> = {}): LaneSnapshot {
 }
 
 // ── remote machines (Batch R) ───────────────────────────────────────────
+
+/** A small directory tree on the fake machine, for the folder sheet. */
+const REMOTE_HOME = "/home/deploy";
+const REMOTE_TREE: Record<string, RemoteEntry[]> = {
+  "/": [{ name: "home" }, { name: "srv" }, { name: "var" }],
+  "/home": [{ name: "deploy" }],
+  [REMOTE_HOME]: [
+    { name: ".cache", hidden: true },
+    { name: ".config", hidden: true },
+    { name: ".fylane", hidden: true },
+    { name: "api", repo: true },
+    { name: "fylane", repo: true },
+    { name: "notes" },
+    { name: "scratch" },
+    { name: "site", repo: true },
+  ],
+  [REMOTE_HOME + "/api"]: [{ name: "cmd" }, { name: "internal" }],
+  [REMOTE_HOME + "/fylane"]: [
+    { name: "companion" },
+    { name: "desktop" },
+    { name: "relay" },
+  ],
+  [REMOTE_HOME + "/notes"]: [],
+  [REMOTE_HOME + "/scratch"]: [{ name: "old" }],
+  [REMOTE_HOME + "/site"]: [{ name: "public" }],
+};
+
+export function remoteListing(path: string): RemoteListing {
+  let p = path === "" || path === "~" ? REMOTE_HOME : path;
+  if (p.startsWith("~/")) p = REMOTE_HOME + p.slice(1);
+  const entries = REMOTE_TREE[p];
+  if (!entries) return { entries: [], reason: "nodir" };
+  return {
+    path: p,
+    parent: p === "/" ? undefined : p.slice(0, p.lastIndexOf("/")) || "/",
+    home: REMOTE_HOME,
+    entries,
+  };
+}
 
 export const MACHINES: MachineView[] = [
   {

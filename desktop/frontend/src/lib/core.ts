@@ -48,6 +48,7 @@ import {
   InstallMachine,
   MachineCall,
   ProbeMachine,
+  BrowseMachine,
   UpdateMachine,
 } from "../../wailsjs/go/main/App";
 
@@ -820,6 +821,34 @@ export type ProbeResult = {
   running: boolean;
   compatible: boolean;
 };
+
+/** One directory on a remote machine, for the folder sheet to walk through.
+ *  Only directories are listed. */
+export type RemoteListing = {
+  /** The directory as the machine resolved it; absent when there is a reason. */
+  path?: string;
+  /** The directory above; absent at the root. */
+  parent?: string;
+  home?: string;
+  entries: RemoteEntry[];
+  /** Why there is no listing: "nodir", "denied", or a link reason code. */
+  reason?: string;
+  detail?: string;
+};
+
+export type RemoteEntry = {
+  name: string;
+  /** Holds a .git. */
+  repo?: boolean;
+  /** A dot-directory. */
+  hidden?: boolean;
+};
+
+/** browseMachine lists the directories inside `path` on a machine; an empty
+ *  path is that machine's login home. */
+export async function browseMachine(id: string, path: string): Promise<RemoteListing> {
+  return JSON.parse(await BrowseMachine(id, path));
+}
 
 export async function probeMachine(req: MachineRequest): Promise<ProbeResult> {
   return JSON.parse(await ProbeMachine(JSON.stringify(req)));

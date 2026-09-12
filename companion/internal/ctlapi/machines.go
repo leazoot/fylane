@@ -21,6 +21,34 @@ type MachineControl interface {
 	Update(machines.Machine) (machines.Status, error)
 	Proxy(id string) (http.Handler, error)
 	Probe(ctx context.Context, m machines.Machine) (machines.ProbeResult, error)
+	Browse(ctx context.Context, id, path string) (machines.Listing, error)
+}
+
+// handleMachineBrowse lists the directories inside one on a machine, for
+// the folder sheet to walk through.
+func (s *Server) handleMachineBrowse(w http.ResponseWriter, r *http.Request) {
+	if s.Machines == nil {
+		http.Error(w, "remote machines are not configured", http.StatusNotFound)
+		return
+	}
+	var req struct {
+		ID   string `json:"id"`
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+	ls, err := s.Machines.Browse(r.Context(), req.ID, req.Path)
+	if err != nil {
+		code := http.StatusBadRequest
+		if errors.Is(err, machines.ErrUnknown) {
+			code = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	writeJSON(w, ls)
 }
 
 // handleMachineProbe answers what is at an address without saving it.

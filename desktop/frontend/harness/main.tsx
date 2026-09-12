@@ -10,6 +10,7 @@ import { Jelly } from "../src/components/Jelly";
 import { Dock } from "../src/components/Dock";
 import { PairClaimSheet } from "../src/components/PairClaimSheet";
 import { AddMachineSheet } from "../src/components/AddMachineSheet";
+import { RemoteFolderSheet } from "../src/components/RemoteFolderSheet";
 import { translatorFor, type Key } from "../src/lib/i18n";
 import type { Approval } from "../src/lib/core";
 import * as fx from "./fixtures";
@@ -270,6 +271,26 @@ function Board() {
                 compatible: true,
                 version: "0.0.4",
               };
+            }}
+            onSubmit={async () => {}}
+            onCancel={noop}
+          />
+        </>
+      );
+    case "machine-folder":
+      // The folder sheet over the lane, walking a small fake tree; each
+      // answer takes a beat so the reading state can be seen.
+      return (
+        <>
+          <Header active="lane" />
+          <Scroller>
+            <Lane />
+          </Scroller>
+          <RemoteFolderSheet
+            machine={fx.MACHINES[0].info}
+            browse={async (path) => {
+              await fx.wait(500);
+              return fx.remoteListing(path);
             }}
             onSubmit={async () => {}}
             onCancel={noop}

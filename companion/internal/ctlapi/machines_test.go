@@ -58,6 +58,14 @@ func (s *stubMachines) Probe(_ context.Context, m machines.Machine) (machines.Pr
 	}
 	return machines.ProbeResult{Reachable: true, Version: "0.0.4", Running: true, Compatible: true}, nil
 }
+func (s *stubMachines) Browse(_ context.Context, id, path string) (machines.Listing, error) {
+	if id != "m1" {
+		return machines.Listing{}, machines.ErrUnknown
+	}
+	s.actions = append(s.actions, "browse "+path)
+	return machines.Listing{Path: "/home/dev", Parent: "/home", Home: "/home/dev",
+		Entries: []machines.Entry{{Name: "app", Repo: true}}}, nil
+}
 func (s *stubMachines) Proxy(id string) (http.Handler, error) {
 	for _, m := range s.list {
 		if m.ID == id && m.State == machines.StateOnline {
@@ -104,6 +112,14 @@ func TestMachineEndpointsListAddAndAct(t *testing.T) {
 	resp, body = f.call(t, "POST", "/v1/machines/probe", f.token, map[string]any{"name": "x", "host": "box.example"})
 	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"reachable":true`) {
 		t.Errorf("probe = %d %s", resp.StatusCode, body)
+	}
+	resp, body = f.call(t, "POST", "/v1/machines/browse", f.token, map[string]string{"id": "m1", "path": "/home/dev"})
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"repo":true`) {
+		t.Errorf("browse = %d %s", resp.StatusCode, body)
+	}
+	resp, _ = f.call(t, "POST", "/v1/machines/browse", f.token, map[string]string{"id": "m_nope"})
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("browse unknown machine = %d", resp.StatusCode)
 	}
 	resp, _ = f.call(t, "POST", "/v1/machines/connect", f.token, map[string]string{"id": "m_nope"})
 	if resp.StatusCode != http.StatusNotFound {
