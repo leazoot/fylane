@@ -56,6 +56,10 @@ type MemoryNote struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+// ErrMemoryBounds marks a page or note that is over the limits above, so a
+// caller can tell "shorten it" from "the database failed".
+var ErrMemoryBounds = errors.New("memory: over the limit")
+
 func (p *MemoryPage) validate() error {
 	if err := within("goal", p.Goal, MemoryGoalBytes); err != nil {
 		return err
@@ -68,7 +72,7 @@ func (p *MemoryPage) validate() error {
 	}
 	for name, list := range map[string][]string{"decisions": p.Decisions, "open": p.Open} {
 		if len(list) > MemoryListItems {
-			return fmt.Errorf("memory page: %s has %d items; the limit is %d", name, len(list), MemoryListItems)
+			return fmt.Errorf("%w: %s has %d items; the limit is %d", ErrMemoryBounds, name, len(list), MemoryListItems)
 		}
 		for _, item := range list {
 			if err := within(name+" item", item, MemoryListItemBytes); err != nil {
@@ -82,9 +86,9 @@ func (p *MemoryPage) validate() error {
 func within(name, v string, limit int) error {
 	switch {
 	case len(v) > limit:
-		return fmt.Errorf("memory: %s is %d bytes; the limit is %d", name, len(v), limit)
+		return fmt.Errorf("%w: %s is %d bytes; the limit is %d", ErrMemoryBounds, name, len(v), limit)
 	case !utf8.ValidString(v):
-		return fmt.Errorf("memory: %s is not valid UTF-8", name)
+		return fmt.Errorf("%w: %s is not valid UTF-8", ErrMemoryBounds, name)
 	}
 	return nil
 }
@@ -180,11 +184,22 @@ const memoryNoteColumns = `id, workspace_id, provider, title, body, change_set_i
 // ListMemoryNotes pages the trail newest first. beforeID > 0 continues
 // past a previous page; archived notes are left out.
 func (s *Store) ListMemoryNotes(ctx context.Context, workspaceID string, beforeID int64, limit int) ([]*MemoryNote, error) {
+	return s.listMemoryNotes(ctx, workspaceID, false, beforeID, limit)
+}
+
+// ListArchivedMemoryNotes pages the notes a summary has folded away, newest
+// first. The desktop shows them under their own filter; the tools reach
+// them only by id or by search.
+func (s *Store) ListArchivedMemoryNotes(ctx context.Context, workspaceID string, beforeID int64, limit int) ([]*MemoryNote, error) {
+	return s.listMemoryNotes(ctx, workspaceID, true, beforeID, limit)
+}
+
+func (s *Store) listMemoryNotes(ctx context.Context, workspaceID string, archived bool, beforeID int64, limit int) ([]*MemoryNote, error) {
 	if limit <= 0 {
 		limit = 20
 	}
-	query := `SELECT ` + memoryNoteColumns + ` FROM memory_notes WHERE workspace_id = ? AND archived = 0`
-	args := []any{workspaceID}
+	query := `SELECT ` + memoryNoteColumns + ` FROM memory_notes WHERE workspace_id = ? AND archived = ?`
+	args := []any{workspaceID, archived}
 	if beforeID > 0 {
 		query += ` AND id < ?`
 		args = append(args, beforeID)
@@ -260,6 +275,24 @@ func (s *Store) CountMemoryNotes(ctx context.Context, workspaceID string) (live,
 		return 0, 0, fmt.Errorf("counting memory notes: %w", err)
 	}
 	return live, archived, nil
+}
+
+// DeleteMemoryNote removes one note for good. ErrNotFound when the
+// workspace holds no note by that id, so a stale row on screen is told so
+// rather than silently succeeding.
+func (s *Store) DeleteMemoryNote(ctx context.Context, workspaceID string, id int64) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM memory_notes WHERE workspace_id = ? AND id = ?`, workspaceID, id)
+	if err != nil {
+		return fmt.Errorf("deleting memory note: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("deleting memory note: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // DeleteMemory forgets everything remembered about a workspace.

@@ -155,4 +155,23 @@ func TestMemoryNotesAreArchivedInOrderAndStayFindable(t *testing.T) {
 	if n, _ := s.ArchiveMemoryNotes(ctx, "ws-c", ids[1]); n != 0 {
 		t.Fatal("archiving is not idempotent")
 	}
+	if page, _ := s.ListArchivedMemoryNotes(ctx, "ws-c", 0, 10); len(page) != 2 || page[0].Title != "two" || page[1].Title != "one" {
+		t.Fatalf("archived listing = %v", titles(page))
+	}
+	if page, _ := s.ListArchivedMemoryNotes(ctx, "ws-c", ids[1], 10); len(page) != 1 || page[0].Title != "one" {
+		t.Fatalf("archived listing past the first = %v", titles(page))
+	}
+	// A note is deleted within its workspace and only once.
+	if err := s.DeleteMemoryNote(ctx, "ws-other", ids[2]); err != ErrNotFound {
+		t.Fatalf("deleting through another workspace: %v", err)
+	}
+	if err := s.DeleteMemoryNote(ctx, "ws-c", ids[2]); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteMemoryNote(ctx, "ws-c", ids[2]); err != ErrNotFound {
+		t.Fatalf("deleting twice: %v", err)
+	}
+	if live, archived, _ := s.CountMemoryNotes(ctx, "ws-c"); live != 0 || archived != 2 {
+		t.Fatalf("count after delete = %d live, %d archived", live, archived)
+	}
 }

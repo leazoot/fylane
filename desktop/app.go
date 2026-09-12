@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -350,6 +351,91 @@ func (a *App) PairingCode() (string, error) {
 // window asks twice before calling this.
 func (a *App) ClearBackups(workspaceID string) (string, error) {
 	return a.call("POST", "/v1/backups/clear?workspace_id="+url.QueryEscape(workspaceID), nil)
+}
+
+// Memory reads what is remembered about one workspace: the state page and
+// one page of the note trail. The machine the window stands on decides
+// which Core answers; "" is this computer.
+func (a *App) Memory(machineID, workspaceID string, archived bool, beforeID int64, query string) (string, error) {
+	q := url.Values{}
+	q.Set("workspace_id", workspaceID)
+	if archived {
+		q.Set("archived", "1")
+	}
+	if beforeID > 0 {
+		q.Set("before", strconv.FormatInt(beforeID, 10))
+	}
+	if query != "" {
+		q.Set("q", query)
+	}
+	return a.callOn(machineID, "GET", "/v1/memory?"+q.Encode(), nil)
+}
+
+// SaveMemoryPage rewrites the state page by hand.
+func (a *App) SaveMemoryPage(machineID, workspaceID, pageJSON string) (string, error) {
+	var page any
+	if err := json.Unmarshal([]byte(pageJSON), &page); err != nil {
+		return "", fmt.Errorf("invalid memory page: %w", err)
+	}
+	return a.callOn(machineID, "POST", "/v1/memory/page", map[string]any{
+		"workspace_id": workspaceID, "page": page,
+	})
+}
+
+// DeleteMemoryNote removes one note for good.
+func (a *App) DeleteMemoryNote(machineID, workspaceID string, id int64) (string, error) {
+	return a.callOn(machineID, "POST", "/v1/memory/notes/delete", map[string]any{
+		"workspace_id": workspaceID, "id": id,
+	})
+}
+
+// ClearMemory forgets everything remembered about a workspace. The screen
+// asks twice before calling.
+func (a *App) ClearMemory(machineID, workspaceID string) (string, error) {
+	return a.callOn(machineID, "POST", "/v1/memory/clear", map[string]any{
+		"workspace_id": workspaceID,
+	})
+}
+
+// ExportMemory renders the memory as Markdown and saves it where the user
+// points the native dialog. The file lands on this computer whichever
+// machine the memory lives on; "" means the dialog was cancelled.
+func (a *App) ExportMemory(machineID, workspaceID string) (string, error) {
+	raw, err := a.callOn(machineID, "GET", "/v1/memory/export?workspace_id="+url.QueryEscape(workspaceID), nil)
+	if err != nil {
+		return "", err
+	}
+	var doc struct {
+		Filename string `json:"filename"`
+		Markdown string `json:"markdown"`
+	}
+	if err := json.Unmarshal([]byte(raw), &doc); err != nil {
+		return "", fmt.Errorf("invalid export: %w", err)
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export memory",
+		DefaultFilename: doc.Filename,
+		Filters:         []runtime.FileFilter{{DisplayName: "Markdown", Pattern: "*.md"}},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	if err := os.WriteFile(path, []byte(doc.Markdown), 0o644); err != nil {
+		return "", fmt.Errorf("saving export: %w", err)
+	}
+	return path, nil
+}
+
+// callOn routes a call to the machine the window stands on: this Core, or
+// a remote one through the per-machine proxy.
+func (a *App) callOn(machineID, method, path string, body any) (string, error) {
+	if machineID == "" {
+		return a.call(method, path, body)
+	}
+	return a.callWithin(method, "/v1/machines/"+machineID+path, body, 30*time.Second)
 }
 
 // SignOutTunnel forgets a provider's credential on this machine. A sign-in
