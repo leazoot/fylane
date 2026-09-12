@@ -3745,5 +3745,17 @@ describe("memory screen", () => {
     await settle();
     expect(text()).toContain("Couldn't read the memory.");
     expect(button("Retry")).not.toBeUndefined();
+
+    // A remote Core from before this page answers 404 through the proxy:
+    // that is a reason to say, not a failure to retry.
+    const old = memSource(memDoc(), {
+      fetch: async () => {
+        throw new Error("core error (404): 404 page not found");
+      },
+    });
+    draw(<MemoryScreen {...memoryProps(old.source)} machine="HK" />);
+    await settle();
+    expect(text()).toContain("Fylane on HK is older than this page.");
+    expect(button("Retry")).toBeUndefined();
   });
 });

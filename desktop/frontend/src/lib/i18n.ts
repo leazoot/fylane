@@ -855,6 +855,10 @@ export const DICT = {
     zh: "先在通道里授权一个目录,AI 关于它的记忆会出现在这里。",
   },
   "memory.errLoad": { en: "Couldn't read the memory.", zh: "读不到记忆。" },
+  "memory.tooOld": {
+    en: "Fylane on {machine} is older than this page. Install v0.0.5 there and its memory shows up here.",
+    zh: "{machine} 上的 Fylane 版本比这一页更早,装上 v0.0.5 之后记忆就会显示在这里。",
+  },
   "memory.retry": { en: "Retry", zh: "重试" },
   "shell.errMemory": { en: "Couldn't change the memory", zh: "记忆操作失败" },
   "cmd.openMemory": { en: "Open memory", zh: "打开记忆" },

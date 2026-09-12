@@ -80,7 +80,9 @@ export function MemoryScreen({
   const { t } = tr;
   const wsID = workspace?.id ?? "";
   const [doc, setDoc] = useState<MemoryDoc | null>(null);
-  const [failed, setFailed] = useState(false);
+  // "old" is a remote Core from before this page existed: its proxy answers
+  // 404 to the memory endpoint, which is a reason, not a failure to retry.
+  const [failed, setFailed] = useState<false | "read" | "old">(false);
   const [filter, setFilter] = useState<Filter>("live");
   const [typed, setTyped] = useState("");
   const [query, setQuery] = useState("");
@@ -113,8 +115,8 @@ export function MemoryScreen({
         setDoc(next);
         setFailed(false);
       }
-    } catch {
-      if (mine === serial.current) setFailed(true);
+    } catch (err) {
+      if (mine === serial.current) setFailed(missingEndpoint(err) ? "old" : "read");
     }
   }, [source, wsID, filter, query]);
 
@@ -261,7 +263,11 @@ export function MemoryScreen({
       </Head>
 
       {doc === null ? (
-        failed ? (
+        failed === "old" ? (
+          <div className="fy-mem-nonotes fy-mem-none">
+            {t("memory.tooOld", { machine: machine || t("machine.local") })}
+          </div>
+        ) : failed ? (
           <div className="fy-mem-failed">
             {t("memory.errLoad")}
             <button type="button" className="fy-mem-link" onClick={() => void load()}>
@@ -331,6 +337,12 @@ export function MemoryScreen({
       )}
     </div>
   );
+}
+
+/** The shell reports a proxied answer as "core error (404): …": the Core on
+ *  the other end predates the memory endpoints. */
+function missingEndpoint(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("(404)");
 }
 
 function Head({
