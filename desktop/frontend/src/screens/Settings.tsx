@@ -73,6 +73,41 @@ import { Jelly } from "../components/Jelly";
  *
  *  Nothing renders when nothing is configured. An empty list on a page with no
  *  design for one is a row that only ever says "no". */
+/** A rule's label. Its explanation is a tooltip on hover or focus, the
+ * same one the fixed pill uses, so the column reads as a list of settings
+ * and the manual is one pointer away. */
+function Label({ text, help, id }: { text: string; help?: string; id: string }) {
+  const [open, setOpen] = useState(false);
+  if (!help) {
+    return <div className="fy-slabel">{text}</div>;
+  }
+  return (
+    <div className="fy-slabel">
+      <span
+        className="fy-help"
+        tabIndex={0}
+        aria-describedby={open ? id : undefined}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
+        {text}
+        {open && (
+          <span className="fy-tip fy-tip-left" id={id} role="tooltip">
+            {help}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** The name on the vendor's download page, not the binary's. */
+function productName(binary: string): string {
+  return { tailscale: "Tailscale", cloudflared: "cloudflared", ngrok: "ngrok" }[binary] ?? binary;
+}
+
 function ProxyRows({ proxies, tr }: { proxies: ProxyProvider[]; tr: Translator }) {
   const { t } = tr;
   if (proxies.length === 0) {
@@ -607,6 +642,51 @@ export function SettingsScreen({
               tr={tr}
               onPick={(key) => void chooseRung(key)}
             />
+            {/* Both notices sit under the list they are about. The card's
+                right column is long, so a notice at the card's foot lands a
+                screen below the choice that raised it and is never seen. */}
+            {asking && (
+              <div className="fy-warn">
+                <div style={{ flex: 1 }}>
+                  <div className="fy-slabel">{t("set.openConfirmTitle")}</div>
+                  <div className="fy-snote" style={{ color: "var(--fy-ink2)" }}>
+                    {t("set.openConfirmBody")}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    flex: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <button type="button" className="fy-quiet" onClick={() => setAsking(false)}>
+                    {t("set.cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    className="fy-smallbtn"
+                    onClick={() => void chooseRung("open", true)}
+                  >
+                    {t("set.openConfirmYes")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* the open rung is never a quiet state. */}
+            {!asking && rung === "open" && (
+              <div className="fy-warn">
+                <div style={{ flex: 1 }}>
+                  <div className="fy-slabel">{t("set.openWarning")}</div>
+                  <div className="fy-snote" style={{ color: "var(--fy-ink2)" }}>
+                    {t("set.openWarningBody")}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* The second approval axis, under its own heading rather than
                 among the execution rules on the right. That column holds
                 bounds on how a command runs; this is the other half of the
@@ -638,8 +718,7 @@ export function SettingsScreen({
             />
             <div className="fy-rule-row">
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="fy-slabel">{t("set.allowStop")}</div>
-                <div className="fy-snote">{t("set.allowStopNote")}</div>
+                <Label text={t("set.allowStop")} help={t("set.allowStopNote")} id="fy-help-stop" />
               </div>
               <Switch
                 label={t("set.allowStop")}
@@ -650,8 +729,7 @@ export function SettingsScreen({
             </div>
             <div className="fy-rule-row">
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="fy-slabel">{t("set.timeout")}</div>
-                <div className="fy-snote">{t("set.timeoutNote")}</div>
+                <Label text={t("set.timeout")} help={t("set.timeoutNote")} id="fy-help-timeout" />
               </div>
               <Stepper
                 label={t("set.timeout")}
@@ -677,47 +755,6 @@ export function SettingsScreen({
           </div>
         </div>
 
-        {asking && (
-          <div className="fy-warn">
-            <div style={{ flex: 1 }}>
-              <div className="fy-slabel">{t("set.openConfirmTitle")}</div>
-              <div className="fy-snote" style={{ color: "var(--fy-ink2)" }}>
-                {t("set.openConfirmBody")}
-              </div>
-            </div>
-            <div
-              style={{
-                flex: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <button type="button" className="fy-quiet" onClick={() => setAsking(false)}>
-                {t("set.cancel")}
-              </button>
-              <button
-                type="button"
-                className="fy-smallbtn"
-                onClick={() => void chooseRung("open", true)}
-              >
-                {t("set.openConfirmYes")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* the open rung is never a quiet state. */}
-        {!asking && rung === "open" && (
-          <div className="fy-warn">
-            <div style={{ flex: 1 }}>
-              <div className="fy-slabel">{t("set.openWarning")}</div>
-              <div className="fy-snote" style={{ color: "var(--fy-ink2)" }}>
-                {t("set.openWarningBody")}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── connection ───────────────────────────────────────────────── */}
@@ -906,12 +943,17 @@ function GrantRows({
     workspace: "set.grantsNoteWorkspace",
     open: "set.grantsNoteOpen",
   };
+  // A grant records the rung it was given under as a string; an unknown
+  // one (a newer build's) is shown as-is rather than mislabelled.
+  const rungName = (r: string) => {
+    const known = RUNGS.find((x) => x.key === r);
+    return known ? t(known.label) : r;
+  };
   return (
     <>
       <div className="fy-rule-row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="fy-slabel">{t("set.grants")}</div>
-          <div className="fy-snote">{t(note[rung])}</div>
+          <Label text={t("set.grants")} help={t(note[rung])} id="fy-help-grants" />
         </div>
       </div>
       {grants.length === 0 && (
@@ -923,16 +965,16 @@ function GrantRows({
       )}
       {grants.map((g) => {
         const ago = agoShort(new Date(g.granted_at).getTime(), now, tr);
-        const line =
+        const [line, more] =
           rung === "open"
-            ? t("set.grantInert", { ago })
+            ? [t("set.grantInert", { ago }), t("set.grantInertDetail")]
             : g.rung === rung
-              ? t("set.grantSince", { ago })
-              : t("set.grantStale", { ago, rung: g.rung });
+              ? [t("set.grantSince", { ago }), undefined]
+              : [t("set.grantStale", { ago }), t("set.grantStaleDetail", { rung: rungName(g.rung) })];
         return (
           <div className="fy-rule-row" key={g.workspace_id}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="fy-slabel">{nameOf(g.workspace_id)}</div>
+              <Label text={nameOf(g.workspace_id)} help={more} id={"fy-help-grant-" + g.workspace_id} />
               <div className="fy-snote" style={{ color: g.rung === rung ? undefined : "var(--fy-ink2)" }}>
                 {line}
               </div>
@@ -991,8 +1033,7 @@ function NetworkRows({
     <>
       <div className="fy-rule-row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="fy-slabel">{t("set.network")}</div>
-          <div className="fy-snote">{t("set.networkNote")}</div>
+          <Label text={t("set.network")} help={t("set.networkNote")} id="fy-help-network" />
         </div>
       </div>
       {granted.map((w) => {
@@ -1088,8 +1129,7 @@ function ServerRows({ servers, tr }: { servers: LanguageServer[]; tr: Translator
     <>
       <div className="fy-rule-row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="fy-slabel">{t("set.servers")}</div>
-          <div className="fy-snote">{t("set.serversNote")}</div>
+          <Label text={t("set.servers")} help={t("set.serversNote")} id="fy-help-servers" />
         </div>
       </div>
       {servers.map((s) => (
@@ -1140,10 +1180,12 @@ function ReadBoundaryRow({
     <>
       <div className="fy-rule-row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="fy-slabel">{t("set.readBoundary")}</div>
-          <div className="fy-snote">
-            {absent ? info.detail || t("set.readBoundaryAbsent") : t("set.readBoundaryNote")}
-          </div>
+          <Label
+            text={t("set.readBoundary")}
+            help={absent ? undefined : t("set.readBoundaryNote")}
+            id="fy-help-readbox"
+          />
+          {absent && <div className="fy-snote">{info.detail || t("set.readBoundaryAbsent")}</div>}
         </div>
         {!absent && (
           <Switch
@@ -1176,10 +1218,7 @@ function RiskyRow({ tr }: { tr: Translator }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span className="fy-dot fy-dot-sm" style={{ background: "var(--fy-amber)" }} />
-          <span className="fy-slabel">{t("set.risky")}</span>
-        </div>
-        <div className="fy-snote" style={{ paddingLeft: 13 }}>
-          {t("set.riskyNote")}
+          <Label text={t("set.risky")} help={t("set.riskyNote")} id="fy-help-risky" />
         </div>
       </div>
       <button
@@ -1805,7 +1844,7 @@ function Missing({
     return (
       <div>
         <div className="fy-snote" style={{ marginTop: 0 }}>
-          {t("conn.unpinned", { name: p.binary, platform })}
+          {t("conn.unpinned", { name: productName(p.binary) })}
         </div>
         <button
           type="button"
@@ -1816,7 +1855,6 @@ function Missing({
         >
           {t("conn.openDownload")}
         </button>
-        <div className="fy-snote">{t("conn.installThenReturn")}</div>
       </div>
     );
   }

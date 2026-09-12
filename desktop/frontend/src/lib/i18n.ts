@@ -280,8 +280,8 @@ export const DICT = {
   },
   "set.risky": { en: "High-risk commands", zh: "高风险命令" },
   "set.riskyNote": {
-    en: "Deleting, killing processes, escalating privilege and writing to system directories always pass through the gate.",
-    zh: "删除、终止进程、提权、写入系统目录等命令始终经过 Gate。",
+    en: "Deleting files, killing processes, escalating privilege, changing system directories: asked every time, whatever the setting above.",
+    zh: "删除文件、结束进程、提权、修改系统目录:不管上面选哪一档,每次都会先问你。",
   },
   "set.riskyValue": { en: "Always asks", zh: "始终询问" },
   "set.fixed": { en: "Fixed", zh: "固定" },
@@ -291,21 +291,21 @@ export const DICT = {
   },
   "set.timeout": { en: "Task timeout", zh: "任务超时" },
   "set.timeoutNote": {
-    en: "A command that runs longer is stopped and recorded as timed out.",
-    zh: "超过这个时间的命令会被结束并记为超时。",
+    en: "A command still running after this long is ended and recorded as timed out.",
+    zh: "运行超过这个时间的命令会被结束,并记为超时。",
   },
   "set.secs": { en: "{n}s", zh: "{n} 秒" },
   "set.mins": { en: "{n} min", zh: "{n} 分钟" },
   "set.allowStop": { en: "Allow stopping a task", zh: "允许随时停止任务" },
   "set.allowStopNote": {
-    en: "Shows a stop button on the task list so a running command can be interrupted.",
-    zh: "任务列表中显示「停止」,可中断正在执行的命令。",
+    en: "Shows a Stop button on the task list so a running command can be interrupted.",
+    zh: "任务列表里显示「停止」按钮,可以中断正在运行的命令。",
   },
   "laneV3.mNetwork": { en: "NETWORK", zh: "网络" },
   "set.network": { en: "Outbound network", zh: "出站网络" },
   "set.networkNote": {
-    en: "Whether the commands and delegated agents of each folder may reach the network. Denying it makes any build that fetches dependencies fail, which is why it is per folder and off by default.",
-    zh: "每个文件夹的命令与委派 agent 能否访问网络。拒绝之后,任何需要拉取依赖的构建都会失败 —— 所以它按文件夹分,并且默认不拒绝。",
+    en: "Lets commands in each folder reach the network. Turning it off makes builds that download dependencies fail. On by default.",
+    zh: "允许每个目录里的命令联网。关闭后,需要下载依赖的构建会失败。默认允许。",
   },
   "set.netAllowed": { en: "can reach the network", zh: "可以联网" },
   "set.netDenied": { en: "no network", zh: "不能联网" },
@@ -324,8 +324,8 @@ export const DICT = {
   "record.compact": { en: "Compact", zh: "紧凑" },
   "set.servers": { en: "Code navigation", zh: "代码导航" },
   "set.serversNote": {
-    en: "Language servers installed on this machine. Fylane starts one to answer where a symbol is defined and who uses it; it reads, and never writes.",
-    zh: "本机已安装的 language server。Fylane 会启动它来回答符号定义在哪、谁在用;它只读,不写。",
+    en: "The AI can look up where a function or variable is defined and where it is used. Read-only; nothing is written.",
+    zh: "AI 可以查到函数或变量在哪定义、在哪被使用。只读,不会改文件。",
   },
   "set.serverFiles": { en: "{files} files", zh: "{files} 文件" },
   "set.serverMore": { en: "{shown} and {rest} more", zh: "{shown} 等 {rest} 种" },
@@ -336,8 +336,8 @@ export const DICT = {
   "set.serverIdle": { en: "starts when needed", zh: "用到时启动" },
   "set.readBoundary": { en: "Subprocess read boundary", zh: "子进程读边界" },
   "set.readBoundaryNote": {
-    en: "Programs Fylane starts can read this workspace and the toolchain caches. Everything else on this machine is denied by the kernel, not by Fylane.",
-    zh: "Fylane 启动的程序只能读取本工作区与工具链缓存。这台机器上的其他内容由内核拒绝,不是由 Fylane 拒绝。",
+    en: "Programs the AI runs can read only this folder and the toolchain caches. The operating system blocks everything else.",
+    zh: "AI 运行的程序只能读取这个目录和工具链缓存,电脑上的其他文件由系统拦下。",
   },
   "set.readBoundaryAbsent": {
     en: "This system offers no such boundary, so subprocess reads are not bounded. Every other check runs exactly as it does elsewhere.",
@@ -394,29 +394,31 @@ export const DICT = {
   },
   "set.grants": { en: "Folders already authorized", zh: "已授权的目录" },
   "set.grantsNoteWorkspace": {
-    en: "On this rung, approving one command authorizes the folder it ran in. These authorizations stay until you withdraw them.",
-    zh: "在这一档，批准一条命令就授权了它所在的整个目录。这些授权会一直有效，直到你收回。",
+    en: "After one command is approved in a folder, ordinary commands there no longer ask. Withdraw to be asked again.",
+    zh: "在一个目录里批准过一条命令后,那里的普通命令不再询问。收回后会重新询问。",
   },
   "set.grantsNoteStrict": {
-    en: "This rung asks about every command, so it grants nothing and honours nothing granted earlier. The folders below were authorized at a looser rung and are listed so you can clear them.",
-    zh: "这一档每条命令都会问，因此它既不发出授权，也不认从前发出的。下面这些是在更宽的档位上授权的，列在这里是为了让你能清掉它们。",
+    en: "Set to ask every time, so these authorizations are not in effect. Folders authorized earlier are listed so you can withdraw them.",
+    zh: "当前设为每次都问,这些授权暂不生效。之前授权过的目录列在这里,可以收回。",
   },
   "set.grantsNoteOpen": {
-    en: "This rung asks about ordinary commands at all, so no authorization is what keeps them unasked — the rung is. The folders below are listed so you can clear them before you tighten it again.",
-    zh: "这一档本来就不问普通命令，所以让它们不被询问的不是这些授权，是档位本身。列在这里，是为了你收紧档位之前能先清掉它们。",
+    en: "Set to run ordinary commands without asking, so these authorizations make no difference. They apply again when you choose a stricter setting.",
+    zh: "当前设为普通命令不询问,这些授权暂不起作用。改回更严格的设置时会重新生效。",
   },
   "set.grantsNone": {
     en: "No folder is authorized. Every command is asked about.",
     zh: "没有目录被授权。每条命令都会询问。",
   },
   "set.grantSince": { en: "Authorized {ago}.", zh: "{ago}授权。" },
-  "set.grantStale": {
-    en: "Authorized {ago}, at the {rung} rung. Not in effect: you have since tightened this, and the folder is asked about again.",
-    zh: "{ago}在「{rung}」档授权。当前不生效：你之后收紧了档位，这个目录会重新询问。",
+  "set.grantStale": { en: "Authorized {ago} · not in effect", zh: "{ago}授权 · 暂不生效" },
+  "set.grantStaleDetail": {
+    en: "Given under “{rung}”. The setting is stricter now, so this folder is asked about again.",
+    zh: "当时在「{rung}」下授权。现在的设置更严格,这个目录会重新询问。",
   },
-  "set.grantInert": {
-    en: "Authorized {ago}. Withdrawing changes nothing today — this rung asks about nothing — and takes effect the moment you step back down.",
-    zh: "{ago}授权。现在收回不会改变任何事——这一档本来就不问——但你退回更严的档位时它就生效了。",
+  "set.grantInert": { en: "Authorized {ago} · not in effect", zh: "{ago}授权 · 暂不生效" },
+  "set.grantInertDetail": {
+    en: "Applies again when you choose a stricter setting. Withdrawing now changes nothing today.",
+    zh: "改回更严格的设置时会重新生效。现在收回不影响任何事。",
   },
   "set.grantWithdraw": { en: "Withdraw", zh: "收回" },
   "set.undoClear": { en: "Clear the undo copies", zh: "清除撤销副本" },
@@ -560,12 +562,8 @@ export const DICT = {
   // No pin for this platform: there is nothing to offer, and an offer that
   // cannot be honoured is worse than no offer. Only the way out is shown.
   "conn.unpinned": {
-    en: "{name} is not on this machine, and this build has none prepared for {platform}.",
-    zh: "这台机器上没有 {name}，这个版本也没有为 {platform} 准备好的一份。",
-  },
-  "conn.installThenReturn": {
-    en: "Install it and come back — this row will say it is installed on its own.",
-    zh: "装好后回到这里，这一行会自己变成「已安装」。",
+    en: "{name} is not installed on this machine.",
+    zh: "这台机器上没有安装 {name}。",
   },
   "conn.signIn": { en: "Sign in", zh: "连接账号" },
   "conn.signInAgain": { en: "Sign in again", zh: "重新连接账号" },

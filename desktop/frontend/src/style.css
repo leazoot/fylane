@@ -1941,6 +1941,26 @@ a {
   color: var(--fy-faint);
   text-wrap: pretty;
 }
+/* A label that carries help: the pointer says so, and the tooltip anchors
+   to the label's left edge rather than the pill's right. */
+.fy-help {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--fy-rule2);
+  text-underline-offset: 3px;
+}
+.fy-help:focus {
+  outline: none;
+}
+.fy-help:focus-visible {
+  text-decoration-color: var(--fy-ink);
+}
+.fy-tip-left {
+  left: 0;
+  right: auto;
+}
 
 /* Desktop stepper for the timeout. */
 .fy-stepper {
@@ -2031,6 +2051,8 @@ a {
 /* An amber block for the one rung that has to keep saying what it is. */
 .fy-warn {
   display: flex;
+  /* In the narrow policy column the buttons drop under the text. */
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 20px;
   margin-top: 14px;

@@ -851,6 +851,40 @@ describe("the open rung", () => {
     expect(asked).toEqual([{ rung: "open", confirm: true }]);
   });
 
+  it("asks again the next time the open rung is chosen", async () => {
+    // A user who tightened the rung and later loosens it again gets the same
+    // question: the acknowledgement is per change, not once per session.
+    const asked: { rung: string; confirm: boolean }[] = [];
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({
+          setRung: async (rung, confirm) => {
+            asked.push({ rung, confirm });
+            return { rung, grants: [] };
+          },
+        })}
+      />,
+    );
+    await settle();
+
+    click(rung("Allowed inside the workspace"));
+    click(button("I understand, turn it on"));
+    await settle();
+    expect(text()).toContain("Ordinary commands run without asking");
+
+    click(rung("Ask once per workspace"));
+    await settle();
+    expect(text()).not.toContain("Ordinary commands run without asking");
+
+    click(rung("Allowed inside the workspace"));
+    expect(text()).toContain("Ordinary commands will run without asking");
+    click(button("I understand, turn it on"));
+    await settle();
+    expect(asked.map((a) => a.rung)).toEqual(["open", "workspace", "open"]);
+    expect(text()).toContain("Ordinary commands run without asking");
+  });
+
   it("lets the question be declined without changing anything", async () => {
     const asked: string[] = [];
     draw(
@@ -1750,7 +1784,32 @@ describe("standing workspace grants", () => {
   it("says a grant is what keeps commands unasked only on the rung where it is", async () => {
     draw(<SettingsScreen {...settingsProps} deps={deps({ commands: async () => held() })} />);
     await settle();
-    expect(text()).toContain("approving one command authorizes the folder");
+    expect(await helpOf("Folders already authorized")).toContain("ordinary commands there no longer ask");
+  });
+
+  // The explanation lives in a tooltip, so a test has to open it the way a
+  // keyboard user does before it can read it.
+  const helpOf = async (label: string) => {
+    const el = Array.from(document.querySelectorAll(".fy-help")).find((e) =>
+      e.textContent?.includes(label),
+    ) as HTMLElement;
+    await act(async () => el.focus());
+    const tip = document.querySelector('[role="tooltip"]')?.textContent ?? "";
+    await act(async () => el.blur());
+    return tip;
+  };
+
+  it("keeps the explanation behind the label, shown while it has focus", async () => {
+    draw(<SettingsScreen {...settingsProps} deps={deps({ commands: async () => held() })} />);
+    await settle();
+    expect(document.querySelector('[role="tooltip"]')).toBeNull();
+    const label = Array.from(document.querySelectorAll(".fy-help")).find((el) =>
+      el.textContent?.includes("Folders already authorized"),
+    ) as HTMLElement;
+    await act(async () => label.focus());
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toContain("Withdraw to be asked again");
+    await act(async () => label.blur());
+    expect(document.querySelector('[role="tooltip"]')).toBeNull();
   });
 
   it("does not claim it on strict, which consults no grant at all", async () => {
@@ -1761,8 +1820,9 @@ describe("standing workspace grants", () => {
       />,
     );
     await settle();
-    expect(text()).toContain("grants nothing and honours nothing granted earlier");
-    expect(text()).not.toContain("approving one command authorizes the folder");
+    const help = await helpOf("Folders already authorized");
+    expect(help).toContain("these authorizations are not in effect");
+    expect(help).not.toContain("ordinary commands there no longer ask");
   });
 
   it("does not claim it on open, where the rung and not the grant is the reason", async () => {
@@ -1773,8 +1833,9 @@ describe("standing workspace grants", () => {
       />,
     );
     await settle();
-    expect(text()).toContain("the rung is");
-    expect(text()).not.toContain("approving one command authorizes the folder");
+    const help = await helpOf("Folders already authorized");
+    expect(help).toContain("these authorizations make no difference");
+    expect(help).not.toContain("ordinary commands there no longer ask");
   });
 
   // A row the user cannot see is a row they cannot clear, so an authorization
@@ -1788,7 +1849,7 @@ describe("standing workspace grants", () => {
     );
     await settle();
     expect(text()).toContain("ai-workspace");
-    expect(text()).toContain("Not in effect");
+    expect(text()).toContain("not in effect");
     expect(button("Withdraw")).toBeTruthy();
   });
 
@@ -2777,12 +2838,12 @@ describe("the connect screen when a tunnel program is missing", () => {
     expect(button("Install it yourself")).toBeDefined();
   });
 
-  it("names the platform instead of offering something it cannot honour", async () => {
+  it("says it is not installed instead of offering something it cannot honour", async () => {
     await openRow({
       platform: "linux/riscv64",
       providers: [quick()], // no offer: this build has no pin for the target
     });
-    expect(text()).toContain("linux/riscv64");
+    expect(text()).toContain("is not installed on this machine");
     expect(button("Download and verify")).toBeUndefined();
     expect(button("Open the download page")).toBeDefined();
   });
