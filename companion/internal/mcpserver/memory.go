@@ -258,7 +258,7 @@ func (t *toolset) memoryRecall(ctx context.Context, _ *mcp.CallToolRequest, in m
 	case out.Page == nil && out.NoteCount == 0:
 		out.Hint = "Nothing is remembered about this workspace yet. When something worth keeping happens, write it with memory_note; rewrite the page when the plan changes."
 	default:
-		out.Hint = "Full text of a note: memory_read with its id. Older notes: memory_read with before_id. By topic: memory_search. Keep the page current with memory_note."
+		out.Hint = "Full text of a note: memory_read with its id. Older notes: memory_read with before_id. By topic: memory_search. Keep the page current with memory_note." + compactDue(out.NoteCount)
 	}
 	return nil, out, nil
 }

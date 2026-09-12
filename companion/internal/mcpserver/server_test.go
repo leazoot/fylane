@@ -191,7 +191,7 @@ func TestHandshakeAndToolList(t *testing.T) {
 		"list_directory": true, "search_files": true, "read_file": true,
 		"read_files": true, "write_file": true, "apply_patch": true,
 		"edit_file": true, "change_manage": true,
-		"memory_recall": true, "memory_note": true, "memory_search": true, "memory_read": true,
+		"memory_recall": true, "memory_note": true, "memory_search": true, "memory_read": true, "memory_compact": true,
 	}
 	if len(names) != len(want) {
 		t.Fatalf("got tools %v, want exactly %v", names, want)

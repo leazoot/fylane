@@ -298,3 +298,31 @@ func scanMemoryNotes(rows *sql.Rows) ([]*MemoryNote, error) {
 	}
 	return out, rows.Err()
 }
+
+// OldestMemoryNotes lists the live trail oldest first, for compaction.
+func (s *Store) OldestMemoryNotes(ctx context.Context, workspaceID string, limit int) ([]*MemoryNote, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT `+memoryNoteColumns+` FROM memory_notes
+		WHERE workspace_id = ? AND archived = 0 ORDER BY id ASC LIMIT ?`, workspaceID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("listing memory notes: %w", err)
+	}
+	return scanMemoryNotes(rows)
+}
+
+// ArchiveMemoryNotes marks every live note up to and including throughID
+// as folded into a summary. They stay readable by id and searchable.
+func (s *Store) ArchiveMemoryNotes(ctx context.Context, workspaceID string, throughID int64) (int, error) {
+	res, err := s.db.ExecContext(ctx, `UPDATE memory_notes SET archived = 1
+		WHERE workspace_id = ? AND archived = 0 AND id <= ?`, workspaceID, throughID)
+	if err != nil {
+		return 0, fmt.Errorf("archiving memory notes: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("archiving memory notes: %w", err)
+	}
+	return int(n), nil
+}

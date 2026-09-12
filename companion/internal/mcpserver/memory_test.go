@@ -161,3 +161,67 @@ func TestMemoryIsSearchedAndPagedWithinTheBudget(t *testing.T) {
 		t.Error("too many ids were accepted")
 	}
 }
+
+func TestMemoryCompactionFoldsTheOldestNotesIntoASummary(t *testing.T) {
+	tools, _, _ := memoryFixture(t)
+	ctx := context.Background()
+	_, offer, err := tools.memoryCompact(ctx, nil, memoryCompactInput{})
+	if err != nil || len(offer.Notes) != 0 || offer.ThroughID != 0 {
+		t.Fatalf("compacting nothing = %+v, %v", offer, err)
+	}
+	for i := 1; i <= memoryCompactAt+5; i++ {
+		if _, _, err := tools.memoryNote(ctx, nil, memoryNoteInput{Title: fmt.Sprintf("step %d", i), Body: fmt.Sprintf("did step %d %s", i, strings.Repeat("x", 100))}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, recall, _ := tools.memoryRecall(ctx, nil, memoryRecallInput{})
+	if !strings.Contains(recall.Hint, "memory_compact") {
+		t.Fatalf("a long trail does not ask for compaction: %s", recall.Hint)
+	}
+
+	// First call: the oldest batch, oldest first, cut by the budget.
+	tools.inlineBudget = 10 * 130
+	_, offer, err = tools.memoryCompact(ctx, nil, memoryCompactInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(offer.Notes) < 5 || len(offer.Notes) > 12 || offer.Notes[0].Title != "step 1" || offer.ThroughID != offer.Notes[len(offer.Notes)-1].ID {
+		t.Fatalf("offer = %d notes, first %q, through %d", len(offer.Notes), offer.Notes[0].Title, offer.ThroughID)
+	}
+	tools.inlineBudget = 0
+	_, wide, _ := tools.memoryCompact(ctx, nil, memoryCompactInput{})
+	if len(wide.Notes) != memoryCompactBatch {
+		t.Fatalf("without a budget the batch is %d, want %d", len(wide.Notes), memoryCompactBatch)
+	}
+
+	// Second call: wrong through_id refused, right one archives.
+	if _, _, err := tools.memoryCompact(ctx, nil, memoryCompactInput{Summary: "s", ThroughID: wide.ThroughID + 50}); err == nil {
+		t.Error("a through_id past the offered batch was accepted")
+	}
+	if _, _, err := tools.memoryCompact(ctx, nil, memoryCompactInput{Summary: strings.Repeat("s", memorySummaryBytes+1), ThroughID: wide.ThroughID}); err == nil {
+		t.Error("an oversized summary was accepted")
+	}
+	_, done, err := tools.memoryCompact(ctx, nil, memoryCompactInput{Summary: "steps 1-40: groundwork laid", ThroughID: wide.ThroughID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if done.Archived != memoryCompactBatch || done.SummaryID == 0 || done.Live != memoryCompactAt+5-memoryCompactBatch+1 {
+		t.Fatalf("done = %+v", done)
+	}
+	_, recall, _ = tools.memoryRecall(ctx, nil, memoryRecallInput{Limit: 1})
+	if recall.NoteCount != done.Live || recall.Archived != memoryCompactBatch || !strings.HasPrefix(recall.Notes[0].Title, "Summary of notes up to") {
+		t.Fatalf("recall after compaction = %+v", recall)
+	}
+	_, found, _ := tools.memorySearch(ctx, nil, memorySearchInput{Query: "did step 40 "})
+	archivedFound := false
+	for _, m := range found.Matches {
+		archivedFound = archivedFound || (m.Title == "step 40" && m.Archived)
+	}
+	if !archivedFound {
+		t.Fatalf("archived notes are not searchable: %+v", found.Matches)
+	}
+	_, next, _ := tools.memoryCompact(ctx, nil, memoryCompactInput{})
+	if len(next.Notes) == 0 || next.Notes[0].Title != "step 41" {
+		t.Fatalf("the next batch does not continue after the archived ones: %+v", next.Notes)
+	}
+}

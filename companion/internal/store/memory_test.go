@@ -118,3 +118,41 @@ func titles(notes []*MemoryNote) []string {
 	}
 	return out
 }
+
+func TestMemoryNotesAreArchivedInOrderAndStayFindable(t *testing.T) {
+	s := openTestStore(t)
+	ctx := context.Background()
+	if err := s.CreateWorkspace(ctx, testWorkspace("ws-c")); err != nil {
+		t.Fatal(err)
+	}
+	var ids []int64
+	for _, title := range []string{"one", "two", "three"} {
+		n := &MemoryNote{WorkspaceID: "ws-c", Title: title, Body: "b"}
+		if err := s.AddMemoryNote(ctx, n); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, n.ID)
+	}
+	oldest, _ := s.OldestMemoryNotes(ctx, "ws-c", 2)
+	if len(oldest) != 2 || oldest[0].Title != "one" || oldest[1].Title != "two" {
+		t.Fatalf("oldest = %v", titles(oldest))
+	}
+	if n, err := s.ArchiveMemoryNotes(ctx, "ws-c", ids[1]); err != nil || n != 2 {
+		t.Fatalf("archived %d, %v", n, err)
+	}
+	if live, archived, _ := s.CountMemoryNotes(ctx, "ws-c"); live != 1 || archived != 2 {
+		t.Fatalf("count = %d live, %d archived", live, archived)
+	}
+	if page, _ := s.ListMemoryNotes(ctx, "ws-c", 0, 10); len(page) != 1 || page[0].Title != "three" {
+		t.Fatalf("listing shows archived notes: %v", titles(page))
+	}
+	if found, _ := s.SearchMemoryNotes(ctx, "ws-c", "one", 10); len(found) != 1 || !found[0].Archived {
+		t.Fatalf("an archived note is not searchable: %v", titles(found))
+	}
+	if got, _ := s.GetMemoryNotes(ctx, "ws-c", ids[:1]); len(got) != 1 {
+		t.Fatal("an archived note is not readable by id")
+	}
+	if n, _ := s.ArchiveMemoryNotes(ctx, "ws-c", ids[1]); n != 0 {
+		t.Fatal("archiving is not idempotent")
+	}
+}

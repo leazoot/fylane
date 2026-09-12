@@ -253,6 +253,13 @@ func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 			Description: "Read notes in full: by ids, or page through the trail newest first with before_id. Answers stop at the inline budget and say where to continue.",
 			Annotations: readOnly,
 		}, tools.memoryRead)
+		if _, ok := deps.Memory.(MemoryCompactor); ok {
+			mcp.AddTool(srv, &mcp.Tool{
+				Name:        "memory_compact",
+				Description: "Fold the oldest notes into one summary when memory_recall says the trail is long. Call with no arguments to receive the oldest notes and a through_id; write a summary (up to 1500 bytes) and call again with summary and through_id. The covered notes are archived, not deleted: still searchable and readable by id.",
+				Annotations: &mcp.ToolAnnotations{ReadOnlyHint: false, DestructiveHint: ptr(false), OpenWorldHint: ptr(false)},
+			}, tools.memoryCompact)
+		}
 	}
 
 	mcp.AddTool(srv, &mcp.Tool{
