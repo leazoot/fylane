@@ -14,7 +14,7 @@ export interface CommandPaletteProps {
   tasks: TaskInfo[];
   /** Whether a running task may be stopped (settings › execution). */
   canStop: boolean;
-  onGoto: (screen: "lane" | "tasks" | "settings") => void;
+  onGoto: (screen: "lane" | "tasks" | "memory" | "settings") => void;
   onClose: () => void;
   onApprove: (changeSetID: string) => void;
   onStopTask: (taskID: string) => void;
@@ -80,6 +80,7 @@ export function CommandPalette({
     out.push(
       { key: "go:lane", label: t("cmd.openLane"), hint: "⏎", run: () => onGoto("lane") },
       { key: "go:tasks", label: t("cmd.openTasks"), hint: "⏎", run: () => onGoto("tasks") },
+      { key: "go:memory", label: t("cmd.openMemory"), hint: "⏎", run: () => onGoto("memory") },
       { key: "go:settings", label: t("cmd.openSettings"), hint: "⏎", run: () => onGoto("settings") },
     );
     const running = tasks.find((task) => task.state === "running");

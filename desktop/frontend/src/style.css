@@ -3110,3 +3110,593 @@ a {
   direction: ltr;
   color: var(--fy-sage);
 }
+
+/* ── memory (Fylane-V3 board 17) ─────────────────────────────────────────
+   One spacing scale (4 / 8 / 12 / 16 / 24 / 32), the same 40px margin on
+   both sides, radius only on a row (6px) and the sheet (8px), no shadow on
+   the page. Three greys — ink, ink2, faint — and three status colours:
+   sage for done, amber for undecided, ink for a summary. */
+
+.fy-page.fy-mem {
+  padding: 24px 40px 0;
+}
+@media (max-width: 900px) {
+  .fy-page.fy-mem {
+    padding: 24px 28px 0;
+  }
+}
+
+/* Head: one row. Title, the facts about this folder at the same baseline,
+   the toolbar on the right. Nothing stacks. */
+.fy-mem-head {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--fy-rule);
+}
+.fy-mem-head h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.1;
+}
+.fy-mem-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font: 400 12px/1.4 var(--fy-sans);
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+  flex-wrap: wrap;
+}
+.fy-mem-sub .fy-mchip {
+  margin-right: 0;
+  vertical-align: 0;
+}
+.fy-mem-name {
+  color: var(--fy-muted);
+}
+.fy-mem-onmachine {
+  color: var(--fy-faint);
+}
+.fy-mem-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.fy-mem-search {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  border-bottom: 1px solid var(--fy-rule);
+  padding-bottom: 3px;
+  width: 160px;
+}
+.fy-mem-search:focus-within {
+  border-bottom-color: var(--fy-ink);
+}
+.fy-mem-search svg {
+  width: 11px;
+  height: 11px;
+  stroke: var(--fy-faint);
+  fill: none;
+  stroke-width: 1.6;
+  transform: translateY(1px);
+  flex: none;
+}
+.fy-mem-search input {
+  border: 0;
+  background: transparent;
+  font: 400 12.5px var(--fy-sans);
+  color: var(--fy-ink);
+  outline: none;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.fy-mem-search input::placeholder {
+  color: var(--fy-faint);
+}
+.fy-mem-filter {
+  border: 0;
+  background: transparent;
+  padding: 0 0 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  border-bottom: 1.5px solid transparent;
+  font: 400 12.5px var(--fy-sans);
+  color: var(--fy-muted);
+}
+.fy-mem-filter:hover {
+  color: var(--fy-ink2);
+}
+.fy-mem-filter[aria-pressed="true"] {
+  font-weight: 500;
+  color: var(--fy-ink);
+  border-bottom-color: var(--fy-ink);
+}
+.fy-mem-filter span {
+  font-size: 11px;
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+}
+.fy-mem-acts {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-left: 16px;
+  border-left: 1px solid var(--fy-rule2);
+}
+.fy-mem-ask {
+  font: 400 11.5px var(--fy-sans);
+  color: var(--fy-amber);
+}
+.fy-mem-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: 400 12px var(--fy-sans);
+  color: var(--fy-muted);
+  border-bottom: 1px solid transparent;
+}
+.fy-mem-link:hover:not(:disabled),
+.fy-mem-link:focus-visible {
+  color: var(--fy-ink);
+  border-bottom-color: var(--fy-rule);
+}
+.fy-mem-link.fy-mem-brick:hover {
+  color: var(--fy-brick);
+  border-bottom-color: var(--fy-brick);
+}
+.fy-mem .fy-quiet {
+  padding: 0;
+  font-size: 11.5px;
+}
+.fy-mem .fy-quiet:hover:not(:disabled) {
+  color: var(--fy-brick);
+}
+
+/* Eyebrow: the tasks feed's group head, tightened. */
+.fy-mem-grouphead {
+  gap: 12px;
+  padding: 12px 0 4px;
+}
+.fy-mem-grouphead span:first-child {
+  font-size: 10.5px;
+}
+.fy-mem-grouphead span:last-child {
+  font-size: 11px;
+}
+
+/* Current state: no slab. Two rows of columns separated by hairlines; each
+   cell is title / count on one line, three lines of text, a quiet link. */
+.fy-mem-state {
+  flex: none;
+}
+.fy-mem-cells {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1.15fr;
+}
+.fy-mem-cells-two {
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--fy-rule2);
+}
+.fy-mem-cell {
+  padding: 8px 16px 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.fy-mem-cell + .fy-mem-cell {
+  padding-left: 16px;
+  border-left: 1px solid var(--fy-rule2);
+}
+.fy-mem-cell-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: 500 12.5px/1.4 var(--fy-sans);
+  color: var(--fy-ink);
+}
+.fy-mem-cell-title span {
+  flex: 1;
+}
+.fy-mem-cell-title small {
+  font: 400 10.5px var(--fy-mono);
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+.fy-mem-clamp {
+  position: relative;
+  max-height: calc(1.55em * 3);
+  overflow: hidden;
+}
+.fy-mem-clamp::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.2em;
+  background: linear-gradient(to bottom, transparent, var(--fy-bg));
+  pointer-events: none;
+}
+.fy-mem-short .fy-mem-clamp::after {
+  display: none;
+}
+.fy-mem-cell p {
+  margin: 0;
+  font: 400 12.5px/1.55 var(--fy-sans);
+  color: var(--fy-ink2);
+  max-width: 60ch;
+  white-space: pre-line;
+}
+.fy-mem-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fy-mem-list li {
+  display: flex;
+  gap: 8px;
+  font: 400 12.5px/1.55 var(--fy-sans);
+  color: var(--fy-ink2);
+}
+.fy-mem-list li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 3px;
+  margin-top: 7px;
+  background: var(--fy-sage);
+}
+.fy-mem-open .fy-mem-list li::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--fy-amber);
+}
+.fy-mem-none {
+  color: var(--fy-faint);
+}
+.fy-mem-more {
+  align-self: flex-start;
+  margin-top: 2px;
+  font: 400 11.5px var(--fy-sans);
+  color: var(--fy-faint);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+.fy-mem-more:hover:not(:disabled),
+.fy-mem-more:focus-visible {
+  color: var(--fy-ink);
+  border-bottom-color: var(--fy-rule);
+}
+.fy-mem-more:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Feed. One line per note at rest: time | dot | title | source · link |
+   chevron. Hover is a shade; nothing lifts. */
+.fy-mem-feed {
+  margin: 0 -8px;
+  padding: 0 8px 80px;
+}
+.fy-mem-feed .fy-mem-grouphead {
+  padding-top: 16px;
+}
+.fy-mem-nonotes {
+  padding: 24px 0;
+  font: 400 12.5px/1.6 var(--fy-sans);
+}
+.fy-mem-loadmore {
+  margin: 12px 0 0 62px;
+}
+.fy-mem-row {
+  margin: 0 -8px;
+  padding: 0 12px 0 8px;
+  border-radius: 6px;
+  transition: background 0.14s ease-out;
+}
+.fy-mem-row:hover {
+  background: var(--fy-tint);
+}
+.fy-mem-row[data-open="true"] {
+  background: var(--fy-surf);
+}
+.fy-mem-rhead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 0;
+  cursor: pointer;
+}
+.fy-mem-rhead:focus-visible {
+  outline: 1.5px solid var(--fy-ink);
+  outline-offset: -1px;
+  border-radius: 6px;
+}
+.fy-mem-time {
+  flex: none;
+  width: 44px;
+  font: 400 11.5px/1.4 var(--fy-mono);
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+}
+.fy-mem-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 4px;
+  transform: translateY(-2px);
+  background: var(--fy-sage);
+}
+.fy-mem-dot-plain {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--fy-rule);
+}
+.fy-mem-dot-summary {
+  background: var(--fy-ink);
+}
+.fy-mem-title {
+  flex: 1;
+  min-width: 0;
+  font: 400 13.5px/1.45 var(--fy-sans);
+  color: var(--fy-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fy-mem-archived .fy-mem-title {
+  color: var(--fy-muted);
+}
+.fy-mem-meta {
+  flex: none;
+  width: 200px;
+  text-align: right;
+  font: 400 11.5px/1.4 var(--fy-sans);
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fy-mem-sep {
+  color: var(--fy-rule);
+  padding: 0 3px;
+}
+.fy-mem-chev {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--fy-faint);
+  border-bottom: 1.5px solid var(--fy-faint);
+  transform: rotate(45deg) translateY(-2px);
+  opacity: 0.3;
+  transition:
+    transform 0.2s ease-out,
+    opacity 0.2s ease-out;
+}
+.fy-mem-row:hover .fy-mem-chev {
+  opacity: 0.6;
+}
+.fy-mem-row[data-open="true"] .fy-mem-chev {
+  opacity: 0.75;
+  transform: rotate(-135deg) translateY(-1px);
+}
+.fy-mem-rule {
+  height: 1px;
+  background: var(--fy-rule2);
+  margin-left: 62px;
+}
+.fy-mem-row[data-open="true"] .fy-mem-rule,
+.fy-mem-row:hover .fy-mem-rule {
+  background: transparent;
+}
+.fy-mem-row[data-open="true"] .fy-mem-title {
+  font-weight: 500;
+}
+.fy-mem-row[data-open="true"] .fy-mem-meta {
+  visibility: hidden;
+}
+.fy-mem-panel {
+  display: none;
+}
+.fy-mem-row[data-open="true"] .fy-mem-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 0 12px 62px;
+}
+.fy-mem-body {
+  font: 400 12.5px/1.65 var(--fy-sans);
+  color: var(--fy-ink2);
+  max-width: 64ch;
+  white-space: pre-line;
+  word-break: break-word;
+}
+/* The ledger: one strip under the body, the references side by side,
+   delete at the end. Its height never depends on the body. */
+.fy-mem-ledger {
+  display: flex;
+  gap: 24px;
+  align-items: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid var(--fy-rule2);
+}
+.fy-mem-ledger > div {
+  min-width: 96px;
+  max-width: 40%;
+}
+.fy-mem-k {
+  display: block;
+  font: 400 10px/1 var(--fy-sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fy-faint);
+  margin-bottom: 4px;
+}
+.fy-mem-v {
+  font: 400 12px/1.4 var(--fy-sans);
+  color: var(--fy-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.fy-mem-ref {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: var(--fy-ink);
+  border-bottom: 1px solid var(--fy-rule);
+}
+.fy-mem-ref:hover,
+.fy-mem-ref:focus-visible {
+  border-bottom-color: var(--fy-ink);
+}
+.fy-mem-d {
+  font: 400 11px/1.4 var(--fy-sans);
+  color: var(--fy-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.fy-mem-delete {
+  margin-left: auto;
+  flex: none;
+}
+
+/* Waiting, failing, empty. */
+.fy-mem-wait {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 64px;
+}
+.fy-mem-failed {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 24px 0;
+  font: 400 12.5px/1.6 var(--fy-sans);
+  color: var(--fy-brick);
+}
+.fy-mem-empty {
+  padding-bottom: 64px;
+}
+.fy-mem-empty-title {
+  font-size: 22px;
+  line-height: 1.2;
+}
+.fy-mem-empty-body {
+  margin: 8px 0 0;
+  max-width: 46ch;
+  font: 400 13px/1.65 var(--fy-sans);
+  color: var(--fy-muted);
+  text-wrap: pretty;
+}
+
+/* View all: the product's sheet, narrowed. Raised paper, one hairline. */
+.fy-mem-sheet {
+  top: 88px;
+  width: 520px;
+  max-width: calc(100% - 80px);
+  padding: 16px 20px 14px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fy-mem-sheet-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.fy-mem-sheet-head h2 {
+  margin: 0;
+  flex: 1;
+  font: 400 17px/1.2 var(--fy-serif);
+  color: var(--fy-ink);
+}
+.fy-mem-sheet-head small,
+.fy-mem-count {
+  font: 400 10.5px var(--fy-mono);
+  color: var(--fy-faint);
+  font-variant-numeric: tabular-nums;
+}
+.fy-mem-sheet-full {
+  max-height: 360px;
+  overflow: auto;
+  font: 400 13px/1.7 var(--fy-sans);
+  color: var(--fy-ink2);
+  max-width: 62ch;
+  white-space: pre-line;
+}
+.fy-mem-sheet-full.fy-mem-list li {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.fy-mem-sheet-full.fy-mem-list li::before {
+  margin-top: 8px;
+}
+.fy-mem-sheet-edit {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 180px;
+  max-height: 360px;
+  resize: vertical;
+  border: 0;
+  border-bottom: 1px solid var(--fy-ink);
+  background: transparent;
+  font: 400 13px/1.7 var(--fy-sans);
+  color: var(--fy-ink);
+  padding: 0 0 8px;
+  outline: none;
+}
+.fy-mem-problem {
+  font: 400 11.5px/1.5 var(--fy-sans);
+  color: var(--fy-amber);
+}
+.fy-mem-sheet-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--fy-rule2);
+}
+.fy-mem-btn {
+  border: 0;
+  background: var(--fy-ink);
+  color: var(--fy-bg);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font: 500 12px var(--fy-sans);
+  cursor: pointer;
+}
+.fy-mem-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

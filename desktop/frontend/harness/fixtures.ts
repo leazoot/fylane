@@ -5,6 +5,9 @@ import type {
   CommandSettingsInfo,
   ConnectInfo,
   CoreStatusInfo,
+  MemoryDoc,
+  MemoryNote,
+  MemorySource,
   PrefsInfo,
   RemoteEntry,
   RemoteListing,
@@ -615,3 +618,126 @@ export const HELD_REMOTE: Approval[] = [
     machine: "vps-1",
   },
 ];
+
+// ── memory (board 17) ──────────────────────────────────────────────────
+
+function ago(hours: number): string {
+  return new Date(NOW.getTime() - hours * 3_600_000).toISOString();
+}
+
+export const MEMORY_NOTES: MemoryNote[] = [
+  {
+    id: 12,
+    workspace_id: "ws_1",
+    provider: "chatgpt",
+    title: "IDLE connection layer passed the two real-account tests",
+    body: "Gmail and Fastmail each ran for 30 minutes; median arrival delay 1.8 s. Gmail drops the connection once after 10 idle minutes and the backoff reconnect picks it up without losing mail.\nFastmail's IDLE responses carry RECENT beside EXISTS; the parser ignores it, noted in idle.go.\nNext time delete the poller first, not the settings toggle, or both sync paths run at once.",
+    change_set_id: "chg_0001",
+    run_id: "tsk_1",
+    created_at: ago(1),
+  },
+  {
+    id: 11,
+    workspace_id: "ws_1",
+    provider: "chatgpt",
+    title: "Reconnect backoff capped at 60 seconds",
+    body: "Exponential from 1 s, capped at 60 s, not user-adjustable.",
+    change_set_id: "chg_0002",
+    created_at: ago(3),
+  },
+  {
+    id: 10,
+    workspace_id: "ws_1",
+    provider: "claude",
+    title: "Gmail push API needs Pub/Sub and a public callback; dropped",
+    body: "Both mailboxes must work the same way, so IMAP IDLE it is.",
+    created_at: ago(26),
+  },
+  {
+    id: 9,
+    workspace_id: "ws_1",
+    provider: "chatgpt",
+    title: "sync_cursor table replaced the JSON state file",
+    body: "One row per account; the JSON file is deleted on first run.",
+    change_set_id: "chg_0003",
+    created_at: ago(72),
+  },
+  {
+    id: 8,
+    workspace_id: "ws_1",
+    provider: "chatgpt",
+    title: "Polling at 5-minute intervals has a median delay of 2 min 40 s",
+    body: "Measured over 200 messages with go run ./cmd/measure.",
+    run_id: "tsk_2",
+    created_at: ago(74),
+  },
+  {
+    id: 7,
+    workspace_id: "ws_1",
+    provider: "claude",
+    title: "Account model unchanged: IDLE hangs off Account, no new entity",
+    body: "",
+    created_at: ago(96),
+  },
+  {
+    id: 6,
+    workspace_id: "ws_1",
+    provider: "chatgpt",
+    title: "Summary of notes up to #5 (from 2026-08-01)",
+    body: "Forty notes from the first week: the poller was measured, the IDLE design chosen, the account model kept.",
+    created_at: ago(120),
+  },
+];
+
+export const MEMORY_DOC: MemoryDoc = {
+  state: {
+    workspace_id: "ws_1",
+    provider: "chatgpt",
+    updated_at: ago(2),
+    page: {
+      goal: "Move inbox sync from polling to IMAP IDLE and get delay under 5 s before v0.4, without touching the account model.",
+      progress:
+        "IDLE connection layer done and past the Gmail and Fastmail real-account tests; reconnect uses exponential backoff capped at 60 s. Sync state now lives in the SQLite sync_cursor table. The old polling timer is still there, so both paths run at once. The realtime / every-5-minutes toggle in settings is not done.",
+      next: "Delete internal/poll and run go test ./...; then the settings toggle; then update CHANGELOG.",
+      decisions: [
+        "IMAP IDLE, not the Gmail push API: both mailboxes must work, no second path.",
+        "Reconnect backoff caps at 60 s and is not user-adjustable.",
+        "The polling code is deleted outright, no fallback switch.",
+        "Sync state goes in SQLite, not a JSON file.",
+        "IDLE hangs off Account; no new entity.",
+      ],
+      open: [
+        "iCloud drops IDLE after 29 minutes: per-provider heartbeat?",
+        "The connection ceiling for many accounts idling at once is unmeasured.",
+      ],
+    },
+  },
+  notes: MEMORY_NOTES,
+  live: 7,
+  archived: 40,
+};
+
+export const MEMORY_EMPTY: MemoryDoc = { state: null, notes: [], live: 0, archived: 0 };
+
+/** A source that answers from a fixture and never changes it. */
+export function memorySource(doc: MemoryDoc): MemorySource {
+  return {
+    fetch: async (_ws, q) => ({
+      ...doc,
+      notes: doc.notes.filter(
+        (n) =>
+          !!n.archived === q.archived &&
+          (!q.query || n.title.toLowerCase().includes(q.query.toLowerCase())),
+      ),
+    }),
+    savePage: async (workspace_id, page) => ({
+      workspace_id,
+      page,
+      provider: "user",
+      updated_at: NOW.toISOString(),
+    }),
+    deleteNote: async () => {},
+    clear: async () => {},
+    export: async () => "",
+  };
+}

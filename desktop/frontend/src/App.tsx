@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addMachine,
   addWorkspace,
@@ -30,6 +30,8 @@ import {
   type CommandSettingsInfo,
   type PairClaim,
   type TaskInfo,
+  memorySource,
+  openURL,
 } from "./lib/core";
 import { RemoteFolderSheet } from "./components/RemoteFolderSheet";
 import { AddMachineSheet } from "./components/AddMachineSheet";
@@ -47,6 +49,7 @@ import { updateNotice } from "./lib/settings";
 import { LaneScreen } from "./screens/Lane";
 import { OnboardingScreen } from "./screens/Onboarding";
 import { TasksScreen } from "./screens/Tasks";
+import { MemoryScreen } from "./screens/Memory";
 import { CommandPalette } from "./components/CommandPalette";
 import { PairClaimSheet } from "./components/PairClaimSheet";
 import { SettingsScreen } from "./screens/Settings";
@@ -71,13 +74,19 @@ import { applyTheme, storeTheme, storedTheme, type Theme } from "./lib/theme";
 // and the workspaces bench are gone — not hidden, not disabled, not behind a
 // menu. Switching workspaces lives on the lane's own anchor, and every
 // setting is one page.
-export type Screen = "lane" | "tasks" | "settings";
+export type Screen = "lane" | "tasks" | "memory" | "settings";
 
+// Batch S added a fourth (Fylane-V3 board 17): what the connected AI wrote
+// down about the folder, because it is the user's to read and correct.
 const NAV: { key: Screen; label: Key }[] = [
   { key: "lane", label: "nav.lane" },
   { key: "tasks", label: "nav.tasks" },
+  { key: "memory", label: "nav.memory" },
   { key: "settings", label: "nav.settings" },
 ];
+
+/** Where "how the AI takes notes" points: the README's memory section. */
+const MEMORY_HELP_URL = "https://github.com/leazoot/fylane#readme";
 
 const POLL_MS = 2000;
 export default function App() {
@@ -255,6 +264,9 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
           acceptChangeSet,
           rollbackChangeSet,
         };
+  // One source per machine: the screen refetches when it changes, and it
+  // must not change on every poll.
+  const memory = useMemo(() => memorySource(machineID), [machineID]);
   const chooseMachine = useCallback(
     (id: string) => {
       setMachineID(id);
@@ -449,6 +461,21 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
             onAccept={onAccept}
             onCopy={(text) => void copyText(text)}
             onGotoLane={() => setScreen("lane")}
+          />
+        );
+      case "memory":
+        return (
+          <MemoryScreen
+            workspace={ws}
+            machine={selected?.info.name ?? ""}
+            source={memory}
+            changeSets={snapshot.changeSets}
+            tasks={tasks}
+            now={now}
+            onError={(message) => setError(`${t("shell.errMemory")}: ${message}`)}
+            onGotoLane={() => setScreen("lane")}
+            onGotoTasks={() => setScreen("tasks")}
+            onHelp={() => void openURL(MEMORY_HELP_URL)}
           />
         );
       case "settings":

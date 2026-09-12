@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "../src/style.css";
 import { LaneScreen } from "../src/screens/Lane";
 import { TasksScreen } from "../src/screens/Tasks";
+import { MemoryScreen } from "../src/screens/Memory";
 import { SettingsScreen } from "../src/screens/Settings";
 import { OnboardingScreen, type FirstRunStep } from "../src/screens/Onboarding";
 import { CommandPalette } from "../src/components/CommandPalette";
@@ -24,10 +25,11 @@ import * as fx from "./fixtures";
 // renamed screen has to reach the boards too.
 const en = translatorFor("en");
 
-// Desktop v2 §1: three pages and no fourth.
+// Desktop v2 §1 said three pages; board 17 added the fourth.
 const NAV: { key: string; label: Key }[] = [
   { key: "lane", label: "nav.lane" },
   { key: "tasks", label: "nav.tasks" },
+  { key: "memory", label: "nav.memory" },
   { key: "settings", label: "nav.settings" },
 ];
 
@@ -59,6 +61,7 @@ if (theme === "dark" || theme === "light") {
 /** Which page the board is standing on, for the dock's current-item mark. */
 function active(): string {
   if (board.startsWith("tasks")) return "tasks";
+  if (board.startsWith("memory")) return "memory";
   if (board.startsWith("settings")) return "settings";
   return "lane";
 }
@@ -321,6 +324,28 @@ function Board() {
               onAccept={noop}
               onCopy={noop}
               onGotoLane={noop}
+            />
+          </Scroller>
+        </>
+      );
+    case "memory":
+    case "memory-empty":
+    case "memory-remote":
+      return (
+        <>
+          <Header active="memory" />
+          <Scroller>
+            <MemoryScreen
+              workspace={fx.WORKSPACES[0]}
+              machine={board === "memory-remote" ? fx.MACHINES[0].info.name : ""}
+              source={fx.memorySource(board === "memory-empty" ? fx.MEMORY_EMPTY : fx.MEMORY_DOC)}
+              changeSets={fx.CHANGE_SETS}
+              tasks={fx.TASKS}
+              now={fx.NOW}
+              onError={noop}
+              onGotoLane={noop}
+              onGotoTasks={noop}
+              onHelp={noop}
             />
           </Scroller>
         </>

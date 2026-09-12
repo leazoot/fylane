@@ -7,7 +7,12 @@ import {
   CancelTunnelSetup,
   ChangeSets,
   ClearBackups,
+  ClearMemory,
   ClearTasks,
+  DeleteMemoryNote,
+  ExportMemory,
+  Memory,
+  SaveMemoryPage,
   CommandSettings,
   Connect,
   CopyText,
@@ -784,6 +789,100 @@ export async function acceptChangeSet(
 }
 
 /** Reveals a granted folder in the platform's file manager. */
+// ── memory ──────────────────────────────────────────────────────────────
+// What the platforms remember about a folder (Fylane-V3 board 17). The
+// shapes mirror companion/internal/store's memory rows and the limits the
+// Core enforces on them; the page shows the limits, so they live here too.
+
+export const MEMORY_LIMITS = {
+  goal: 300,
+  progress: 800,
+  next: 800,
+  listItems: 8,
+  listItem: 200,
+} as const;
+
+export type MemoryPage = {
+  goal?: string;
+  progress?: string;
+  next?: string;
+  decisions?: string[];
+  open?: string[];
+};
+
+export type MemoryState = {
+  workspace_id: string;
+  page: MemoryPage;
+  /** Who last rewrote the page: a platform, or "user" from this screen. */
+  provider?: string;
+  updated_at: string;
+};
+
+export type MemoryNote = {
+  id: number;
+  workspace_id: string;
+  provider?: string;
+  title: string;
+  body: string;
+  change_set_id?: string;
+  run_id?: string;
+  archived?: boolean;
+  created_at: string;
+};
+
+export type MemoryDoc = {
+  state: MemoryState | null;
+  notes: MemoryNote[];
+  live: number;
+  archived: number;
+  /** Continues the listing; absent on the last page. */
+  next_before_id?: number;
+};
+
+export type MemoryQuery = {
+  archived: boolean;
+  before?: number;
+  query?: string;
+};
+
+/** The memory of one workspace, on whichever machine the window stands on.
+ *  Every call names the machine because the export lands on this computer
+ *  either way: the shell fetches the document and saves it here. */
+export interface MemorySource {
+  fetch(workspaceID: string, q: MemoryQuery): Promise<MemoryDoc>;
+  savePage(workspaceID: string, page: MemoryPage): Promise<MemoryState>;
+  deleteNote(workspaceID: string, id: number): Promise<void>;
+  clear(workspaceID: string): Promise<void>;
+  /** The saved file's path, or "" when the dialog was cancelled. */
+  export(workspaceID: string): Promise<string>;
+}
+
+export function memorySource(machineID: string): MemorySource {
+  return {
+    fetch: async (workspaceID, q) => {
+      const res = JSON.parse(
+        await Memory(machineID, workspaceID, q.archived, q.before ?? 0, q.query ?? ""),
+      );
+      return {
+        state: res.state ?? null,
+        notes: res.notes ?? [],
+        live: res.live ?? 0,
+        archived: res.archived ?? 0,
+        next_before_id: res.next_before_id,
+      };
+    },
+    savePage: async (workspaceID, page) =>
+      JSON.parse(await SaveMemoryPage(machineID, workspaceID, JSON.stringify(page))),
+    deleteNote: async (workspaceID, id) => {
+      await DeleteMemoryNote(machineID, workspaceID, id);
+    },
+    clear: async (workspaceID) => {
+      await ClearMemory(machineID, workspaceID);
+    },
+    export: (workspaceID) => ExportMemory(machineID, workspaceID),
+  };
+}
+
 export async function openWorkspaceDir(path: string): Promise<void> {
   await OpenWorkspaceDir(path);
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { DICT, LangContext } from "../lib/i18n";
@@ -9,6 +9,9 @@ import type {
   CommandSettingsInfo,
   ConnectInfo,
   CoreStatusInfo,
+  MemoryDoc,
+  MemoryQuery,
+  MemorySource,
   PrefsInfo,
   Source,
   TaskInfo,
@@ -17,6 +20,7 @@ import type {
 import { OFFLINE_SNAPSHOT, type LaneSnapshot } from "../lib/lane";
 import { LaneScreen } from "./Lane";
 import { TasksScreen } from "./Tasks";
+import { MemoryScreen } from "./Memory";
 import { SettingsScreen, type SettingsDeps } from "./Settings";
 import { OnboardingScreen } from "./Onboarding";
 import { PairClaimSheet } from "../components/PairClaimSheet";
@@ -3463,5 +3467,283 @@ describe("folders on other machines on the settings page", () => {
     await settle();
     expect(log).toEqual(["revoke ws_r1", "network ws_r1 false"]);
     expect(text()).toContain("On vps-1 · no network");
+  });
+});
+
+// ── memory (Fylane-V3 board 17) ─────────────────────────────────────────
+
+const MEM_NOW = new Date(2026, 8, 12, 14, 30);
+
+function memDoc(over: Partial<MemoryDoc> = {}): MemoryDoc {
+  return {
+    state: {
+      workspace_id: "ws_1",
+      provider: "chatgpt",
+      updated_at: new Date(2026, 8, 12, 12, 30).toISOString(),
+      page: {
+        goal: "Move sync to IMAP IDLE",
+        progress: "Layer done",
+        next: "Delete the poller",
+        decisions: ["IMAP IDLE, not push", "Backoff caps at 60 s"],
+        open: ["iCloud heartbeat?"],
+      },
+    },
+    notes: [
+      {
+        id: 12,
+        workspace_id: "ws_1",
+        provider: "chatgpt",
+        title: "IDLE layer passed both accounts",
+        body: "Gmail and Fastmail ran 30 minutes each.",
+        change_set_id: "chg_0000000000000001",
+        run_id: "tsk_1",
+        created_at: new Date(2026, 8, 12, 14, 2).toISOString(),
+      },
+      {
+        id: 11,
+        workspace_id: "ws_1",
+        provider: "claude",
+        title: "Push API dropped",
+        body: "",
+        created_at: new Date(2026, 8, 9, 9, 0).toISOString(),
+      },
+    ],
+    live: 2,
+    archived: 40,
+    ...over,
+  };
+}
+
+/** A source that remembers what it was asked and answers from a document. */
+function memSource(doc: MemoryDoc, over: Partial<MemorySource> = {}) {
+  const calls: { fetch: MemoryQuery[]; saved: unknown[]; deleted: number[]; cleared: number } = {
+    fetch: [],
+    saved: [],
+    deleted: [],
+    cleared: 0,
+  };
+  const source: MemorySource = {
+    fetch: async (_ws, q) => {
+      calls.fetch.push(q);
+      return {
+        ...doc,
+        notes: doc.notes.filter(
+          (n) => !!n.archived === q.archived && (!q.query || n.title.includes(q.query)),
+        ),
+      };
+    },
+    savePage: async (workspace_id, page) => {
+      calls.saved.push(page);
+      return { workspace_id, page, provider: "user", updated_at: MEM_NOW.toISOString() };
+    },
+    deleteNote: async (_ws, id) => {
+      calls.deleted.push(id);
+    },
+    clear: async () => {
+      calls.cleared++;
+    },
+    export: async () => "",
+    ...over,
+  };
+  return { source, calls };
+}
+
+const memSet: ChangeSet = {
+  id: "chg_0000000000000001",
+  workspace_id: "ws_1",
+  provider: "chatgpt",
+  summary: "IDLE layer",
+  operations: [
+    { path: "internal/imap/idle.go", status: "created" },
+    { path: "internal/imap/idle_test.go", status: "created" },
+  ],
+  status: "applied",
+  created_at: new Date(2026, 8, 12, 14, 0).toISOString(),
+};
+
+function memoryProps(source: MemorySource) {
+  return {
+    workspace: WS,
+    machine: "",
+    source,
+    changeSets: [memSet],
+    tasks: [task({ label: "go test ./internal/imap", duration: 2_400_000_000 })],
+    now: MEM_NOW,
+    onError: () => {},
+    onGotoLane: () => {},
+    onGotoTasks: () => {},
+    onHelp: () => {},
+  };
+}
+
+describe("memory screen", () => {
+  it("draws the page as five cells and the trail as one line per note", async () => {
+    const { source } = memSource(memDoc());
+    draw(<MemoryScreen {...memoryProps(source)} />);
+    await settle();
+    // The head says whose page it is and how full the trail is.
+    expect(text()).toContain("2 notes, 40 archived");
+    expect(text()).toContain("ChatGPT rewrote the page 2 h ago");
+    // Counts are bytes for prose and items for lists, against the limit.
+    expect(text()).toContain("Goal22 / 300");
+    expect(text()).toContain("Decisions made2 / 8");
+    expect(text()).toContain("Open questions1 / 8");
+    // Today by the clock, older by the date; one recent, one earlier.
+    expect(text()).toContain("14:02");
+    expect(text()).toContain("09-09");
+    expect(text()).toContain("RECENT1");
+    expect(text()).toContain("EARLIER1");
+    // The collapsed row names the source and the change set's size.
+    expect(text()).toContain("ChatGPT·change set · 2 files");
+    expect(host.querySelector(".fy-mem-dot-applied")).not.toBeNull();
+    expect(host.querySelector(".fy-mem-dot-plain")).not.toBeNull();
+  });
+
+  it("opens a note into its body and ledger, and deletes from there", async () => {
+    const { source, calls } = memSource(memDoc());
+    draw(<MemoryScreen {...memoryProps(source)} />);
+    await settle();
+    const rows = Array.from(host.querySelectorAll(".fy-mem-rhead"));
+    expect(host.querySelector('.fy-mem-row[data-open="true"]')).toBeNull();
+    click(rows[0]);
+    const open = host.querySelector('.fy-mem-row[data-open="true"]');
+    expect(open).not.toBeNull();
+    expect(open?.textContent).toContain("Gmail and Fastmail ran 30 minutes each.");
+    expect(open?.textContent).toContain("2 files · idle.go and more");
+    expect(open?.textContent).toContain("go test ./internal/imap");
+    expect(open?.textContent).toContain("Today 14:02:00");
+    click(button("Delete this note"));
+    await settle();
+    expect(calls.deleted).toEqual([12]);
+    // The trail is read again after the delete, not patched locally.
+    expect(calls.fetch.length).toBe(2);
+  });
+
+  it("asks twice before forgetting everything", async () => {
+    const { source, calls } = memSource(memDoc());
+    draw(<MemoryScreen {...memoryProps(source)} />);
+    await settle();
+    click(button("Clear memory"));
+    expect(text()).toContain("Delete the page and all 42 notes?");
+    click(button("Cancel"));
+    expect(calls.cleared).toBe(0);
+    expect(text()).not.toContain("Delete the page and all");
+    click(button("Clear memory"));
+    click(button("Clear"));
+    await settle();
+    expect(calls.cleared).toBe(1);
+  });
+
+  it("switches to the archived half and searches after a pause", async () => {
+    vi.useFakeTimers();
+    try {
+      const { source, calls } = memSource(
+        memDoc({
+          notes: [
+            ...memDoc().notes,
+            {
+              id: 3,
+              workspace_id: "ws_1",
+              title: "Old measurement",
+              body: "",
+              archived: true,
+              created_at: new Date(2026, 7, 1).toISOString(),
+            },
+          ],
+        }),
+      );
+      draw(<MemoryScreen {...memoryProps(source)} />);
+      await settle();
+      expect(text()).not.toContain("Old measurement");
+      click(button("Archived40"));
+      await settle();
+      expect(calls.fetch.at(-1)?.archived).toBe(true);
+      expect(text()).toContain("Old measurement");
+      expect(text()).not.toContain("Push API dropped");
+
+      click(button("Notes2"));
+      await settle();
+      const input = host.querySelector<HTMLInputElement>(".fy-mem-search input")!;
+      act(() => {
+        const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+        set.call(input, "Push");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      expect(calls.fetch.at(-1)?.query).toBeUndefined();
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+      await settle();
+      expect(calls.fetch.at(-1)?.query).toBe("Push");
+      expect(text()).toContain("RESULTS1");
+      expect(text()).toContain("Push API dropped");
+      expect(text()).not.toContain("IDLE layer passed");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("edits a cell in the sheet and refuses what the Core would refuse", async () => {
+    const { source, calls } = memSource(memDoc());
+    draw(<MemoryScreen {...memoryProps(source)} />);
+    await settle();
+    const more = buttons().filter((b) => b.textContent === "View all");
+    expect(more.length).toBe(5);
+    click(more[3]);
+    const sheet = host.querySelector('[role="dialog"]');
+    expect(sheet?.textContent).toContain("Decisions made");
+    expect(sheet?.textContent).toContain("IMAP IDLE, not push");
+    click(button("Edit"));
+    const area = host.querySelector<HTMLTextAreaElement>(".fy-mem-sheet-edit")!;
+    const type = (value: string) =>
+      act(() => {
+        const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+        set.call(area, value);
+        area.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    type(Array(9).fill("d").join("\n"));
+    expect(text()).toContain("At most 8 items");
+    expect(button("Save")?.disabled).toBe(true);
+    type("IMAP IDLE, not push\n\nNo fallback switch\n");
+    expect(button("Save")?.disabled).toBe(false);
+    click(button("Save"));
+    await settle();
+    expect(calls.saved).toEqual([
+      {
+        goal: "Move sync to IMAP IDLE",
+        progress: "Layer done",
+        next: "Delete the poller",
+        decisions: ["IMAP IDLE, not push", "No fallback switch"],
+        open: ["iCloud heartbeat?"],
+      },
+    ]);
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("says when there is nothing, which machine it is on, and when it cannot read", async () => {
+    const { source } = memSource({ state: null, notes: [], live: 0, archived: 0 });
+    draw(<MemoryScreen {...memoryProps(source)} />);
+    await settle();
+    expect(text()).toContain("Nothing remembered yet");
+    expect(host.querySelector(".fy-mem-search")).toBeNull();
+
+    draw(<MemoryScreen {...memoryProps(memSource(memDoc()).source)} machine="vps-1" />);
+    await settle();
+    expect(host.querySelector(".fy-mchip")?.textContent).toBe("vps-1");
+    expect(text()).toContain("on vps-1");
+
+    draw(<MemoryScreen {...memoryProps(source)} workspace={null} />);
+    await settle();
+    expect(text()).toContain("No folder granted yet");
+
+    const failing = memSource(memDoc(), {
+      fetch: async () => {
+        throw new Error("gone");
+      },
+    });
+    draw(<MemoryScreen {...memoryProps(failing.source)} />);
+    await settle();
+    expect(text()).toContain("Couldn't read the memory.");
+    expect(button("Retry")).not.toBeUndefined();
   });
 });
