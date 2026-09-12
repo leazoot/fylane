@@ -183,8 +183,22 @@ func (l *fakeLink) Close() {
 }
 
 type memStore struct {
-	mu   sync.Mutex
-	list []Machine
+	mu      sync.Mutex
+	list    []Machine
+	current string
+}
+
+func (s *memStore) LoadCurrent() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.current, nil
+}
+
+func (s *memStore) SaveCurrent(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.current = id
+	return nil
 }
 
 func (s *memStore) Load() ([]Machine, error) {
@@ -632,5 +646,43 @@ func TestBrowseWalksDirectoriesOverSSH(t *testing.T) {
 	}
 	if _, err = m.Browse(ctx, st.ID, "/tmp\nrm -rf /"); err == nil {
 		t.Error("a path with a newline must be refused before the shell sees it")
+	}
+}
+
+func TestSelectIsRememberedAndClearedWithTheMachine(t *testing.T) {
+	remote := newFakeRemote(t)
+	remote.version, remote.running = "0.0.4", true
+	m, st := harness(t, remote)
+	if m.Selected() != "" {
+		t.Fatalf("a fresh manager stands on this computer, got %q", m.Selected())
+	}
+	saved, err := m.Add(Machine{Name: "vps", Host: "vps.example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Select("m_nope"); !errors.Is(err, ErrUnknown) {
+		t.Errorf("unknown machine = %v", err)
+	}
+	if err := m.Select(saved.ID); err != nil || m.Selected() != saved.ID {
+		t.Fatalf("select = %v, selected %q", err, m.Selected())
+	}
+	if cur, _ := st.LoadCurrent(); cur != saved.ID {
+		t.Errorf("the choice is not persisted: %q", cur)
+	}
+	// A restart stands where the window stood.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	again := New(Options{Store: st, Dialer: remote, Version: "0.0.4-dev"})
+	if err := again.Start(ctx); err != nil || again.Selected() != saved.ID {
+		t.Fatalf("after restart: %v, selected %q", err, again.Selected())
+	}
+	if err := m.Remove(saved.ID); err != nil {
+		t.Fatal(err)
+	}
+	if cur, _ := st.LoadCurrent(); m.Selected() != "" || cur != "" {
+		t.Errorf("removing the machine must put the window back on this computer: %q / %q", m.Selected(), cur)
+	}
+	if err := m.Select(""); err != nil {
+		t.Errorf("this computer is always selectable: %v", err)
 	}
 }

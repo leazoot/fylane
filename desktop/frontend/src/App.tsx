@@ -23,6 +23,7 @@ import {
   resolvePairClaim,
   resumeWorkspace,
   rollbackChangeSet,
+  selectMachine,
   selectWorkspace,
   startCore,
   type CommandSettingsInfo,
@@ -31,7 +32,6 @@ import {
 } from "./lib/core";
 import { RemoteFolderSheet } from "./components/RemoteFolderSheet";
 import { AddMachineSheet } from "./components/AddMachineSheet";
-import { storeMachine, storedMachine } from "./lib/theme";
 import {
   WindowHide,
   WindowMinimise,
@@ -115,10 +115,14 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
   const [currentID, setCurrentID] = useState("");
   const [claims, setClaims] = useState<PairClaim[]>([]);
   // Remote machines, and which one the rail stands on ("" is this
-  // computer). The choice is remembered per window, like density: it
-  // changes what the rail shows, never what the gate holds.
+  // computer). The choice is the Core's: it decides which folder the
+  // platform is told is current, so the window reads it back on every
+  // poll and only writes it. It changes what the rail shows, never what
+  // the gate holds.
   const [machines, setMachines] = useState<MachineView[]>([]);
-  const [machineID, setMachineID] = useState<string>(storedMachine);
+  const [machineID, setMachineID] = useState<string>("");
+  // Choices still on their way to the Core; a poll that left before one
+  // landed must not put the rail back.
   const [sheet, setSheet] = useState<"none" | "machine" | "folder">("none");
   // The machine being edited, when the machine sheet is open for one.
   const [editing, setEditing] = useState<MachineView["info"] | null>(null);
@@ -133,6 +137,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
   const [firstRun, setFirstRun] = useState<"unknown" | "on" | "off">("unknown");
 
   const inFlight = useRef(false);
+  const choosing = useRef(0);
   const lastHeld = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -146,11 +151,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
       setWorkspaces(poll.workspaces);
       setCurrentID(poll.currentWorkspaceID);
       setMachines(poll.machines);
-      // A machine that was removed (here or by hand in the settings file)
-      // cannot be stood on.
-      setMachineID((id) =>
-        id && !poll.machines.some((m) => m.info.id === id) ? "" : id,
-      );
+      if (choosing.current === 0) setMachineID(poll.currentMachineID);
       setFirstRun((s) =>
         s !== "unknown" ? s : poll.workspaces.length === 0 ? "on" : "off",
       );
@@ -240,10 +241,16 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
           acceptChangeSet,
           rollbackChangeSet,
         };
-  const chooseMachine = useCallback((id: string) => {
-    setMachineID(id);
-    storeMachine(id);
-  }, []);
+  const chooseMachine = useCallback(
+    (id: string) => {
+      setMachineID(id);
+      choosing.current++;
+      void act(() => selectMachine(id), t("shell.errMachine")).finally(() => {
+        choosing.current--;
+      });
+    },
+    [act],
+  );
 
   const onChooseWorkspace = useCallback(() => {
     if (machineID) {
@@ -385,7 +392,6 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
               void act(() => startCore(), t("shell.errStartCore"))
             }
             onGotoTasks={() => setScreen("tasks")}
-            machines={machines}
             machineID={machineID}
             onSelectMachine={chooseMachine}
             onAddMachine={() => {

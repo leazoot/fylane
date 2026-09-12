@@ -73,7 +73,7 @@ function pollers(over: Partial<CorePollers> = {}): {
       }),
     changeSets: () => note("changeSets", [CHANGE_SET]),
     sources: () => note("sources", SOURCES),
-    machines: () => note("machines", []),
+    machines: () => note("machines", { machines: [], current: "" }),
     remote: () => {
       throw new Error("no remote machines in this test");
     },
@@ -203,12 +203,15 @@ describe("pollCore", () => {
     cancelTask: async () => [],
     acceptChangeSet: async () => CHANGE_SET,
     rollbackChangeSet: async () => ({ status: "rolled_back" }),
+    commandSettings: async () => ({ rung: "workspace", grants: [] }),
+    revokeGrant: async () => ({ rung: "workspace", grants: [] }),
+    setNetwork: async () => ({ workspaces: [], currentWorkspaceID: "" }),
     ...over,
   });
 
   it("stamps what an online machine reports with where it came from", async () => {
     const { deps } = pollers({
-      machines: async () => [VPS],
+      machines: async () => ({ machines: [VPS], current: "" }),
       remote: () => remote(),
       tasks: async () => [
         {
@@ -240,10 +243,13 @@ describe("pollCore", () => {
   it("does not ask a machine that is not online, and survives one that does not answer", async () => {
     let asked = 0;
     const { deps } = pollers({
-      machines: async () => [
-        { ...VPS, id: "m_off", state: "missing" },
-        { ...VPS, id: "m_gone" },
-      ],
+      machines: async () => ({
+        machines: [
+          { ...VPS, id: "m_off", state: "missing" },
+          { ...VPS, id: "m_gone" },
+        ],
+        current: "",
+      }),
       remote: (id) => {
         asked++;
         return remote({

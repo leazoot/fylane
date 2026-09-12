@@ -168,31 +168,49 @@ func (t *toolset) workspaceInfo(ctx context.Context, _ *mcp.CallToolRequest, in 
 	if t.remotes != nil {
 		remote = t.remotes(ctx)
 	}
+	// The current folder follows the machine the window stands on. When
+	// that is another machine, its current folder is the one to answer
+	// with and the one marked current; the local folders are still listed.
+	// When it is this computer, or when nothing on that machine is current
+	// yet, the local current folder is current as it always was. With no
+	// local folder at all, a remote folder still answers the discovery
+	// call, or the model could never learn the id it needs.
+	var standIn *RemoteWorkspace
+	for i := range remote {
+		if remote[i].Current {
+			standIn = &remote[i]
+			break
+		}
+	}
 	out := workspaceInfoOutput{MaxReadBytes: int64(t.budget()), Workspaces: []workspaceEntry{}}
-	ws, err := t.open(ctx, in.WorkspaceID)
-	switch {
-	case err == nil:
+	var ws *workspace.Workspace
+	if in.WorkspaceID != "" || standIn == nil {
+		var err error
+		ws, err = t.open(ctx, in.WorkspaceID)
+		switch {
+		case err == nil:
+		case in.WorkspaceID == "" && len(remote) > 0:
+			standIn = &remote[0]
+		default:
+			return nil, workspaceInfoOutput{}, err
+		}
+	}
+	if ws != nil {
 		out.WorkspaceID, out.Name, out.Writable = ws.ID(), ws.Name(), ws.Writable()
 		out.Mode = store.ModeReadOnly
 		if ws.Writable() {
 			out.Mode = store.ModeReadWrite
 		}
-	case in.WorkspaceID == "" && len(remote) > 0:
-		// No folder on this computer, but one on another machine: the
-		// discovery call must still answer, or the model can never learn
-		// the id it needs. The first remote folder stands in as current.
-		first := remote[0]
-		out.WorkspaceID, out.Name, out.Mode = first.WorkspaceID, first.Name, first.Mode
-		out.Writable = first.Mode == store.ModeReadWrite
-	default:
-		return nil, workspaceInfoOutput{}, err
+	} else {
+		out.WorkspaceID, out.Name, out.Mode = standIn.WorkspaceID, standIn.Name, standIn.Mode
+		out.Writable = standIn.Mode == store.ModeReadWrite
 	}
 	list, err := t.src.List(ctx)
 	if err != nil {
 		return nil, workspaceInfoOutput{}, err
 	}
 	currentID := ""
-	if current, err := t.src.Current(ctx); err == nil {
+	if current, err := t.src.Current(ctx); err == nil && standIn == nil {
 		currentID = current.ID
 	}
 	for _, w := range list {
@@ -207,7 +225,7 @@ func (t *toolset) workspaceInfo(ctx context.Context, _ *mcp.CallToolRequest, in 
 	for _, w := range remote {
 		out.Workspaces = append(out.Workspaces, workspaceEntry{
 			WorkspaceID: w.WorkspaceID, Name: w.Name, Mode: w.Mode, Status: w.Status, Machine: w.Machine,
-			Current: w.WorkspaceID == out.WorkspaceID && ws == nil,
+			Current: standIn != nil && w.WorkspaceID == standIn.WorkspaceID,
 		})
 	}
 	return nil, out, nil

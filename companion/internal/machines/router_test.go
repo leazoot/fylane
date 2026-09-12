@@ -114,6 +114,25 @@ func TestRouterListsRemoteWorkspacesWithTheirMachine(t *testing.T) {
 	}
 }
 
+func TestRouterMarksTheStandingMachinesCurrentFolder(t *testing.T) {
+	m, _, _, _, id := onlineRouter(t)
+	if list := m.Workspaces(context.Background()); len(list) != 1 || list[0].Current {
+		t.Fatalf("standing on this computer, nothing remote is current: %+v", list)
+	}
+	if err := m.Select(id); err != nil {
+		t.Fatal(err)
+	}
+	if list := m.Workspaces(context.Background()); len(list) != 1 || !list[0].Current {
+		t.Fatalf("standing on the machine, its current folder is current: %+v", list)
+	}
+	if err := m.Select(""); err != nil {
+		t.Fatal(err)
+	}
+	if list := m.Workspaces(context.Background()); len(list) != 1 || list[0].Current {
+		t.Fatalf("back on this computer: %+v", list)
+	}
+}
+
 func TestRouterRoutesTaskStatusToWhereTheTaskStarted(t *testing.T) {
 	_, remote, local, h, _ := onlineRouter(t)
 	post(h, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"run_command","arguments":{"workspace_id":"ws_remote1","command":["go","test"]}}}`)

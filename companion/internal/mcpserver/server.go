@@ -148,6 +148,10 @@ type RemoteWorkspace struct {
 	Mode        string
 	Status      string
 	Machine     string
+	// Current marks the current folder of the machine the window stands
+	// on. At most one remote workspace carries it, and while one does the
+	// local folders are listed but none of them is current.
+	Current bool
 }
 
 // RunJournal recalls how a run ended. Defined at the consumer: task_status

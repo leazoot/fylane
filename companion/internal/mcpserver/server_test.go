@@ -449,3 +449,45 @@ func TestWorkspaceInfoListsWorkspacesOnOtherMachines(t *testing.T) {
 		t.Errorf("the local workspace must not carry a machine name: %+v", out.Workspaces[0])
 	}
 }
+
+func TestWorkspaceInfoFollowsTheMachineTheWindowStandsOn(t *testing.T) {
+	root := t.TempDir()
+	deps := testDeps(t, root)
+	deps.Remotes = func(context.Context) []RemoteWorkspace {
+		return []RemoteWorkspace{
+			{WorkspaceID: "ws_remote1", Name: "api", Mode: "read_write", Status: "active", Machine: "vps"},
+			{WorkspaceID: "ws_remote2", Name: "site", Mode: "read_only", Status: "active", Machine: "vps", Current: true},
+		}
+	}
+	httpServer := httptest.NewServer(Handler(deps, nil))
+	t.Cleanup(httpServer.Close)
+	client := mcp.NewClient(&mcp.Implementation{Name: "fylane-test-client", Version: "0.0.1"}, nil)
+	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: httpServer.URL}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { session.Close() })
+
+	var out workspaceInfoOutput
+	structured(t, callTool(t, session, "workspace_info", map[string]any{}), &out)
+	if out.WorkspaceID != "ws_remote2" || out.Name != "site" || out.Writable || out.Mode != "read_only" {
+		t.Fatalf("the answer must be the standing machine's current folder: %+v", out)
+	}
+	var current []string
+	for _, w := range out.Workspaces {
+		if w.Current {
+			current = append(current, w.WorkspaceID)
+		}
+	}
+	if len(current) != 1 || current[0] != "ws_remote2" {
+		t.Errorf("exactly the remote current folder is current, got %v in %+v", current, out.Workspaces)
+	}
+	if out.Workspaces[0].Machine != "" {
+		t.Errorf("the local folder is still listed, first: %+v", out.Workspaces[0])
+	}
+	// Asking for the local folder by id still answers with it.
+	structured(t, callTool(t, session, "workspace_info", map[string]any{"workspace_id": out.Workspaces[0].WorkspaceID}), &out)
+	if out.WorkspaceID != out.Workspaces[0].WorkspaceID {
+		t.Errorf("by id = %+v", out)
+	}
+}

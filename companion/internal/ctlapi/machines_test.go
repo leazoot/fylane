@@ -20,6 +20,7 @@ type stubMachines struct {
 	remote  *httptest.Server
 	seen    []string
 	actions []string
+	current string
 }
 
 func (s *stubMachines) List() []machines.Status { return s.list }
@@ -58,6 +59,14 @@ func (s *stubMachines) Probe(_ context.Context, m machines.Machine) (machines.Pr
 	}
 	return machines.ProbeResult{Reachable: true, Version: "0.0.4", Running: true, Compatible: true}, nil
 }
+func (s *stubMachines) Select(id string) error {
+	if id != "" && id != "m1" {
+		return machines.ErrUnknown
+	}
+	s.current = id
+	return nil
+}
+func (s *stubMachines) Selected() string { return s.current }
 func (s *stubMachines) Browse(_ context.Context, id, path string) (machines.Listing, error) {
 	if id != "m1" {
 		return machines.Listing{}, machines.ErrUnknown
@@ -112,6 +121,22 @@ func TestMachineEndpointsListAddAndAct(t *testing.T) {
 	resp, body = f.call(t, "POST", "/v1/machines/probe", f.token, map[string]any{"name": "x", "host": "box.example"})
 	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"reachable":true`) {
 		t.Errorf("probe = %d %s", resp.StatusCode, body)
+	}
+	resp, body = f.call(t, "POST", "/v1/machines/select", f.token, map[string]string{"id": "m1"})
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"current":"m1"`) {
+		t.Errorf("select = %d %s", resp.StatusCode, body)
+	}
+	resp, body = f.call(t, "GET", "/v1/machines", f.token, nil)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"current":"m1"`) {
+		t.Errorf("list after select = %d %s", resp.StatusCode, body)
+	}
+	resp, _ = f.call(t, "POST", "/v1/machines/select", f.token, map[string]string{"id": "m_nope"})
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("select unknown = %d", resp.StatusCode)
+	}
+	resp, body = f.call(t, "POST", "/v1/machines/select", f.token, map[string]string{"id": ""})
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"current":""`) {
+		t.Errorf("select this computer = %d %s", resp.StatusCode, body)
 	}
 	resp, body = f.call(t, "POST", "/v1/machines/browse", f.token, map[string]string{"id": "m1", "path": "/home/dev"})
 	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"repo":true`) {

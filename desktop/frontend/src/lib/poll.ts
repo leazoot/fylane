@@ -76,6 +76,9 @@ export interface CorePoll {
   prefs: PrefsInfo;
   /** Every configured remote machine, in the Core's order. */
   machines: MachineView[];
+  /** The machine the window stands on, as the Core has it; "" is this
+   *  computer. */
+  currentMachineID: string;
 }
 
 /** pollCore reads everything the window shows in one pass. It throws if the
@@ -103,7 +106,7 @@ export async function pollCore(deps: CorePollers = CORE): Promise<CorePoll> {
     deps.machines(),
   ]);
   const remotes = await Promise.all(
-    machineList.map((m) => pollMachine(deps, m)),
+    machineList.machines.map((m) => pollMachine(deps, m)),
   );
   const current =
     wsList.workspaces.find((w) => w.id === wsList.currentWorkspaceID) ??
@@ -141,6 +144,7 @@ export async function pollCore(deps: CorePollers = CORE): Promise<CorePoll> {
     commands,
     prefs,
     machines: remotes.map((r) => r.view),
+    currentMachineID: machineList.current,
   };
 }
 

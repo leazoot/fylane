@@ -673,7 +673,7 @@ func remoteWorkspaces(remotes *machines.Manager) func(context.Context) []mcpserv
 		out := make([]mcpserver.RemoteWorkspace, 0, len(list))
 		for _, w := range list {
 			out = append(out, mcpserver.RemoteWorkspace{WorkspaceID: w.WorkspaceID, Name: w.Name,
-				Mode: w.Mode, Status: w.Status, Machine: w.Machine})
+				Mode: w.Mode, Status: w.Status, Machine: w.Machine, Current: w.Current})
 		}
 		return out
 	}

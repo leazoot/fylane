@@ -64,25 +64,3 @@ export function storeDensity(density: Density): void {
     // Same as the theme: forgetting is allowed, refusing is not.
   }
 }
-
-// Which machine the lane's rail stands on, remembered the same way. "" is
-// this computer. A remembered id that no longer exists is dropped by the
-// window on its first poll, so a stale value can never point at nothing.
-const MACHINE_KEY = "fylane.machine";
-
-export function storedMachine(): string {
-  try {
-    return window.localStorage.getItem(MACHINE_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-export function storeMachine(id: string): void {
-  try {
-    if (id) window.localStorage.setItem(MACHINE_KEY, id);
-    else window.localStorage.removeItem(MACHINE_KEY);
-  } catch {
-    // Forgetting is allowed, refusing is not.
-  }
-}

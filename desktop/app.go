@@ -586,6 +586,13 @@ func (a *App) ProbeMachine(requestJSON string) (string, error) {
 	return a.callWithin("POST", "/v1/machines/probe", body, 30*time.Second)
 }
 
+// SelectMachine records which machine the window stands on; "" is this
+// computer. From then on workspace_info calls that machine's current
+// folder current, so the platform sees what the window shows.
+func (a *App) SelectMachine(id string) (string, error) {
+	return a.call("POST", "/v1/machines/select", map[string]string{"id": id})
+}
+
 // BrowseMachine lists the directories inside one on a remote machine, so
 // the folder sheet can walk to a folder instead of asking for a typed path.
 // An empty path is that machine's login home.

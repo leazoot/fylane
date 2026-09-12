@@ -22,6 +22,35 @@ type MachineControl interface {
 	Proxy(id string) (http.Handler, error)
 	Probe(ctx context.Context, m machines.Machine) (machines.ProbeResult, error)
 	Browse(ctx context.Context, id, path string) (machines.Listing, error)
+	// Select and Selected are the machine the window stands on; "" is this
+	// computer.
+	Select(id string) error
+	Selected() string
+}
+
+// handleMachineSelect records which machine the window stands on. An empty
+// id is this computer.
+func (s *Server) handleMachineSelect(w http.ResponseWriter, r *http.Request) {
+	if s.Machines == nil {
+		http.Error(w, "remote machines are not configured", http.StatusNotFound)
+		return
+	}
+	var req struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if err := s.Machines.Select(req.ID); err != nil {
+		code := http.StatusBadRequest
+		if errors.Is(err, machines.ErrUnknown) {
+			code = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	writeJSON(w, map[string]any{"ok": true, "current": s.Machines.Selected()})
 }
 
 // handleMachineBrowse lists the directories inside one on a machine, for
@@ -79,7 +108,7 @@ func (s *Server) handleMachines(w http.ResponseWriter, _ *http.Request) {
 	if list == nil {
 		list = []machines.Status{}
 	}
-	writeJSON(w, map[string]any{"machines": list})
+	writeJSON(w, map[string]any{"machines": list, "current": s.Machines.Selected()})
 }
 
 func (s *Server) handleMachineAdd(w http.ResponseWriter, r *http.Request) {

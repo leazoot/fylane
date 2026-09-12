@@ -49,6 +49,7 @@ import {
   MachineCall,
   ProbeMachine,
   BrowseMachine,
+  SelectMachine,
   UpdateMachine,
 } from "../../wailsjs/go/main/App";
 
@@ -858,18 +859,29 @@ export async function updateMachine(req: MachineRequest & { id: string }): Promi
   return JSON.parse(await UpdateMachine(JSON.stringify(req)));
 }
 
-export async function fetchMachines(): Promise<MachineInfo[]> {
+/** The machine list and which machine the window stands on ("" is this
+ *  computer). The choice is the Core's, not the window's: it decides which
+ *  folder workspace_info calls current. */
+export type MachineList = { machines: MachineInfo[]; current: string };
+
+export async function fetchMachines(): Promise<MachineList> {
   let raw: string;
   try {
     raw = await Machines();
   } catch (e) {
     // A Core from before this endpoint answers 404. That is "no machines",
     // not an unreachable Core — the rest of the window must keep drawing.
-    if (e instanceof Error && /\(404\)/.test(e.message)) return [];
+    if (e instanceof Error && /\(404\)/.test(e.message))
+      return { machines: [], current: "" };
     throw e;
   }
   const res = JSON.parse(raw);
-  return res.machines ?? [];
+  return { machines: res.machines ?? [], current: res.current ?? "" };
+}
+
+/** selectMachine tells the Core which machine the window stands on. */
+export async function selectMachine(id: string): Promise<void> {
+  await SelectMachine(id);
 }
 
 export type MachineRequest = {
@@ -922,6 +934,12 @@ export interface RemoteCore {
     workspaceID: string,
     changeSetID: string,
   ): Promise<RollbackResult>;
+  commandSettings(): Promise<CommandSettingsInfo>;
+  revokeGrant(workspaceID: string): Promise<CommandSettingsInfo>;
+  setNetwork(
+    id: string,
+    allow: boolean,
+  ): Promise<{ workspaces: Workspace[]; currentWorkspaceID: string }>;
 }
 
 export function remoteCore(machineID: string): RemoteCore {
@@ -981,5 +999,15 @@ export function remoteCore(machineID: string): RemoteCore {
         change_set_id: changeSetID,
         confirmed_in: "desktop",
       }),
+    commandSettings: () => call("GET", "/v1/commands"),
+    revokeGrant: (workspaceID) =>
+      call("POST", "/v1/commands/revoke", { workspace_id: workspaceID }),
+    setNetwork: async (id, allow) => {
+      const res = await call("POST", "/v1/workspaces/network", { id, allow });
+      return {
+        workspaces: res.workspaces ?? [],
+        currentWorkspaceID: res.current_workspace_id ?? "",
+      };
+    },
   };
 }

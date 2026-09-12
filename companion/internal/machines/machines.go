@@ -51,6 +51,11 @@ type Machine struct {
 type Store interface {
 	Load() ([]Machine, error)
 	Save([]Machine) error
+	// LoadCurrent and SaveCurrent keep which machine the window stands on:
+	// "" is this computer. It is Core state, not window state, because it
+	// decides which folder workspace_info calls current.
+	LoadCurrent() (string, error)
+	SaveCurrent(id string) error
 }
 
 // State is where a machine's link is.
@@ -113,6 +118,8 @@ type Manager struct {
 	ctx   context.Context
 	links map[string]*link
 	order []string
+	// current is the machine the window stands on; "" is this computer.
+	current string
 }
 
 // New builds a Manager; Start connects it.
@@ -143,7 +150,44 @@ func (m *Manager) Start(ctx context.Context) error {
 		l := m.newLinkLocked(mc)
 		l.start(ctx)
 	}
+	current, err := m.store.LoadCurrent()
+	if err != nil {
+		return fmt.Errorf("loading the current machine: %w", err)
+	}
+	if _, ok := m.links[current]; ok {
+		m.current = current
+	}
 	return nil
+}
+
+// Select makes id the machine the window stands on; "" is this computer.
+// workspace_info calls that machine's current folder current from then on.
+func (m *Manager) Select(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if id != "" {
+		if _, ok := m.links[id]; !ok {
+			return ErrUnknown
+		}
+	}
+	if m.current == id {
+		return nil
+	}
+	m.current = id
+	if err := m.store.SaveCurrent(id); err != nil {
+		return fmt.Errorf("saving the current machine: %w", err)
+	}
+	// The workspace list carries which folder is current; it is relisted
+	// on the next ask rather than after the cache's own interval.
+	m.rt.forget()
+	return nil
+}
+
+// Selected is the machine the window stands on; "" is this computer.
+func (m *Manager) Selected() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.current
 }
 
 var namePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
@@ -255,6 +299,12 @@ func (m *Manager) Remove(id string) error {
 	}
 	l.stop()
 	delete(m.links, id)
+	if m.current == id {
+		m.current = ""
+		if err := m.store.SaveCurrent(""); err != nil {
+			return fmt.Errorf("saving the current machine: %w", err)
+		}
+	}
 	for i, v := range m.order {
 		if v == id {
 			m.order = append(m.order[:i], m.order[i+1:]...)

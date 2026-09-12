@@ -90,6 +90,9 @@ type settings struct {
 	// Names, hosts and logins only: ssh keys and the remote control tokens
 	// never live here.
 	Machines []machines.Machine `json:"machines,omitempty"`
+	// CurrentMachine is the machine the window stands on; "" is this
+	// computer. It decides which folder workspace_info calls current.
+	CurrentMachine string `json:"current_machine,omitempty"`
 }
 
 // MachineStore adapts the settings file to machines.Store.
@@ -101,6 +104,23 @@ func (r MachineStore) Load() ([]machines.Machine, error) {
 		return nil, err
 	}
 	return s.Machines, nil
+}
+
+func (r MachineStore) LoadCurrent() (string, error) {
+	s, err := loadSettings(r.DataDir)
+	if err != nil {
+		return "", err
+	}
+	return s.CurrentMachine, nil
+}
+
+func (r MachineStore) SaveCurrent(id string) error {
+	s, err := loadSettings(r.DataDir)
+	if err != nil {
+		return err
+	}
+	s.CurrentMachine = id
+	return saveSettings(r.DataDir, s)
 }
 
 func (r MachineStore) Save(list []machines.Machine) error {

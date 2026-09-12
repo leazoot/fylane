@@ -46,7 +46,10 @@ type Workspace struct {
 	Mode        string
 	Status      string
 	Machine     string
-	machineID   string
+	// Current is the current folder of the machine the window stands on:
+	// the one workspace_info calls current instead of a local folder.
+	Current   bool
+	machineID string
 }
 
 // MCPHandler wraps the local MCP handler with the router.
@@ -59,6 +62,13 @@ func (m *Manager) MCPHandler(local http.Handler) http.Handler {
 // workspace_info. Names and ids only.
 func (m *Manager) Workspaces(ctx context.Context) []Workspace {
 	return m.rt.Workspaces(ctx)
+}
+
+// forget drops the cached workspace list so the next ask lists again.
+func (r *router) forget() {
+	r.mu.Lock()
+	r.listed = time.Time{}
+	r.mu.Unlock()
 }
 
 func newRouter(m *Manager) *router {
@@ -227,6 +237,7 @@ func (r *router) refresh(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
 	defer cancel()
 	found := map[string]Workspace{}
+	selected := r.mgr.Selected()
 	for _, e := range r.mgr.endpoints() {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, e.ctlBase+"/v1/workspaces", nil)
 		if err != nil {
@@ -244,6 +255,7 @@ func (r *router) refresh(ctx context.Context) {
 				Mode   string `json:"mode"`
 				Status string `json:"status"`
 			} `json:"workspaces"`
+			Current string `json:"current_workspace_id"`
 		}
 		err = json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&doc)
 		resp.Body.Close()
@@ -254,7 +266,8 @@ func (r *router) refresh(ctx context.Context) {
 			if w.Status == "revoked" {
 				continue
 			}
-			found[w.ID] = Workspace{WorkspaceID: w.ID, Name: w.Name, Mode: w.Mode, Status: w.Status, Machine: e.name, machineID: e.id}
+			found[w.ID] = Workspace{WorkspaceID: w.ID, Name: w.Name, Mode: w.Mode, Status: w.Status, Machine: e.name,
+				Current: e.id == selected && w.ID == doc.Current, machineID: e.id}
 		}
 	}
 	r.mu.Lock()
