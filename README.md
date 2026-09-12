@@ -32,6 +32,8 @@ only *ask*. The actual write or command happens on your machine, and each one
 goes through a confirmation in the Fylane window first. You see what it wants
 to change, you approve, then it lands on disk.
 
+<!-- screenshot: assets/approval.png (the approval sheet: one edit, the full diff, Approve and Reject) -->
+
 Typical uses:
 
 - Let ChatGPT read the project and answer "where is this error thrown" without
@@ -41,6 +43,9 @@ Typical uses:
 - Same thing when the project lives on a VPS. Bring that machine in and the
   AI edits and runs tests on the server; you still approve on this computer.
   See [Remote machines](#remote-machines).
+- Open a new chat tomorrow and the AI picks up where it left off: what was
+  done, what was decided, what comes next. Fylane keeps that per folder, on
+  your machine, and hands it to the next conversation.
 - Close the lid and the AI cannot reach the machine. Nothing was uploaded.
 
 ## How it works
@@ -397,12 +402,25 @@ go build -o bin/fylane-companion ./companion/cmd/companion
 | Read | `list_directory` `read_file` `read_files` `search_files` `stat_path` `git_query` |
 | Write | `write_file` `edit_file` `apply_patch` `change_manage` |
 | Run | `run_command` `task_status` `code_task` |
+| Remember | `memory_recall` `memory_note` `memory_search` `memory_read` `memory_compact`, a per-folder page and notes that the next conversation starts from |
 | Navigate | `code_navigate`, real definitions and references from a language server |
 | Extend | `mcp_gateway`, forward to another MCP server on your machine |
 
 Writes and consequential commands return `pending_approval` until you decide
 in Fylane. `change_manage` covers moves, deletes into a recycle area, and
 rollback.
+
+## Questions people ask
+
+| | |
+| --- | --- |
+| Does my code go to a server? | What the AI reads reaches the AI platform, exactly as if you had pasted it. Nothing goes anywhere else, and the tunnel or relay in between stores nothing. |
+| Can the AI delete my project? | Deletes go to a local recycle area. The folder itself and `.git` can never be deleted. Deleting a directory with files in it asks twice. |
+| What if I am away from the computer? | The request waits in the window and the AI is told it is pending. Nothing happens without you. If that is too slow for you, choose "once per folder": ordinary work then runs without asking, and dangerous commands still stop. |
+| Can it run anything? | A program and its arguments, never a shell line. `rm -rf`, `sudo`, killing processes and writing to system directories are refused at every level. On macOS and Linux the operating system confines the process to the folder. |
+| Does the AI remember the project between chats? | Yes. Each folder has a page (goal, progress, next steps, decisions) and a trail of notes the AI writes as it works. A new chat starts from them. They live in Fylane's own data, not in your project's files, and you can read and delete them. |
+| Does it work with a project on my VPS? | Yes. Fylane connects over the ssh you already use, a copy of it runs there, and the approvals still happen on this computer. |
+| Which AIs? | ChatGPT, Claude and Grok are set up in three steps above. Anything that speaks MCP over HTTP can connect the same way. |
 
 ## Development
 
