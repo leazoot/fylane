@@ -48,6 +48,7 @@ func (a *App) startup(ctx context.Context) {
 	if dockSupported && a.readShellPrefs().DockHidden {
 		applyDockHidden(true)
 	}
+	installDockReopen()
 	// First-run: nobody has started the Core yet — the shell brings it up so
 	// the user never faces a "core is not running" wall. The Core's
 	// single-instance lock makes a concurrent start harmless.
