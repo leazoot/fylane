@@ -406,6 +406,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
               void act(() => startCore(), t("shell.errStartCore"))
             }
             onGotoTasks={() => setScreen("tasks")}
+            machines={machines}
             machineID={machineID}
             onSelectMachine={chooseMachine}
             onAddMachine={() => {

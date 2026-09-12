@@ -1949,6 +1949,14 @@ a {
 .fy-rule-group + .fy-rule-row {
   padding-top: 10px;
 }
+/* A group that follows rows closes them with the same hairline the rows
+   put between themselves, so the column keeps one rhythm: line, heading,
+   rows, line, heading, rows. */
+.fy-rule-row + .fy-rule-group {
+  margin-top: 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--fy-rule2);
+}
 .fy-slabel .fy-mchip {
   vertical-align: 1px;
 }
