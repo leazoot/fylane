@@ -2972,3 +2972,8 @@ a {
 .fy-sheet-machine .fy-sheet-title {
   margin-top: 12px;
 }
+.fy-sheet-note {
+  margin-top: 7px;
+  font: 400 12px/1.5 var(--fy-sans);
+  color: var(--fy-faint);
+}

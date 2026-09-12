@@ -243,6 +243,11 @@ export const DICT = {
   "machine.fieldTarget": { en: "HOW YOU REACH IT", zh: "你平时怎么连它" },
   "machine.fieldTargetPlaceholder": { en: "user@host", zh: "user@host" },
   "machine.fieldName": { en: "CALL IT", zh: "在 Fylane 里叫它" },
+  "machine.fieldNamePlaceholder": { en: "e.g. HK test box", zh: "比如 香港测试机" },
+  "machine.fieldNameNote": {
+    en: "The name shown in the rail and on the Tasks page. Taken from the host until you change it.",
+    zh: "机器在右栏和任务页里显示的名字。默认取自主机名,随便改。",
+  },
   "machine.knocking": { en: "Knocking…", zh: "正在敲门…" },
   "machine.answeredRunning": {
     en: "{target} answered · Fylane {version} is running",

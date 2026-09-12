@@ -343,6 +343,7 @@ export function AddMachineSheet({
               className="fy-field"
               style={{ fontFamily: "var(--fy-sans)" }}
               autoComplete="off"
+              placeholder={t("machine.fieldNamePlaceholder")}
               value={name}
               disabled={busy}
               onChange={(e) => {
@@ -350,6 +351,7 @@ export function AddMachineSheet({
                 setNamed(true);
               }}
             />
+            <div className="fy-sheet-note">{t("machine.fieldNameNote")}</div>
           </div>
         </div>
 
