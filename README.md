@@ -32,7 +32,7 @@ only *ask*. The actual write or command happens on your machine, and each one
 goes through a confirmation in the Fylane window first. You see what it wants
 to change, you approve, then it lands on disk.
 
-<!-- screenshot: assets/approval.png (the approval sheet: one edit, the full diff, Approve and Reject) -->
+![A write waiting for approval](assets/approval.png)
 
 Typical uses:
 
