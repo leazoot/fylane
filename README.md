@@ -134,20 +134,25 @@ updated. When you are done trying it out and want an address that stays, see
 
 Needs a paid plan (Plus, Pro or Team).
 
-1. Avatar → **Settings → Apps & Connectors** (called **Plugins** in the newer
-   UI) → **Advanced** → turn on **Developer mode**.
-2. Back on the connectors page, click **Create**.
+1. Avatar → **Settings → Security and login** → turn on **Developer mode**.
+   (Older versions of the UI had it under Apps & Connectors → Advanced.)
+
+   ![Developer mode](assets/setup/chatgpt-developer-mode.png)
+
+2. Go to **Plugins** (called **Apps & Connectors** in older versions) and
+   click **Create**. The form is titled "New Plugin":
    - Name: anything, for example `Fylane`
-   - MCP server URL: paste the address
+   - Connection: leave **Server URL** selected and paste the address
    - Authentication: **OAuth**. Choosing "No authentication" fails with
      `Error creating connector`, because the address requires a login.
+   - Tick "I understand and want to continue".
+
+   ![New Plugin form](assets/setup/chatgpt-create-connector.png)
+
 3. Click Create. ChatGPT completes the handshake in the background and then
    opens a browser page, see step 3.
 4. In a chat, click **+** next to the input → **More** and tick `Fylane`.
    That chat can now use it.
-
-<!-- screenshot: assets/setup/chatgpt-developer-mode.png (Settings → Apps & Connectors → Advanced → Developer mode) -->
-<!-- screenshot: assets/setup/chatgpt-create-connector.png (the create form with Authentication set to OAuth) -->
 
 </details>
 

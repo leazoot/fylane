@@ -114,17 +114,22 @@ Fylane 会带你走四步,整个过程在窗口里完成,不需要开终端。
 
 需要付费套餐(Plus / Pro / Team)。
 
-1. 头像 → **设置 → 应用与连接器**(新版界面叫「插件」)→ **高级** → 打开 **开发者模式**。
-2. 回到连接器页,点 **创建**。
-   - 名称:随便填,比如 `Fylane`
-   - MCP 服务器 URL:粘贴刚才复制的地址
-   - 身份验证:选 **OAuth**。选「无身份验证」会报 `Error creating connector`,因为
-     Fylane 的地址要求登录。
-3. 点创建。ChatGPT 会在后台完成握手,然后弹出一个浏览器页面,见第三步。
-4. 在对话里点输入框旁边的 **+** → **更多**,勾上 `Fylane`,这个对话就能用了。
+1. 头像 → **设置 → 安全与登录** → 打开 **开发者模式**。(旧版界面在「应用与连接器 →
+   高级」里。)
 
-<!-- 截图:assets/setup/chatgpt-developer-mode.png(设置 → 应用与连接器 → 高级 → 开发者模式) -->
-<!-- 截图:assets/setup/chatgpt-create-connector.png(创建连接器的表单,身份验证选 OAuth) -->
+   ![开发者模式](assets/setup/chatgpt-developer-mode.png)
+
+2. 进 **插件**(旧版叫「应用与连接器」),点 **创建**。表单标题是 New Plugin:
+   - Name:随便填,比如 `Fylane`
+   - Connection:保持 **Server URL**,粘贴刚才复制的地址
+   - Authentication:选 **OAuth**。选「无身份验证」会报 `Error creating connector`,因为
+     Fylane 的地址要求登录。
+   - 勾上「I understand and want to continue」。
+
+   ![新建插件表单](assets/setup/chatgpt-create-connector.png)
+
+3. 点 Create。ChatGPT 会在后台完成握手,然后弹出一个浏览器页面,见第三步。
+4. 在对话里点输入框旁边的 **+** → **更多**,勾上 `Fylane`,这个对话就能用了。
 
 </details>
 
