@@ -133,6 +133,21 @@ type Deps struct {
 	// that always reads "not connected" is worse than no list. Nil leaves the
 	// list alone, which is what tests and the local listener want.
 	Seen func(provider string)
+	// Remotes, when set, lists the workspaces on other machines this
+	// Companion reaches over ssh, so workspace_info can offer them. A call
+	// carrying one of their ids never reaches this server: the router in
+	// front forwards it to that machine.
+	Remotes func(ctx context.Context) []RemoteWorkspace
+}
+
+// RemoteWorkspace is a workspace on another machine, as workspace_info lists
+// it. Identifiers and names only — the machine's paths stay on the machine.
+type RemoteWorkspace struct {
+	WorkspaceID string
+	Name        string
+	Mode        string
+	Status      string
+	Machine     string
 }
 
 // RunJournal recalls how a run ended. Defined at the consumer: task_status
@@ -181,7 +196,7 @@ func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 	}, nil)
 
 	tools := &toolset{src: deps.Source, engine: deps.Engine, reads: deps.Reads,
-		rules: deps.Rules, provider: provider,
+		rules: deps.Rules, provider: provider, remotes: deps.Remotes,
 		exec: deps.Exec, tasks: deps.Tasks, approver: deps.Approve, gate: deps.Gate,
 		execAudit: deps.ExecAudit, runs: deps.Runs, agents: deps.Agents,
 		providers: deps.Providers, navigators: deps.Navigators, box: deps.Box}
@@ -203,7 +218,7 @@ func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "workspace_info",
-		Description: "Get workspace information and limits, plus the list of all available workspaces with their opaque IDs. Call this first to obtain the workspace_id required by all other tools. Absolute paths are never returned.",
+		Description: "Get workspace information and limits, plus the list of all available workspaces with their opaque IDs. Call this first to obtain the workspace_id required by all other tools. Entries with a machine name live on another computer; their files, commands and approvals happen there, and their workspace_id works with every tool. Absolute paths are never returned.",
 		Annotations: readOnly,
 	}, tools.workspaceInfo)
 

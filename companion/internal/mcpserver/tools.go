@@ -37,6 +37,9 @@ type toolset struct {
 	engine *txn.Engine
 	reads  ReadApprover
 	rules  RuleSource
+	// remotes lists workspaces on other machines for workspace_info; nil
+	// when there are none.
+	remotes func(ctx context.Context) []RemoteWorkspace
 	// exec, tasks, approver, and execAudit back run_command and task_status;
 	// all four are nil together when command execution is not configured.
 	exec      CommandRunner
@@ -140,6 +143,9 @@ type workspaceEntry struct {
 	Mode        string `json:"mode" jsonschema:"read_only or read_write"`
 	Status      string `json:"status"`
 	Current     bool   `json:"current"`
+	// Machine names the computer a workspace lives on when it is not this
+	// one. Files, commands and approvals for it happen there.
+	Machine string `json:"machine,omitempty" jsonschema:"Set when the workspace is on another machine reached over ssh; omitted for this machine."`
 }
 
 type workspaceInfoInput struct {
@@ -158,21 +164,28 @@ type workspaceInfoOutput struct {
 }
 
 func (t *toolset) workspaceInfo(ctx context.Context, _ *mcp.CallToolRequest, in workspaceInfoInput) (*mcp.CallToolResult, workspaceInfoOutput, error) {
+	var remote []RemoteWorkspace
+	if t.remotes != nil {
+		remote = t.remotes(ctx)
+	}
+	out := workspaceInfoOutput{MaxReadBytes: int64(t.budget()), Workspaces: []workspaceEntry{}}
 	ws, err := t.open(ctx, in.WorkspaceID)
-	if err != nil {
+	switch {
+	case err == nil:
+		out.WorkspaceID, out.Name, out.Writable = ws.ID(), ws.Name(), ws.Writable()
+		out.Mode = store.ModeReadOnly
+		if ws.Writable() {
+			out.Mode = store.ModeReadWrite
+		}
+	case in.WorkspaceID == "" && len(remote) > 0:
+		// No folder on this computer, but one on another machine: the
+		// discovery call must still answer, or the model can never learn
+		// the id it needs. The first remote folder stands in as current.
+		first := remote[0]
+		out.WorkspaceID, out.Name, out.Mode = first.WorkspaceID, first.Name, first.Mode
+		out.Writable = first.Mode == store.ModeReadWrite
+	default:
 		return nil, workspaceInfoOutput{}, err
-	}
-	mode := store.ModeReadOnly
-	if ws.Writable() {
-		mode = store.ModeReadWrite
-	}
-	out := workspaceInfoOutput{
-		WorkspaceID:  ws.ID(),
-		Name:         ws.Name(),
-		Mode:         mode,
-		MaxReadBytes: int64(t.budget()),
-		Writable:     ws.Writable(),
-		Workspaces:   []workspaceEntry{},
 	}
 	list, err := t.src.List(ctx)
 	if err != nil {
@@ -189,6 +202,12 @@ func (t *toolset) workspaceInfo(ctx context.Context, _ *mcp.CallToolRequest, in 
 			Mode:        w.Mode,
 			Status:      w.Status,
 			Current:     w.ID == currentID,
+		})
+	}
+	for _, w := range remote {
+		out.Workspaces = append(out.Workspaces, workspaceEntry{
+			WorkspaceID: w.WorkspaceID, Name: w.Name, Mode: w.Mode, Status: w.Status, Machine: w.Machine,
+			Current: w.WorkspaceID == out.WorkspaceID && ws == nil,
 		})
 	}
 	return nil, out, nil

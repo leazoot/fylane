@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/leazoot/fylane/companion/internal/lsp"
+	"github.com/leazoot/fylane/companion/internal/machines"
 	"github.com/leazoot/fylane/companion/internal/mcpgate"
 	"github.com/leazoot/fylane/companion/internal/routerule"
 	"github.com/leazoot/fylane/companion/internal/tunnelproc"
@@ -85,6 +86,30 @@ type settings struct {
 	// provider list does: a delegated agent is a program this machine starts,
 	// and what it is handed is the local user's decision, not a caller's.
 	AgentEnvPassthrough map[string][]string `json:"agent_env_passthrough,omitempty"`
+	// Machines are the remote computers this Companion reaches over ssh.
+	// Names, hosts and logins only: ssh keys and the remote control tokens
+	// never live here.
+	Machines []machines.Machine `json:"machines,omitempty"`
+}
+
+// MachineStore adapts the settings file to machines.Store.
+type MachineStore struct{ DataDir string }
+
+func (r MachineStore) Load() ([]machines.Machine, error) {
+	s, err := loadSettings(r.DataDir)
+	if err != nil {
+		return nil, err
+	}
+	return s.Machines, nil
+}
+
+func (r MachineStore) Save(list []machines.Machine) error {
+	s, err := loadSettings(r.DataDir)
+	if err != nil {
+		return err
+	}
+	s.Machines = list
+	return saveSettings(r.DataDir, s)
 }
 
 // LoadMCPProviders reads the configured local MCP providers. An unreadable or

@@ -418,3 +418,34 @@ func TestEachPlatformGetsAnInlineBudgetItCanCarry(t *testing.T) {
 		t.Errorf("explicit budget = %d, want 7777", got)
 	}
 }
+
+func TestWorkspaceInfoListsWorkspacesOnOtherMachines(t *testing.T) {
+	root := t.TempDir()
+	deps := testDeps(t, root)
+	deps.Remotes = func(context.Context) []RemoteWorkspace {
+		return []RemoteWorkspace{{WorkspaceID: "ws_remote1", Name: "api", Mode: "read_write", Status: "active", Machine: "vps"}}
+	}
+	httpServer := httptest.NewServer(Handler(deps, nil))
+	t.Cleanup(httpServer.Close)
+	client := mcp.NewClient(&mcp.Implementation{Name: "fylane-test-client", Version: "0.0.1"}, nil)
+	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: httpServer.URL}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { session.Close() })
+
+	var out workspaceInfoOutput
+	structured(t, callTool(t, session, "workspace_info", map[string]any{}), &out)
+	var remote *workspaceEntry
+	for i := range out.Workspaces {
+		if out.Workspaces[i].WorkspaceID == "ws_remote1" {
+			remote = &out.Workspaces[i]
+		}
+	}
+	if remote == nil || remote.Machine != "vps" || remote.Current {
+		t.Fatalf("workspaces = %+v", out.Workspaces)
+	}
+	if out.Workspaces[0].Machine != "" {
+		t.Errorf("the local workspace must not carry a machine name: %+v", out.Workspaces[0])
+	}
+}

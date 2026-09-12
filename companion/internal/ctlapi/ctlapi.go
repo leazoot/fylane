@@ -43,6 +43,9 @@ type controlFile struct {
 	Addr  string `json:"addr"`
 	Token string `json:"token"`
 	PID   int    `json:"pid"`
+	// MCPAddr is the loopback MCP listener. Another Companion reaching this
+	// one over ssh reads it here instead of guessing a port.
+	MCPAddr string `json:"mcp_addr,omitempty"`
 }
 
 // TunnelStatus reports whether the outbound relay connection is up.
@@ -116,6 +119,12 @@ type Server struct {
 	// Prefs backs the settings page's execution preferences (task timeout,
 	// stop button, start at login); nil disables those endpoints.
 	Prefs PrefStore
+	// Machines backs the remote machine list and the per-machine proxy;
+	// nil disables those endpoints.
+	Machines MachineControl
+	// MCPAddr is the bound loopback MCP listener, recorded in the control
+	// file for a Companion that drives this one over ssh.
+	MCPAddr string
 
 	token string
 }
@@ -427,7 +436,7 @@ func (s *Server) Start(ctx context.Context, dataDir string) (string, error) {
 		return "", fmt.Errorf("listening for control api: %w", err)
 	}
 
-	doc, err := json.Marshal(controlFile{Addr: ln.Addr().String(), Token: s.token, PID: os.Getpid()})
+	doc, err := json.Marshal(controlFile{Addr: ln.Addr().String(), Token: s.token, PID: os.Getpid(), MCPAddr: s.MCPAddr})
 	if err != nil {
 		ln.Close()
 		return "", err
@@ -484,6 +493,13 @@ func (s *Server) Start(ctx context.Context, dataDir string) (string, error) {
 	mux.HandleFunc("POST /v1/trace/clear", s.handleTraceClear)
 	mux.HandleFunc("POST /v1/backups/clear", s.handleBackupsClear)
 	mux.HandleFunc("POST /v1/save", s.handleSave)
+	mux.HandleFunc("GET /v1/machines", s.handleMachines)
+	mux.HandleFunc("POST /v1/machines/add", s.handleMachineAdd)
+	mux.HandleFunc("POST /v1/machines/remove", s.machineAction(func(c MachineControl, id string) error { return c.Remove(id) }))
+	mux.HandleFunc("POST /v1/machines/connect", s.machineAction(func(c MachineControl, id string) error { return c.Connect(id) }))
+	mux.HandleFunc("POST /v1/machines/disconnect", s.machineAction(func(c MachineControl, id string) error { return c.Disconnect(id) }))
+	mux.HandleFunc("POST /v1/machines/install", s.machineAction(func(c MachineControl, id string) error { return c.Install(id) }))
+	mux.HandleFunc("/v1/machines/{id}/{rest...}", s.handleMachineProxy)
 
 	srv := &http.Server{Handler: s.auth(mux), ReadHeaderTimeout: 5 * time.Second}
 	go func() {

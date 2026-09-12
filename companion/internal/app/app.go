@@ -27,6 +27,7 @@ import (
 	"github.com/leazoot/fylane/companion/internal/ctlapi"
 	"github.com/leazoot/fylane/companion/internal/devicecred"
 	"github.com/leazoot/fylane/companion/internal/directsrv"
+	"github.com/leazoot/fylane/companion/internal/machines"
 	"github.com/leazoot/fylane/companion/internal/mcpserver"
 	"github.com/leazoot/fylane/companion/internal/readbox"
 	"github.com/leazoot/fylane/companion/internal/store"
@@ -247,6 +248,15 @@ func (a *App) Run(ctx context.Context) error {
 		a.log.Warn("command approval is on the open rung: allowed and gated commands run without asking")
 	}
 
+	// Other machines reached over ssh. Started here because the MCP handler
+	// below lists their workspaces and the router in front of it forwards
+	// calls to them.
+	remotes := machines.New(machines.Options{Store: MachineStore{DataDir: a.cfg.DataDir},
+		Version: buildinfo.Version, Log: a.log})
+	if err := remotes.Start(ctx); err != nil {
+		return err
+	}
+
 	var handler http.Handler = mcpserver.Handler(mcpserver.Deps{
 		Source:     manager,
 		Engine:     engine,
@@ -263,6 +273,7 @@ func (a *App) Run(ctx context.Context) error {
 		Navigators: navigators,
 		Box:        box,
 		Seen:       seenRecorder(ctx, st, a.log),
+		Remotes:    remoteWorkspaces(remotes),
 	}, &mcpserver.Options{
 		EnableWaitProbe: a.cfg.EnableProbes,
 		MaxInlineBytes:  a.cfg.MaxInlineBytes,
@@ -270,6 +281,7 @@ func (a *App) Run(ctx context.Context) error {
 		// page applies to the next command, not to the next restart.
 		TaskCeiling: func() time.Duration { return TaskTimeout(a.cfg.DataDir) },
 	})
+	handler = remotes.MCPHandler(handler)
 	handler = logMCPMethods(a.log, handler)
 	if a.cfg.EnableProbes {
 		a.log.Warn("diagnostic probe tools enabled")
@@ -379,8 +391,19 @@ func (a *App) Run(ctx context.Context) error {
 		ctl.Updates = checker
 		go a.updateCheckLoop(ctx, checker)
 	}
+	// The MCP listener is bound before the control API starts so the control
+	// file can name it: a Companion driving this one over ssh forwards both.
+	ln, err := net.Listen("tcp", a.cfg.Addr)
+	if err != nil {
+		return fmt.Errorf("listening on %s: %w", a.cfg.Addr, err)
+	}
+	ctl.MCPAddr = ln.Addr().String()
+
+	ctl.Machines = remotes
+
 	ctlAddr, err := ctl.Start(ctx, a.cfg.DataDir)
 	if err != nil {
+		ln.Close()
 		return err
 	}
 	a.log.Info("control api listening", "addr", ctlAddr)
@@ -419,11 +442,6 @@ func (a *App) Run(ctx context.Context) error {
 		ctl.PairClaims = claims
 	}
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-
-	ln, err := net.Listen("tcp", a.cfg.Addr)
-	if err != nil {
-		return fmt.Errorf("listening on %s: %w", a.cfg.Addr, err)
-	}
 	a.listenAddr <- ln.Addr().String()
 	a.log.Info("mcp server listening", "addr", ln.Addr().String())
 
@@ -646,4 +664,17 @@ func (a *App) findByRoot(ctx context.Context, manager *workspace.Manager, root s
 		}
 	}
 	return nil, fmt.Errorf("workspace for %q not found", filepath.Base(root))
+}
+
+// remoteWorkspaces adapts the machine list to what workspace_info offers.
+func remoteWorkspaces(remotes *machines.Manager) func(context.Context) []mcpserver.RemoteWorkspace {
+	return func(ctx context.Context) []mcpserver.RemoteWorkspace {
+		list := remotes.Workspaces(ctx)
+		out := make([]mcpserver.RemoteWorkspace, 0, len(list))
+		for _, w := range list {
+			out = append(out, mcpserver.RemoteWorkspace{WorkspaceID: w.WorkspaceID, Name: w.Name,
+				Mode: w.Mode, Status: w.Status, Machine: w.Machine})
+		}
+		return out
+	}
 }
