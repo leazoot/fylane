@@ -234,7 +234,7 @@ AI 会收到被拒绝的消息。
 自带的 ssh,密钥、known_hosts、`~/.ssh/config` 里的别名全都照常生效;它不会问密码。
 
 1. 打开通道页,右栏「机器」下点「切换机器 → 添加远程机器…」,照着 `ssh` 后面的写法
-   填一行:别名、`user@host`、`host:2222` 都行。Fylane 会立刻去敲门,门开了就告诉你对面
+   填一行:别名、`user@host`、`host:22` 都行。Fylane 会立刻去敲门,门开了就告诉你对面
    有什么;名字默认取主机名,随便改,以后在右栏点「修改」还能改。
 2. 如果那台机器上还没有 Fylane,右栏会显示「没有安装 Fylane」和一个「安装 Fylane」
    按钮。点一下,Fylane 通过 ssh 在那台机器上跑 `install.sh`,装的版本和你本机一样,
@@ -328,7 +328,7 @@ go build -o bin/fylane-companion ./companion/cmd/companion
 
 | | 工具 |
 | --- | --- |
-| 读 | `list_directory` `read_file` `read_files` `search_files` `stat_path` |
+| 读 | `list_directory` `read_file` `read_files` `search_files` `stat_path` `git_query` |
 | 写 | `write_file` `edit_file` `apply_patch` `change_manage` |
 | 跑 | `run_command` `task_status` `code_task` |
 | 导航 | `code_navigate`,由 language server 给出真实的定义与引用 |

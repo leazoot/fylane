@@ -301,6 +301,12 @@ func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 		}
 
 		mcp.AddTool(srv, &mcp.Tool{
+			Name:        "git_query",
+			Description: "Ask git a read-only question about the workspace without approval: op=status (porcelain, with branch), diff (working tree, or staged=true for the index; ref to compare against), log (limit, ref, path), show (ref, default HEAD), blame (path, optional line range). Prefer this over run_command for anything that only reads git; it works in read-only workspaces too. Files the workspace hides are left out and counted in hidden_entries.",
+			Annotations: readOnly,
+		}, tools.gitQuery)
+
+		mcp.AddTool(srv, &mcp.Tool{
 			Name:        "task_status",
 			Description: "Get the state and new output of a command started by run_command that is still going. Pass the cursors from the previous response to receive only output produced since then.",
 			Annotations: readOnly,

@@ -394,7 +394,7 @@ go build -o bin/fylane-companion ./companion/cmd/companion
 
 | | Tools |
 | --- | --- |
-| Read | `list_directory` `read_file` `read_files` `search_files` `stat_path` |
+| Read | `list_directory` `read_file` `read_files` `search_files` `stat_path` `git_query` |
 | Write | `write_file` `edit_file` `apply_patch` `change_manage` |
 | Run | `run_command` `task_status` `code_task` |
 | Navigate | `code_navigate`, real definitions and references from a language server |
