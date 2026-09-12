@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"runtime"
 
@@ -59,6 +60,7 @@ func main() {
 				}
 			},
 		},
+		Menu:             appMenu(func() context.Context { return app.ctx }),
 		BackgroundColour: &options.RGBA{R: 0xF5, G: 0xF2, B: 0xEB, A: 1},
 		AssetServer:      &assetserver.Options{Assets: assets},
 		OnStartup:        app.startup,
