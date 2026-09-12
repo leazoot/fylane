@@ -4,7 +4,7 @@
 
 # Fylane
 
-**Let ChatGPT, Claude and Grok on the web read and edit a project folder on your computer. Edits and commands are confirmed on your machine before they happen.**
+**Let ChatGPT, Claude and Grok on the web read and edit a project folder on your computer, or on your VPS. Edits and commands are confirmed on your machine before they happen.**
 
 English | [简体中文](README.zh-CN.md)
 
@@ -38,6 +38,9 @@ Typical uses:
   pasting code.
 - Let Claude edit three files, review the diff in Fylane, then approve.
 - Let Grok run `npm test` in your project and read the output back.
+- Same thing when the project lives on a VPS. Bring that machine in and the
+  AI edits and runs tests on the server; you still approve on this computer.
+  See [Remote machines](#remote-machines).
 - Close the lid and the AI cannot reach the machine. Nothing was uploaded.
 
 ## How it works
@@ -52,6 +55,18 @@ Fylane is the only process that touches disk. The tunnel or relay in the
 middle forwards encrypted frames and stores no file, no diff, no path. Every
 path the AI sees is relative; it never learns where the folder is on your
 machine.
+
+When the folder is on a VPS there is one more hop, over ssh:
+
+```
+AI in the browser  ──►  public address  ──►  Fylane on your computer  ──ssh──►  Fylane on the VPS  ──►  the folder on the server
+                                                      │
+                                              approval still happens here
+```
+
+The Fylane on the VPS opens no port to the outside; only this computer can
+reach it, through ssh. Nothing changes on the platform side, it keeps
+connecting to the same address.
 
 ## Install
 
