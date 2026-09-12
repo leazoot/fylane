@@ -61,7 +61,7 @@ func testDeps(t *testing.T, root string) Deps {
 	t.Helper()
 	m, st := testSource(t, root)
 	engine := &txn.Engine{Store: st, BackupRoot: filepath.Join(t.TempDir(), "backups"), Approver: autoApprover{}}
-	return Deps{Source: m, Engine: engine}
+	return Deps{Source: m, Engine: engine, Activity: st}
 }
 
 // startSession spins up a Streamable HTTP server over a temp workspace and

@@ -117,3 +117,34 @@ func TestExecEventsStoreNoAbsolutePaths(t *testing.T) {
 		}
 	}
 }
+
+func TestListExecEventsForOneWorkspace(t *testing.T) {
+	s := openTestStore(t)
+	ctx := context.Background()
+	for _, id := range []string{"ws-a", "ws-b"} {
+		if err := s.CreateWorkspace(ctx, testWorkspace(id)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, e := range []*ExecEvent{
+		{WorkspaceID: "ws-a", Argv: []string{"go", "test"}, Outcome: "ok"},
+		{WorkspaceID: "ws-b", Argv: []string{"npm", "test"}, Outcome: "failed", ExitCode: 1},
+		{WorkspaceID: "ws-a", Argv: []string{"go", "build"}, Outcome: OutcomeStarted, RunID: "r1"},
+		{WorkspaceID: "ws-a", Argv: []string{"go", "build"}, Outcome: "ok", RunID: "r1"},
+		{Argv: []string{"ls"}, Outcome: "refused"},
+	} {
+		if err := s.AppendExecEvent(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := s.ListExecEventsFor(ctx, "ws-a", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Argv[1] != "build" || got[1].Argv[1] != "test" {
+		t.Fatalf("ws-a events = %+v", got)
+	}
+	if got, _ := s.ListExecEventsFor(ctx, "ws-a", 1); len(got) != 1 {
+		t.Fatalf("limit ignored: %d rows", len(got))
+	}
+}

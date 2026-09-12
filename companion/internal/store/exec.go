@@ -97,6 +97,25 @@ func (s *Store) ListExecEvents(ctx context.Context, limit int) ([]*ExecEvent, er
 	return scanExecEvents(rows)
 }
 
+// ListExecEventsFor is ListExecEvents narrowed to one workspace, for the
+// last-activity answer. Rows written before a workspace was named on them
+// have no workspace and are never listed here.
+func (s *Store) ListExecEventsFor(ctx context.Context, workspaceID string, limit int) ([]*ExecEvent, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT `+execColumns+`
+		FROM exec_events
+		WHERE workspace_id = ? AND outcome <> ?
+		ORDER BY id DESC
+		LIMIT ?`, workspaceID, OutcomeStarted, limit)
+	if err != nil {
+		return nil, fmt.Errorf("listing exec events: %w", err)
+	}
+	return scanExecEvents(rows)
+}
+
 // execColumns is the one column list every exec query selects, so a new
 // column cannot reach one reader and miss another.
 const execColumns = `id, workspace_id, dir_relative, argv, outcome, exit_code,

@@ -51,6 +51,8 @@ type toolset struct {
 	// After a restart that is every run, which is exactly when a caller most
 	// needs an answer other than "unknown task id".
 	runs RunJournal
+	// activityLog backs the last-activity answer of workspace_info.
+	activityLog ActivityJournal
 	// agents backs code_task; nil means no delegation is configured.
 	agents AgentRegistry
 	// providers backs mcp_gateway; nil means no local MCP server is
@@ -161,6 +163,10 @@ type workspaceInfoOutput struct {
 	// Workspaces lists every available workspace so clients can discover
 	// IDs without a separate tool (this absorbed list_workspaces).
 	Workspaces []workspaceEntry `json:"workspaces"`
+	// LastActivity is where the previous session left off in the answered
+	// workspace, from this Companion's own records. Absent when nothing
+	// has happened in it yet, and for a workspace on another machine.
+	LastActivity *lastActivity `json:"last_activity,omitempty" jsonschema:"Where work in this workspace was left: the newest changes and commands on record, bounded. Read it before asking the user what was done last time."`
 }
 
 func (t *toolset) workspaceInfo(ctx context.Context, _ *mcp.CallToolRequest, in workspaceInfoInput) (*mcp.CallToolResult, workspaceInfoOutput, error) {
@@ -201,6 +207,11 @@ func (t *toolset) workspaceInfo(ctx context.Context, _ *mcp.CallToolRequest, in 
 		if ws.Writable() {
 			out.Mode = store.ModeReadWrite
 		}
+		act, err := t.activity(ctx, ws)
+		if err != nil {
+			return nil, workspaceInfoOutput{}, err
+		}
+		out.LastActivity = act
 	} else {
 		out.WorkspaceID, out.Name, out.Mode = standIn.WorkspaceID, standIn.Name, standIn.Mode
 		out.Writable = standIn.Mode == store.ModeReadWrite

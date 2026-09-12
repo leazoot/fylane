@@ -273,6 +273,7 @@ func (a *App) Run(ctx context.Context) error {
 		Gate:       gate,
 		ExecAudit:  execAuditor{store: st, log: a.log},
 		Runs:       st,
+		Activity:   st,
 		Agents:     agents,
 		Providers:  providers,
 		Navigators: navigators,

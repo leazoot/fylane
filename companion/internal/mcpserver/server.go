@@ -110,6 +110,9 @@ type Deps struct {
 	// Nil leaves task_status able to see live work only, which is what it
 	// could see before the journal existed.
 	Runs RunJournal
+	// Activity lets workspace_info say where the last session left off,
+	// from the change sets and commands on record. Nil leaves that out.
+	Activity ActivityJournal
 	// Agents backs code_task. Nil leaves the tool unregistered — a
 	// Companion with no coding agent installed should not advertise one.
 	Agents AgentRegistry
@@ -203,7 +206,7 @@ func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 	tools := &toolset{src: deps.Source, engine: deps.Engine, reads: deps.Reads,
 		rules: deps.Rules, provider: provider, remotes: deps.Remotes,
 		exec: deps.Exec, tasks: deps.Tasks, approver: deps.Approve, gate: deps.Gate,
-		execAudit: deps.ExecAudit, runs: deps.Runs, agents: deps.Agents,
+		execAudit: deps.ExecAudit, runs: deps.Runs, activityLog: deps.Activity, agents: deps.Agents,
 		providers: deps.Providers, navigators: deps.Navigators, box: deps.Box}
 	if opts != nil {
 		tools.inlineBudget = opts.MaxInlineBytes
