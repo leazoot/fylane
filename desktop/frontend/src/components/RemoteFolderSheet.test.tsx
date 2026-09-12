@@ -89,6 +89,9 @@ function type(value: string) {
 
 const field = () =>
   (host.querySelector("#fy-folder-path") as HTMLInputElement).value;
+const standing = () => host.querySelector(".fy-sheet-path-now")?.textContent;
+const fieldOpen = () =>
+  host.querySelector(".fy-sheet-path-field")?.getAttribute("data-open");
 const rows = () =>
   Array.from(host.querySelectorAll(".fy-dir")).map((r) => r.textContent);
 const status = () => host.querySelector("[role=status]")?.textContent ?? "";
@@ -122,7 +125,10 @@ describe("the remote folder sheet", () => {
     expect(grant().disabled).toBe(true);
     await settle();
     expect(asked).toEqual([""]);
+    expect(standing()).toBe(HOME);
     expect(field()).toBe(HOME);
+    // The field stays folded until asked for.
+    expect(fieldOpen()).toBe("false");
     // Dot folders stay out of the way until asked for; the repo is marked.
     expect(rows()).toEqual(["Up one level..", "appgit", "notes"]);
     expect(status()).toContain("3 folders inside");
@@ -176,6 +182,10 @@ describe("the remote folder sheet", () => {
       />,
     );
     await settle();
+    click("type a path");
+    act(() => vi.advanceTimersByTime(1));
+    expect(fieldOpen()).toBe("true");
+    expect(document.activeElement?.id).toBe("fy-folder-path");
     type("~/ap");
     expect(grant().disabled).toBe(true);
     expect(status()).toContain("Checking");
@@ -191,6 +201,7 @@ describe("the remote folder sheet", () => {
     // What was typed stays as typed; what is granted is what the machine
     // resolved it to.
     expect(field()).toBe("~/app");
+    expect(standing()).toBe(HOME + "/app");
     expect(rows()).toEqual(["Up one level..", "src"]);
     expect(grant().disabled).toBe(false);
     act(() => {

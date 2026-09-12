@@ -44,6 +44,7 @@ export function RemoteFolderSheet({
   const [line, setLine] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "reading" });
   const [showHidden, setShowHidden] = useState(false);
+  const [manual, setManual] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const field = useRef<HTMLInputElement>(null);
@@ -82,7 +83,6 @@ export function RemoteFolderSheet({
 
   useEffect(() => {
     look("", true);
-    field.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -101,9 +101,19 @@ export function RemoteFolderSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typed]);
 
-  const step = (path: string) => {
-    look(path, true);
-    field.current?.focus();
+  const step = (path: string) => look(path, true);
+
+  // Opening the field puts the caret at the end of where the sheet stands.
+  const toggleManual = (open: boolean) => {
+    setManual(open);
+    if (open) {
+      window.setTimeout(() => {
+        const el = field.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }, 0);
+    }
   };
 
   const complete = confirmed && !busy;
@@ -187,32 +197,52 @@ export function RemoteFolderSheet({
         }}
       >
         <div className="fy-sheet-top">
-          <span
-            className={`fy-dot fy-dot-sm${phase.kind === "reading" ? " fy-beat" : ""}`}
-            style={{ background: dot }}
-          />
+          <span className="fy-dot fy-dot-sm" style={{ background: dot }} />
           <span className="fy-eyebrow">{targetLine(machine)}</span>
         </div>
         <div className="fy-sheet-title fy-display" style={{ fontSize: 26 }}>
           {t("machine.folderTitle", { name: machine.name })}
         </div>
-        <div className="fy-sheet-guide">{t("machine.folderBody")}</div>
 
+        {/* Where the sheet stands, as one line. The field to type a path
+            is folded under it and opens on request, so the usual way —
+            stepping — is not asked to look at a blank box. */}
         <div className="fy-sheet-form">
           <div>
             <label htmlFor="fy-folder-path">{t("machine.fieldPath")}</label>
-            <input
-              id="fy-folder-path"
-              ref={field}
-              className="fy-field"
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              placeholder={t("machine.fieldPathPlaceholder")}
-              value={line}
-              disabled={busy}
-              onChange={(e) => setLine(e.target.value)}
-            />
+            <div className="fy-sheet-path">
+              <span className="fy-sheet-path-now">
+                {listing?.path ?? (phase.kind === "refused" ? typed : "")}
+              </span>
+              <button
+                type="button"
+                className="fy-textbtn"
+                disabled={busy}
+                onClick={() => toggleManual(!manual)}
+              >
+                {manual ? t("machine.browseTypeDone") : t("machine.browseType")}
+              </button>
+            </div>
+            <div
+              className="fy-sheet-path-field"
+              data-open={manual ? "true" : "false"}
+            >
+              <div>
+                <input
+                  id="fy-folder-path"
+                  ref={field}
+                  className="fy-field"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  placeholder={t("machine.fieldPathPlaceholder")}
+                  value={line}
+                  disabled={busy}
+                  tabIndex={manual ? 0 : -1}
+                  onChange={(e) => setLine(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         </div>
         <div
@@ -228,7 +258,15 @@ export function RemoteFolderSheet({
                   : "var(--fy-faint)",
           }}
         >
-          <span>{status}</span>
+          <span>
+            {phase.kind === "reading" && (
+              <span
+                className="fy-dot fy-dot-sm fy-beat fy-sheet-browse-wait"
+                aria-hidden="true"
+              />
+            )}
+            {status}
+          </span>
           {listing && confirmed && hiddenCount > 0 && (
             <button
               type="button"
