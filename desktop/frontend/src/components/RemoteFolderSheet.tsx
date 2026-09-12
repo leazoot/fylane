@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MachineInfo, RemoteListing } from "../lib/core";
 import { useT } from "../lib/i18n";
 import { reasonText, targetLine } from "./AddMachineSheet";
+import { Jelly } from "./Jelly";
 
 // Granting a folder on a remote machine.
 //
@@ -154,7 +155,8 @@ export function RemoteFolderSheet({
   const status = (() => {
     switch (phase.kind) {
       case "reading":
-        return t("machine.browseReading");
+        // The mark in the list says it.
+        return "";
       case "refused":
         return phase.reason === "nodir"
           ? t("machine.browseNoDir")
@@ -258,15 +260,7 @@ export function RemoteFolderSheet({
                   : "var(--fy-faint)",
           }}
         >
-          <span>
-            {phase.kind === "reading" && (
-              <span
-                className="fy-dot fy-dot-sm fy-beat fy-sheet-browse-wait"
-                aria-hidden="true"
-              />
-            )}
-            {status}
-          </span>
+          <span>{status}</span>
           {listing && confirmed && hiddenCount > 0 && (
             <button
               type="button"
@@ -297,9 +291,13 @@ export function RemoteFolderSheet({
           ref={list}
           role="group"
           aria-label={listing?.path ?? ""}
-          data-busy={phase.kind === "reading" ? "true" : "false"}
           onKeyDown={onListKey}
         >
+          {phase.kind === "reading" && (
+            <div className="fy-sheet-dirs-wait">
+              <Jelly size={28} label={t("machine.browseReading")} />
+            </div>
+          )}
           {listing?.parent && (
             <button
               type="button"

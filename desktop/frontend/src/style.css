@@ -3047,22 +3047,19 @@ a {
 .fy-sheet-path-field[data-open="true"] > div > .fy-field {
   transform: none;
 }
-.fy-sheet-browse-wait {
-  display: inline-block;
-  margin-right: 8px;
-  vertical-align: 1px;
-  background: var(--fy-amber);
-}
 .fy-sheet-dirs {
   height: 248px;
   margin-top: 10px;
   padding: 6px 0;
   overflow-y: auto;
   border-top: 1px solid var(--fy-rule);
-  transition: opacity 0.16s ease-out;
 }
-.fy-sheet-dirs[data-busy="true"] {
-  opacity: 0.45;
+/* While the machine is being asked, the mark stands where the rows will. */
+.fy-sheet-dirs-wait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 .fy-sheet-dirs .fy-wsitem {
   padding: 8px 10px;

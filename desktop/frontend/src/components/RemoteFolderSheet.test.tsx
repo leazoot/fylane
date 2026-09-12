@@ -121,7 +121,10 @@ describe("the remote folder sheet", () => {
         onCancel={() => {}}
       />,
     );
-    expect(status()).toContain("Asking the machine");
+    // The product's one loading mark stands where the rows will be.
+    expect(
+      host.querySelector(".fy-sheet-dirs .fy-jelly-label")?.textContent,
+    ).toBe("Asking the machine…");
     expect(grant().disabled).toBe(true);
     await settle();
     expect(asked).toEqual([""]);
@@ -138,7 +141,10 @@ describe("the remote folder sheet", () => {
     expect(rows()).toEqual(["Up one level..", ".config", "appgit", "notes"]);
 
     click("app");
+    expect(host.querySelector(".fy-jelly")).not.toBeNull();
+    expect(rows()).toEqual([]);
     await settle();
+    expect(host.querySelector(".fy-jelly")).toBeNull();
     expect(field()).toBe(HOME + "/app");
     expect(rows()).toEqual(["Up one level..", "src"]);
     // The way back: one level, and home from anywhere.
