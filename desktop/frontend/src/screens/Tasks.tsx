@@ -129,7 +129,9 @@ export function TasksScreen({
           <h1 className="fy-display" style={{ fontSize: 28, lineHeight: 1.1 }}>
             {t("tasks.title")}
           </h1>
-          <div style={{ marginTop: 7, fontSize: 12.5, color: "var(--fy-faint)" }}>
+          <div
+            style={{ marginTop: 7, fontSize: 12.5, color: "var(--fy-faint)" }}
+          >
             {workspace
               ? t("record.subtitle", {
                   name: workspace.name,
@@ -157,7 +159,11 @@ export function TasksScreen({
           {/* Density sits with the filters because it belongs to the same
               question — what this list shows you — and is drawn in the
               settings page's own switch language rather than a new one. */}
-          <div className="fy-density" role="group" aria-label={t("record.density")}>
+          <div
+            className="fy-density"
+            role="group"
+            aria-label={t("record.density")}
+          >
             {DENSITIES.map((d) => (
               <button
                 key={d}
@@ -177,9 +183,13 @@ export function TasksScreen({
 
       {rows.length > 0 ? (
         <div className="fy-feed" data-density={density}>
-          {recent.length > 0 && <GroupHead text={t("record.recent")} count={recent.length} />}
+          {recent.length > 0 && (
+            <GroupHead text={t("record.recent")} count={recent.length} />
+          )}
           {recent.map(row)}
-          {earlier.length > 0 && <GroupHead text={t("record.earlier")} count={earlier.length} />}
+          {earlier.length > 0 && (
+            <GroupHead text={t("record.earlier")} count={earlier.length} />
+          )}
           {earlier.map(row)}
         </div>
       ) : (
@@ -190,8 +200,13 @@ export function TasksScreen({
               <i />
             </span>
             <div style={{ maxWidth: 360 }}>
-              <div className="fy-display" style={{ fontSize: 27, lineHeight: 1.2 }}>
-                {all.length === 0 ? t("record.emptyTitle") : t("tasksV3.emptyFilterTitle")}
+              <div
+                className="fy-display"
+                style={{ fontSize: 27, lineHeight: 1.2 }}
+              >
+                {all.length === 0
+                  ? t("record.emptyTitle")
+                  : t("tasksV3.emptyFilterTitle")}
               </div>
               <p
                 style={{
@@ -201,15 +216,21 @@ export function TasksScreen({
                   textWrap: "pretty",
                 }}
               >
-                {all.length === 0 ? t("record.emptyBody") : t("tasksV3.emptyFilterBody")}
+                {all.length === 0
+                  ? t("record.emptyBody")
+                  : t("tasksV3.emptyFilterBody")}
               </p>
               <button
                 type="button"
                 className="fy-underbtn"
                 style={{ marginTop: 20 }}
-                onClick={() => (all.length === 0 ? onGotoLane() : setFilter("all"))}
+                onClick={() =>
+                  all.length === 0 ? onGotoLane() : setFilter("all")
+                }
               >
-                {all.length === 0 ? t("tasksV3.backToLane") : t("tasksV3.showAll")}
+                {all.length === 0
+                  ? t("tasksV3.backToLane")
+                  : t("tasksV3.showAll")}
               </button>
             </div>
           </div>
@@ -263,7 +284,9 @@ function Row({
   const tone = entryTone(entry);
   const title = entryTitle(entry, tr);
   const who =
-    entry.kind === "task" ? displayWho(entry.task.provider ?? "") : displayWho(entry.set.provider);
+    entry.kind === "task"
+      ? displayWho(entry.task.provider ?? "")
+      : displayWho(entry.set.provider);
   // The status word already says it is running; repeating it in the duration
   // slot said the same thing twice. The Core keeps a running task's duration
   // up to date, so this is the elapsed time.
@@ -302,6 +325,9 @@ function Row({
           aria-hidden="true"
         />
         <span className="fy-trow-cmd" title={title}>
+          {machineOf(entry) && (
+            <span className="fy-mchip">{machineOf(entry)}</span>
+          )}
           {title}
         </span>
 
@@ -327,12 +353,16 @@ function Row({
               onCopy(`${entry.id}:c`, title);
             }}
           >
-            {copied === `${entry.id}:c` ? t("record.copied") : t("record.copyCommand")}
+            {copied === `${entry.id}:c`
+              ? t("record.copied")
+              : t("record.copyCommand")}
           </button>
         </span>
 
         <span className="fy-trow-meta">
-          <span style={{ color: entryStatusColor(entry) }}>{entryStatusWord(entry, tr)}</span>
+          <span style={{ color: entryStatusColor(entry) }}>
+            {entryStatusWord(entry, tr)}
+          </span>
           <span className="fy-trow-sep"> · </span>
           {who}
           <span className="fy-trow-sep"> · </span>
@@ -368,6 +398,12 @@ function Row({
   );
 }
 
+/** The remote machine a record came from; empty for this computer, which
+ *  is why the common row carries no chip at all. */
+function machineOf(entry: Entry): string {
+  return (entry.kind === "task" ? entry.task.machine : entry.set.machine) ?? "";
+}
+
 function startedISO(entry: Entry): string {
   return entry.kind === "task" ? entry.task.started_at : entry.set.created_at;
 }
@@ -392,7 +428,9 @@ function TaskPanel({
   const sent = outputFootprint(task);
   // The working directory is shown the way the user thinks of it — their
   // folder, then the part inside it the command ran in.
-  const dir = [workspace ? shortPath(workspace.root_path) : "", task.dir].filter(Boolean).join("/");
+  const dir = [workspace ? shortPath(workspace.root_path) : "", task.dir]
+    .filter(Boolean)
+    .join("/");
   const running = task.state === "running";
 
   return (
@@ -447,7 +485,9 @@ function TaskPanel({
               style={{ marginRight: -6 }}
               onClick={() => onCopy(`${task.task_id}:o`, output)}
             >
-              {copied === `${task.task_id}:o` ? t("record.copied") : t("record.copyOutput")}
+              {copied === `${task.task_id}:o`
+                ? t("record.copied")
+                : t("record.copyOutput")}
             </button>
           )}
         </div>
@@ -474,8 +514,14 @@ function TaskPanel({
             k={t("tasksV3.mDuration")}
             v={running ? t("record.inFlight") : duration(task.duration)}
           />
-          <Pair k={t("record.hStarted")} v={startedAt(task.started_at, now, tr)} />
-          <Pair k={t("tasksV3.mExit")} v={running ? "—" : String(task.exit_code)} />
+          <Pair
+            k={t("record.hStarted")}
+            v={startedAt(task.started_at, now, tr)}
+          />
+          <Pair
+            k={t("tasksV3.mExit")}
+            v={running ? "—" : String(task.exit_code)}
+          />
           <Pair k={t("record.hDir")} v={dir || "/"} />
         </dl>
       </div>
@@ -538,7 +584,9 @@ function WritePanel({
         <div style={{ marginTop: 20 }} className="fy-eyebrow">
           {t("record.hFiles")}
         </div>
-        <pre className="fy-out">{ops.map((op) => op.path).join("\n") || "—"}</pre>
+        <pre className="fy-out">
+          {ops.map((op) => op.path).join("\n") || "—"}
+        </pre>
       </div>
 
       <div className="fy-tpanel-side">
@@ -548,9 +596,15 @@ function WritePanel({
             k={t("tasksV3.mStatus")}
             v={entryStatusWord({ kind: "write", id: set.id, at: 0, set }, tr)}
           />
-          <Pair k={t("record.hStarted")} v={startedAt(set.created_at, now, tr)} />
+          <Pair
+            k={t("record.hStarted")}
+            v={startedAt(set.created_at, now, tr)}
+          />
           {review !== "none" && (
-            <Pair k={t("record.hAccepted")} v={reviewWord(review, set.accepted_at, tr)} />
+            <Pair
+              k={t("record.hAccepted")}
+              v={reviewWord(review, set.accepted_at, tr)}
+            />
           )}
         </dl>
         <div className="fy-hline" style={{ margin: "14px 0 13px" }} />
@@ -590,10 +644,16 @@ function WritePanel({
 
 // "Never reviewed" and "Accepted 14:02" are the two ends this column exists
 // for; "not reviewed yet" is only the state in between.
-function reviewWord(review: Acceptance, at: string | undefined, { t }: Translator): string {
+function reviewWord(
+  review: Acceptance,
+  at: string | undefined,
+  { t }: Translator,
+): string {
   switch (review) {
     case "accepted":
-      return at ? t("record.acceptedAt", { time: clock(at) }) : t("record.accepted");
+      return at
+        ? t("record.acceptedAt", { time: clock(at) })
+        : t("record.accepted");
     case "awaiting":
       return t("record.acceptAwaiting");
     default:

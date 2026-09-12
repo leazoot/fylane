@@ -516,3 +516,60 @@ func (a *App) RollbackChangeSet(workspaceID, changeSetID string) (string, error)
 		"confirmed_in": "desktop",
 	}, 30*time.Second)
 }
+
+// Machines lists the remote machines this Core reaches over ssh, with the
+// state of each link.
+func (a *App) Machines() (string, error) {
+	return a.call("GET", "/v1/machines", nil)
+}
+
+// AddMachine records a remote machine and starts connecting to it. The
+// payload is a name, a host, and optionally a login and port — never a key
+// or a password; ssh's own configuration supplies those.
+func (a *App) AddMachine(requestJSON string) (string, error) {
+	var body any
+	if err := json.Unmarshal([]byte(requestJSON), &body); err != nil {
+		return "", fmt.Errorf("invalid machine payload: %w", err)
+	}
+	return a.call("POST", "/v1/machines/add", body)
+}
+
+// RemoveMachine forgets a machine. Nothing on that machine is touched.
+func (a *App) RemoveMachine(id string) (string, error) {
+	return a.call("POST", "/v1/machines/remove", map[string]string{"id": id})
+}
+
+// ConnectMachine (re)starts the link to a machine.
+func (a *App) ConnectMachine(id string) (string, error) {
+	return a.call("POST", "/v1/machines/connect", map[string]string{"id": id})
+}
+
+// DisconnectMachine closes the link and leaves the machine off.
+func (a *App) DisconnectMachine(id string) (string, error) {
+	return a.call("POST", "/v1/machines/disconnect", map[string]string{"id": id})
+}
+
+// InstallMachine asks the Core to install its own version of Fylane on a
+// machine that was found without one. The window sends the machine id and
+// nothing else: which version, from where, and checked how are the Core's.
+func (a *App) InstallMachine(id string) (string, error) {
+	return a.call("POST", "/v1/machines/install", map[string]string{"id": id})
+}
+
+// MachineCall performs one control-API request against a remote machine,
+// through the local Core's per-machine proxy. The path is the remote's own
+// control path (e.g. /v1/tasks); the local token gets the call into the
+// Core, the Core's link to that machine carries it the rest of the way.
+// A rollback through it is bounded the same way a local one is.
+func (a *App) MachineCall(id, method, path, bodyJSON string) (string, error) {
+	if id == "" || !strings.HasPrefix(path, "/v1/") {
+		return "", errors.New("invalid machine call")
+	}
+	var body any
+	if bodyJSON != "" {
+		if err := json.Unmarshal([]byte(bodyJSON), &body); err != nil {
+			return "", fmt.Errorf("invalid machine payload: %w", err)
+		}
+	}
+	return a.callWithin(method, "/v1/machines/"+id+path, body, 30*time.Second)
+}

@@ -67,8 +67,17 @@ function Header({ active }: { active: string }) {
       <span style={{ flex: "none", width: 86 }} />
       <span style={{ flex: 1 }} />
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className="fy-dot fy-dot-sm" style={{ background: "var(--fy-sage)" }} />
-        <span style={{ fontSize: 11.5, color: "var(--fy-muted)", letterSpacing: ".01em" }}>
+        <span
+          className="fy-dot fy-dot-sm"
+          style={{ background: "var(--fy-sage)" }}
+        />
+        <span
+          style={{
+            fontSize: 11.5,
+            color: "var(--fy-muted)",
+            letterSpacing: ".01em",
+          }}
+        >
           {en.t("shell.titleCalm")}
         </span>
       </div>
@@ -124,7 +133,10 @@ function laneSnapshot() {
     "lane-disclosure": fx.HELD_DISCLOSURE,
   };
   if (held[board]) {
-    return fx.snapshot({ approvals: held[board], status: { ...fx.STATUS, pending_approvals: 1 } });
+    return fx.snapshot({
+      approvals: held[board],
+      status: { ...fx.STATUS, pending_approvals: 1 },
+    });
   }
   if (board === "lane-empty") {
     return fx.snapshot({
@@ -133,7 +145,22 @@ function laneSnapshot() {
     });
   }
   if (board === "lane-paused") {
-    return fx.snapshot({ workspace: { ...fx.WORKSPACES[0], status: "paused" } });
+    return fx.snapshot({
+      workspace: { ...fx.WORKSPACES[0], status: "paused" },
+    });
+  }
+  if (board === "lane-remote") {
+    return fx.snapshot({ workspace: fx.MACHINES[0].workspaces[0] });
+  }
+  if (board === "lane-remote-held") {
+    return fx.snapshot({
+      workspace: fx.MACHINES[0].workspaces[0],
+      approvals: fx.HELD_REMOTE,
+      status: { ...fx.STATUS, pending_approvals: 1 },
+    });
+  }
+  if (board === "lane-remote-missing") {
+    return fx.snapshot({ workspace: null });
   }
   if (board === "lane-offline") {
     return {
@@ -148,12 +175,42 @@ function laneSnapshot() {
   return fx.snapshot();
 }
 
+// The machine boards stand the rail on a remote machine: vps-1 (online, with
+// its own folders), or build-box (reachable, no Fylane yet). Every other
+// lane board stands on this computer with the two machines in the list.
+function machineOf(): string {
+  if (board === "lane-remote-missing") return "m_build";
+  if (board.startsWith("lane-remote")) return "m_vps1";
+  return "";
+}
+
 function Lane({ tasks = fx.TASKS }: { tasks?: typeof fx.TASKS }) {
+  const machine = machineOf();
   return (
     <LaneScreen
       snapshot={laneSnapshot()}
-      tasks={tasks}
-      workspaces={fx.WORKSPACES}
+      tasks={
+        board === "lane-remote-missing"
+          ? []
+          : board.startsWith("lane-remote")
+            ? fx.TASKS_REMOTE
+            : tasks
+      }
+      workspaces={
+        machine === "m_vps1"
+          ? fx.MACHINES[0].workspaces
+          : machine
+            ? []
+            : fx.WORKSPACES
+      }
+      machines={fx.MACHINES}
+      machineID={machine}
+      onSelectMachine={noop}
+      onAddMachine={noop}
+      onRemoveMachine={noop}
+      onInstallMachine={noop}
+      onReconnectMachine={noop}
+      onDisconnectMachine={noop}
       canStop
       onApprove={noop}
       onReject={noop}
@@ -177,6 +234,9 @@ function Board() {
     case "lane-empty":
     case "lane-paused":
     case "lane-offline":
+    case "lane-remote":
+    case "lane-remote-held":
+    case "lane-remote-missing":
       return (
         <>
           <Header active="lane" />
@@ -187,12 +247,19 @@ function Board() {
       );
     case "tasks":
     case "tasks-empty":
+    case "tasks-remote":
       return (
         <>
           <Header active="tasks" />
           <Scroller>
             <TasksScreen
-              tasks={board === "tasks-empty" ? [] : fx.TASKS}
+              tasks={
+                board === "tasks-empty"
+                  ? []
+                  : board === "tasks-remote"
+                    ? fx.TASKS_REMOTE
+                    : fx.TASKS
+              }
               changeSets={board === "tasks-empty" ? [] : fx.CHANGE_SETS}
               workspace={fx.WORKSPACES[0]}
               now={fx.NOW}
@@ -224,7 +291,9 @@ function Board() {
               onClearRecords={noop}
               onError={noop}
               version={fx.STATUS.version}
-              update={board === "settings-update" ? { version: "0.0.2" } : undefined}
+              update={
+                board === "settings-update" ? { version: "0.0.2" } : undefined
+              }
               deps={fx.SETTINGS_DEPS}
             />
           </Scroller>
@@ -304,7 +373,12 @@ createRoot(document.getElementById("root")!).render(
       }}
     >
       <Board />
-      <Dock pages={NAV} current={active()} onGoto={noop} pending={board === "lane-held"} />
+      <Dock
+        pages={NAV}
+        current={active()}
+        onGoto={noop}
+        pending={board === "lane-held"}
+      />
     </div>
   </React.StrictMode>,
 );

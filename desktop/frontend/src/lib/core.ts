@@ -40,6 +40,13 @@ import {
   StartTunnelSetup,
   Tasks,
   Workspaces,
+  Machines,
+  AddMachine,
+  RemoveMachine,
+  ConnectMachine,
+  DisconnectMachine,
+  InstallMachine,
+  MachineCall,
 } from "../../wailsjs/go/main/App";
 
 // Typed wrappers over the Core control API bridge. Every payload is JSON
@@ -109,9 +116,10 @@ export type OpImpact = {
  *  proxy before Fylane forwards a call to an MCP server it cannot inspect. The
  *  Core states it rather than leaving the screen to guess from which fields
  *  are populated. */
-export type ApprovalKind = "write" | "command" | "disclosure" | "delegation" | "proxy";
+export type ApprovalKind =
+  "write" | "command" | "disclosure" | "delegation" | "proxy";
 
-export type Approval = {
+export type Approval = MachineTag & {
   change_set_id: string;
   workspace_id: string;
   workspace_name: string;
@@ -175,7 +183,7 @@ export type ChangeSetOp = {
   sha256?: string;
 };
 
-export type ChangeSet = {
+export type ChangeSet = MachineTag & {
   id: string;
   workspace_id: string;
   provider: string;
@@ -229,7 +237,10 @@ export async function fetchPairClaims(): Promise<PairClaim[]> {
   return res.claims ?? [];
 }
 
-export async function resolvePairClaim(requestID: string, approved: boolean): Promise<void> {
+export async function resolvePairClaim(
+  requestID: string,
+  approved: boolean,
+): Promise<void> {
   await ResolvePairClaim(requestID, approved);
 }
 
@@ -241,7 +252,10 @@ export type PairingCodeInfo = { code: string; expires_in_seconds: number };
 // typing it into a platform (the 2026-08-15 defect).
 export async function mintPairingCode(): Promise<PairingCodeInfo> {
   const res = JSON.parse(await PairingCode());
-  return { code: res.code ?? "", expires_in_seconds: res.expires_in_seconds ?? 0 };
+  return {
+    code: res.code ?? "",
+    expires_in_seconds: res.expires_in_seconds ?? 0,
+  };
 }
 
 export async function fetchApprovals(): Promise<Approval[]> {
@@ -267,7 +281,9 @@ export async function fetchWorkspaces(): Promise<{
   };
 }
 
-export async function fetchChangeSets(workspaceID: string): Promise<ChangeSet[]> {
+export async function fetchChangeSets(
+  workspaceID: string,
+): Promise<ChangeSet[]> {
   const res = JSON.parse(await ChangeSets(workspaceID));
   return res.change_sets ?? [];
 }
@@ -433,7 +449,9 @@ export async function cancelTunnelSetup(): Promise<ConnectInfo> {
 // digest are fixed inside the Core, so there is nothing here for a
 // caller to point somewhere else. It answers as soon as the transfer is
 // running — progress arrives on the next read.
-export async function startTunnelDownload(provider: string): Promise<ConnectInfo> {
+export async function startTunnelDownload(
+  provider: string,
+): Promise<ConnectInfo> {
   const res = JSON.parse(await StartTunnelDownload(provider));
   return { ...res, providers: res.providers ?? [] };
 }
@@ -486,7 +504,15 @@ export type TaskState =
   | "denied"
   | "interrupted";
 
-export type TaskInfo = {
+/** Where a record came from. Stamped by the poll on records read from
+ *  another machine — the Core never sends it, and a record without it is
+ *  from this computer. */
+export type MachineTag = {
+  machine_id?: string;
+  machine?: string;
+};
+
+export type TaskInfo = MachineTag & {
   task_id: string;
   state: TaskState;
   label?: string;
@@ -647,7 +673,10 @@ export async function fetchCommandSettings(): Promise<CommandSettingsInfo> {
 
 // confirm is only ever true for the open rung, and the Core refuses that rung
 // without it — the acknowledgement lives on both sides on purpose.
-export async function setCommandRung(rung: CommandRung, confirm: boolean): Promise<CommandSettingsInfo> {
+export async function setCommandRung(
+  rung: CommandRung,
+  confirm: boolean,
+): Promise<CommandSettingsInfo> {
   return JSON.parse(await SetCommandRung(rung, confirm));
 }
 
@@ -663,14 +692,18 @@ export async function setCommandRung(rung: CommandRung, confirm: boolean): Promi
  *  request, so a refusal cannot leave the page showing a mode nobody set. */
 export type WriteMode = "safe" | "balanced";
 
-export async function setWriteMode(mode: WriteMode): Promise<{ approval_mode: WriteMode }> {
+export async function setWriteMode(
+  mode: WriteMode,
+): Promise<{ approval_mode: WriteMode }> {
   return JSON.parse(await SetWriteMode(mode));
 }
 
 // Withdrawing takes effect on the next command; the Core answers with the
 // settings the page redraws from, so the list cannot disagree with what it
 // now holds.
-export async function revokeCommandGrant(workspaceID: string): Promise<CommandSettingsInfo> {
+export async function revokeCommandGrant(
+  workspaceID: string,
+): Promise<CommandSettingsInfo> {
   return JSON.parse(await RevokeCommandGrant(workspaceID));
 }
 
@@ -711,7 +744,9 @@ export type ClearedBackups = {
 // clearBackups removes the undo copies for a workspace. The write records
 // stay — what goes is the ability to take those writes back, so the rollback
 // deadline goes with the copies and the undo button turns itself off.
-export async function clearBackups(workspaceID: string): Promise<ClearedBackups> {
+export async function clearBackups(
+  workspaceID: string,
+): Promise<ClearedBackups> {
   return JSON.parse(await ClearBackups(workspaceID));
 }
 
@@ -742,4 +777,148 @@ export async function acceptChangeSet(
 /** Reveals a granted folder in the platform's file manager. */
 export async function openWorkspaceDir(path: string): Promise<void> {
   await OpenWorkspaceDir(path);
+}
+
+// ── remote machines ──────────────────────────────────────────────────────
+
+export type MachineState =
+  | "off"
+  | "connecting"
+  | "missing"
+  | "installing"
+  | "starting"
+  | "online"
+  | "error";
+
+/** One remote machine as the Core reports it. Never a token, never a port:
+ *  the link's secrets stay in the Core. */
+export type MachineInfo = {
+  id: string;
+  name: string;
+  host: string;
+  user?: string;
+  port?: number;
+  state: MachineState;
+  /** The Core's own sentence about a state that needs one (why it cannot
+   *  connect, which version it found). */
+  detail?: string;
+  version?: string;
+  since: string;
+};
+
+export async function fetchMachines(): Promise<MachineInfo[]> {
+  const res = JSON.parse(await Machines());
+  return res.machines ?? [];
+}
+
+export type MachineRequest = {
+  name: string;
+  host: string;
+  user?: string;
+  port?: number;
+};
+
+export async function addMachine(req: MachineRequest): Promise<MachineInfo> {
+  return JSON.parse(await AddMachine(JSON.stringify(req)));
+}
+
+export async function removeMachine(id: string): Promise<void> {
+  await RemoveMachine(id);
+}
+
+export async function connectMachine(id: string): Promise<void> {
+  await ConnectMachine(id);
+}
+
+export async function disconnectMachine(id: string): Promise<void> {
+  await DisconnectMachine(id);
+}
+
+export async function installMachine(id: string): Promise<void> {
+  await InstallMachine(id);
+}
+
+/** The control API of one remote machine, reached through the local Core's
+ *  per-machine proxy. The shapes are the same documents the local calls
+ *  above read, because it is the same Core on the other end. */
+export interface RemoteCore {
+  status(): Promise<CoreStatusInfo>;
+  workspaces(): Promise<{
+    workspaces: Workspace[];
+    currentWorkspaceID: string;
+  }>;
+  approvals(): Promise<Approval[]>;
+  tasks(): Promise<TaskInfo[]>;
+  changeSets(workspaceID: string): Promise<ChangeSet[]>;
+  resolveApproval(changeSetID: string, approved: boolean): Promise<void>;
+  addWorkspace(path: string): Promise<Workspace>;
+  selectWorkspace(id: string): Promise<void>;
+  pauseWorkspace(id: string): Promise<void>;
+  resumeWorkspace(id: string): Promise<void>;
+  cancelTask(taskID: string): Promise<TaskInfo[]>;
+  acceptChangeSet(workspaceID: string, changeSetID: string): Promise<ChangeSet>;
+  rollbackChangeSet(
+    workspaceID: string,
+    changeSetID: string,
+  ): Promise<RollbackResult>;
+}
+
+export function remoteCore(machineID: string): RemoteCore {
+  const call = async (method: string, path: string, body?: unknown) =>
+    JSON.parse(
+      await MachineCall(
+        machineID,
+        method,
+        path,
+        body === undefined ? "" : JSON.stringify(body),
+      ),
+    );
+  return {
+    status: () => call("GET", "/v1/status"),
+    workspaces: async () => {
+      const res = await call("GET", "/v1/workspaces");
+      return {
+        workspaces: res.workspaces ?? [],
+        currentWorkspaceID: res.current_workspace_id ?? "",
+      };
+    },
+    approvals: async () => (await call("GET", "/v1/approvals")).approvals ?? [],
+    tasks: async () => (await call("GET", "/v1/tasks")).tasks ?? [],
+    changeSets: async (workspaceID) =>
+      (
+        await call(
+          "GET",
+          `/v1/changesets?workspace_id=${encodeURIComponent(workspaceID)}`,
+        )
+      ).change_sets ?? [],
+    resolveApproval: async (changeSetID, approved) => {
+      await call("POST", "/v1/approvals/resolve", {
+        change_set_id: changeSetID,
+        approved,
+      });
+    },
+    addWorkspace: (path) => call("POST", "/v1/workspaces/add", { path }),
+    selectWorkspace: async (id) => {
+      await call("POST", "/v1/workspaces/select", { id });
+    },
+    pauseWorkspace: async (id) => {
+      await call("POST", "/v1/workspaces/pause", { id });
+    },
+    resumeWorkspace: async (id) => {
+      await call("POST", "/v1/workspaces/resume", { id });
+    },
+    cancelTask: async (taskID) =>
+      (await call("POST", "/v1/tasks/cancel", { task_id: taskID })).tasks ?? [],
+    acceptChangeSet: (workspaceID, changeSetID) =>
+      call("POST", "/v1/changesets/accept", {
+        workspace_id: workspaceID,
+        change_set_id: changeSetID,
+      }),
+    rollbackChangeSet: (workspaceID, changeSetID) =>
+      call("POST", "/v1/changesets/rollback", {
+        workspace_id: workspaceID,
+        change_set_id: changeSetID,
+        confirmed_in: "desktop",
+      }),
+  };
 }

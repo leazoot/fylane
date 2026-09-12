@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { TaskInfo, Workspace } from "../lib/core";
+import type { MachineState, TaskInfo, Workspace } from "../lib/core";
+import type { MachineView } from "../lib/poll";
 import {
   asksFor,
   clock,
@@ -31,11 +32,25 @@ import { Jelly } from "../components/Jelly";
 // bleeds left to the window edge: no card, and no card inside a card.
 
 export interface LaneProps {
+  /** The snapshot with `workspace` already pointed at the machine the rail
+   *  stands on; approvals and change sets are every machine's. */
   snapshot: LaneSnapshot;
   tasks: TaskInfo[];
+  /** The folders of the machine the rail stands on. */
   workspaces: Workspace[];
   /** Whether a running task may be stopped (Settings › execution). */
   canStop: boolean;
+  /** The remote machines the Core knows, and which one the rail stands on
+   *  ("" is this computer). Absent props mean a window without the feature,
+   *  which is what every older test and board still is. */
+  machines?: MachineView[];
+  machineID?: string;
+  onSelectMachine?: (id: string) => void;
+  onAddMachine?: () => void;
+  onRemoveMachine?: (id: string) => void;
+  onInstallMachine?: (id: string) => void;
+  onReconnectMachine?: (id: string) => void;
+  onDisconnectMachine?: (id: string) => void;
   onApprove: (changeSetID: string) => void;
   onReject: (changeSetID: string) => void;
   onSelectWorkspace: (id: string) => void;
@@ -77,11 +92,18 @@ export function LaneScreen(props: LaneProps) {
         )}
 
         {board.last && (
-          <button type="button" className="fy-recent" onClick={props.onGotoTasks}>
+          <button
+            type="button"
+            className="fy-recent"
+            onClick={props.onGotoTasks}
+          >
             <span className="fy-eyebrow" style={{ flex: "none" }}>
               {t("laneV2.recent")}
             </span>
-            <span className="fy-dot fy-dot-sm" style={{ background: taskDot(board.last.state) }} />
+            <span
+              className="fy-dot fy-dot-sm"
+              style={{ background: taskDot(board.last.state) }}
+            />
             <span
               style={{
                 font: "400 13px/1.4 var(--fy-mono)",
@@ -93,7 +115,9 @@ export function LaneScreen(props: LaneProps) {
             >
               {taskCommand(board.last, tr)}
             </span>
-            <span style={{ flex: "none", fontSize: 12, color: "var(--fy-faint)" }}>
+            <span
+              style={{ flex: "none", fontSize: 12, color: "var(--fy-faint)" }}
+            >
               {[
                 taskStateWord(board.last.state, tr),
                 duration(board.last.duration),
@@ -135,9 +159,14 @@ function Request({
   // The gate opens, then the scene leaves to the right. The decision itself
   // is sent on the first frame — the platform is blocked on it and must not
   // wait for an animation.
-  const [signed, setSigned] = useState<"none" | "approved" | "rejected">("none");
+  const [signed, setSigned] = useState<"none" | "approved" | "rejected">(
+    "none",
+  );
   const timers = useRef<number[]>([]);
-  useEffect(() => () => timers.current.forEach((id) => window.clearTimeout(id)), []);
+  useEffect(
+    () => () => timers.current.forEach((id) => window.clearTimeout(id)),
+    [],
+  );
 
   const decide = (verdict: "approved" | "rejected") => {
     if (signed !== "none") return;
@@ -215,6 +244,7 @@ function Request({
       </div>
 
       <div className="fy-metaline">
+        {pending.machine && <span className="fy-mchip">{pending.machine}</span>}
         <span
           style={{
             font: "400 13px/1.4 var(--fy-mono)",
@@ -236,7 +266,9 @@ function Request({
                 color: pending.rule ? "var(--fy-brick)" : "var(--fy-sage)",
               }}
             >
-              {pending.rule && pending.reason ? pending.reason : t("laneV3.ordinary")}
+              {pending.rule && pending.reason
+                ? pending.reason
+                : t("laneV3.ordinary")}
             </span>
           </>
         ) : null}
@@ -276,12 +308,18 @@ function Request({
           type="button"
           className="fy-primary"
           data-busy={busy ? "true" : "false"}
-          onClick={() => (wipesATree && !armed ? setArmed(true) : decide("approved"))}
+          onClick={() =>
+            wipesATree && !armed ? setArmed(true) : decide("approved")
+          }
           disabled={busy}
         >
           <span>{approveWord(pending, armed, tr)}</span>
           {signed === "approved" && (
-            <Jelly size={20} color="var(--fy-bg)" busyLabel={t("laneV3.allow")} />
+            <Jelly
+              size={20}
+              color="var(--fy-bg)"
+              busyLabel={t("laneV3.allow")}
+            />
           )}
         </button>
         <button
@@ -311,7 +349,11 @@ function Request({
  *  Armed, it says what it is about to do rather than "allow": a confirmation
  *  step whose two states read the same is a step people learn to click
  *  through, which is worse than not having one. */
-function approveWord(pending: PendingInfo, armed: boolean, { t }: Translator): string {
+function approveWord(
+  pending: PendingInfo,
+  armed: boolean,
+  { t }: Translator,
+): string {
   if (armed) {
     return t("laneV3.confirmDelete");
   }
@@ -347,7 +389,12 @@ function Detail({ pending, tr }: { pending: PendingInfo; tr: Translator }) {
       {pending.network !== "" && (
         <>
           <dt>{t("laneV3.mNetwork")}</dt>
-          <dd style={{ color: pending.network === "unbounded" ? "var(--fy-amber)" : undefined }}>
+          <dd
+            style={{
+              color:
+                pending.network === "unbounded" ? "var(--fy-amber)" : undefined,
+            }}
+          >
             {t(NETWORK_WORD[pending.network] ?? "set.netAllowed")}
           </dd>
         </>
@@ -430,7 +477,10 @@ function Running({
   return (
     <div className="fy-scene">
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-        <span className="fy-dot fy-beat" style={{ background: "var(--fy-ink)" }} />
+        <span
+          className="fy-dot fy-beat"
+          style={{ background: "var(--fy-ink)" }}
+        />
         <span
           style={{
             fontSize: 12,
@@ -442,8 +492,13 @@ function Running({
         </span>
       </div>
 
-      <h1 className="fy-display" style={{ fontSize: 31, lineHeight: 1.15, marginTop: 13 }}>
-        {t("laneV3.runningHeadline")}
+      <h1
+        className="fy-display"
+        style={{ fontSize: 31, lineHeight: 1.15, marginTop: 13 }}
+      >
+        {task.machine
+          ? t("laneV3.runningOn", { machine: task.machine })
+          : t("laneV3.runningHeadline")}
       </h1>
 
       <div className="fy-band">
@@ -488,6 +543,10 @@ function Calm(props: LaneProps & { tr: Translator }) {
   const { t } = tr;
   const ws = snapshot.workspace;
   const paused = ws?.status === "paused";
+  const machine = selectedMachine(props);
+  // A remote machine that is not up has no folders to stand on; its state is
+  // the scene, and the way out of it (install, reconnect) is the action.
+  const away = machine && machine.info.state !== "online" ? machine : null;
 
   const scene = !snapshot.online
     ? {
@@ -496,31 +555,43 @@ function Calm(props: LaneProps & { tr: Translator }) {
         title: t("laneV2.offlineTitle"),
         body: t("laneV2.offlineBody"),
       }
-    : !ws
+    : away
       ? {
-          dot: "var(--fy-faint)",
-          tag: t("laneV2.noFolder"),
-          title: t("laneV3.noFolderHeadline"),
-          body: t("laneV3.noFolderBody"),
+          dot: machineDot(away.info.state),
+          tag: t(machineWord(away.info.state, away.info.detail)),
+          title: away.info.name,
+          body: away.info.detail || t("machine.addBody"),
         }
-      : paused
+      : !ws
         ? {
             dot: "var(--fy-faint)",
-            tag: t("laneV2.pausedShort"),
-            title: t("laneV2.pausedTitle"),
-            body: t("laneV2.pausedBody"),
+            tag: t("laneV2.noFolder"),
+            title: machine
+              ? t("machine.noFolder", { name: machine.info.name })
+              : t("laneV3.noFolderHeadline"),
+            body: t("laneV3.noFolderBody"),
           }
-        : {
-            dot: "var(--fy-sage)",
-            tag: t("laneV2.calmTitle"),
-            title: t("laneV3.calmHeadline"),
-            body: t("laneV2.calmBody"),
-          };
+        : paused
+          ? {
+              dot: "var(--fy-faint)",
+              tag: t("laneV2.pausedShort"),
+              title: t("laneV2.pausedTitle"),
+              body: t("laneV2.pausedBody"),
+            }
+          : {
+              dot: "var(--fy-sage)",
+              tag: t("laneV2.calmTitle"),
+              title: t("laneV3.calmHeadline"),
+              body: t("laneV2.calmBody"),
+            };
 
   const tally = dayTally(tasks, snapshot.changeSets, new Date());
 
   return (
-    <div className="fy-scene" style={{ animation: "fyLine .3s cubic-bezier(.2,.8,.24,1) both" }}>
+    <div
+      className="fy-scene"
+      style={{ animation: "fyLine .3s cubic-bezier(.2,.8,.24,1) both" }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <span className="fy-dot" style={{ background: scene.dot }} />
         <span
@@ -583,17 +654,32 @@ function Calm(props: LaneProps & { tr: Translator }) {
           </>
         )}
         {!snapshot.online && (
-          <button type="button" className="fy-primary" onClick={props.onStartCore}>
+          <button
+            type="button"
+            className="fy-primary"
+            onClick={props.onStartCore}
+          >
             <span>{t("laneV2.startCore")}</span>
           </button>
         )}
-        {snapshot.online && !ws && (
-          <button type="button" className="fy-primary" onClick={props.onChooseWorkspace}>
+        {snapshot.online && away && (
+          <MachineAction {...props} machine={away} primary />
+        )}
+        {snapshot.online && !away && !ws && (
+          <button
+            type="button"
+            className="fy-primary"
+            onClick={props.onChooseWorkspace}
+          >
             <span>{t("laneV2.chooseFolder")}</span>
           </button>
         )}
         {snapshot.online && ws && paused && (
-          <button type="button" className="fy-underbtn" onClick={props.onTogglePause}>
+          <button
+            type="button"
+            className="fy-underbtn"
+            onClick={props.onTogglePause}
+          >
             {t("shell.resume")}
           </button>
         )}
@@ -610,132 +696,163 @@ function Rail(props: LaneProps & { tr: Translator }) {
   const [menu, setMenu] = useState(false);
   const ws = snapshot.workspace;
   const paused = ws?.status === "paused";
+  const machine = selectedMachine(props);
 
   return (
     <div className="fy-rail">
-      <div className="fy-revealer" style={{ position: "relative" }}>
-        <div className="fy-eyebrow" style={{ marginBottom: 9 }}>
-          {t("laneV2.workspace")}
-        </div>
-        <div className="fy-display" style={{ fontSize: 23, lineHeight: 1.15 }}>
-          {ws ? ws.name : t("shell.noWorkspace")}
-        </div>
-        {ws && (
-          <div className="fy-reveal" style={{ "--fy-reveal-h": "44px" } as CSSProperties}>
-            <div
-              style={{
-                paddingTop: 7,
-                font: "400 12px/1.5 var(--fy-mono)",
-                color: "var(--fy-muted)",
-                wordBreak: "break-all",
-              }}
-            >
-              {ws.root_path}
-            </div>
+      {props.machines && props.onSelectMachine && (
+        <MachineAnchor {...props} tr={tr} />
+      )}
+      {/* A machine that is not up has no folder to stand on; offering one
+          would be offering a folder on a computer nothing can reach. */}
+      {(!machine || machine.info.state === "online") && (
+        <div className="fy-revealer" style={{ position: "relative" }}>
+          {props.machines && props.onSelectMachine && (
+            <div className="fy-hline" style={{ margin: "22px 0 20px" }} />
+          )}
+          <div className="fy-eyebrow" style={{ marginBottom: 9 }}>
+            {t("laneV2.workspace")}
           </div>
-        )}
-        <div
-          style={{
-            marginTop: 9,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <span
-            className="fy-dot fy-dot-sm"
-            style={{
-              background: ws ? (paused ? "var(--fy-amber)" : "var(--fy-sage)") : "var(--fy-rule)",
-            }}
-          />
-          <span style={{ fontSize: 11.5, color: "var(--fy-faint)" }}>
-            {ws
-              ? paused
-                ? t("laneV2.pausedShort")
-                : t("laneV2.localConnected")
-              : t("laneV2.noFolder")}
-          </span>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            marginTop: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          {workspaces.length > 0 ? (
-            <button
-              type="button"
-              className="fy-underbtn"
-              aria-expanded={menu}
-              onClick={() => setMenu((v) => !v)}
-            >
-              {t("laneV2.switch")}
-            </button>
-          ) : (
-            <button type="button" className="fy-underbtn" onClick={props.onChooseWorkspace}>
-              {t("laneV2.chooseFolder")}
-            </button>
-          )}
+          <div
+            className="fy-display"
+            style={{ fontSize: 23, lineHeight: 1.15 }}
+          >
+            {ws ? ws.name : t("shell.noWorkspace")}
+          </div>
           {ws && (
-            <button
-              type="button"
-              className="fy-underbtn"
-              onClick={() => props.onOpenDir(ws.root_path)}
+            <div
+              className="fy-reveal"
+              style={{ "--fy-reveal-h": "44px" } as CSSProperties}
             >
-              {t("laneV2.openDir")}
-            </button>
-          )}
-        </div>
-
-        {menu && (
-          <div className="fy-wsmenu">
-            <div className="fy-eyebrow" style={{ padding: "7px 9px 8px" }}>
-              {t("laneV2.grantedFolders")}
+              <div
+                style={{
+                  paddingTop: 7,
+                  font: "400 12px/1.5 var(--fy-mono)",
+                  color: "var(--fy-muted)",
+                  wordBreak: "break-all",
+                }}
+              >
+                {ws.root_path}
+              </div>
             </div>
-            {workspaces.map((w) => (
+          )}
+          <div
+            style={{
+              marginTop: 9,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span
+              className="fy-dot fy-dot-sm"
+              style={{
+                background: ws
+                  ? paused
+                    ? "var(--fy-amber)"
+                    : "var(--fy-sage)"
+                  : "var(--fy-rule)",
+              }}
+            />
+            <span style={{ fontSize: 11.5, color: "var(--fy-faint)" }}>
+              {ws
+                ? paused
+                  ? t("laneV2.pausedShort")
+                  : machine
+                    ? t("laneV2.connected")
+                    : t("laneV2.localConnected")
+                : t("laneV2.noFolder")}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              marginTop: 16,
+              flexWrap: "wrap",
+            }}
+          >
+            {workspaces.length > 0 ? (
               <button
-                key={w.id}
+                type="button"
+                className="fy-underbtn"
+                aria-expanded={menu}
+                onClick={() => setMenu((v) => !v)}
+              >
+                {t("laneV2.switch")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="fy-underbtn"
+                onClick={props.onChooseWorkspace}
+              >
+                {t("laneV2.chooseFolder")}
+              </button>
+            )}
+            {ws && !machine && (
+              <button
+                type="button"
+                className="fy-underbtn"
+                onClick={() => props.onOpenDir(ws.root_path)}
+              >
+                {t("laneV2.openDir")}
+              </button>
+            )}
+          </div>
+
+          {menu && (
+            <div className="fy-wsmenu">
+              <div className="fy-eyebrow" style={{ padding: "7px 9px 8px" }}>
+                {t("laneV2.grantedFolders")}
+              </div>
+              {workspaces.map((w) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  className="fy-wsitem"
+                  data-current={w.id === ws?.id}
+                  onClick={() => {
+                    setMenu(false);
+                    props.onSelectWorkspace(w.id);
+                  }}
+                >
+                  <span
+                    className="fy-dot fy-dot-sm"
+                    style={{
+                      background: "var(--fy-sage)",
+                      opacity: w.id === ws?.id ? 1 : 0.25,
+                    }}
+                  />
+                  <span className="fy-wsitem-name">{w.name}</span>
+                  <span className="fy-wsitem-path" title={w.root_path}>
+                    {shortPath(w.root_path)}
+                  </span>
+                </button>
+              ))}
+              <button
                 type="button"
                 className="fy-wsitem"
-                data-current={w.id === ws?.id}
-                onClick={() => {
-                  setMenu(false);
-                  props.onSelectWorkspace(w.id);
-                }}
+                onClick={props.onChooseWorkspace}
               >
                 <span
-                  className="fy-dot fy-dot-sm"
                   style={{
-                    background: "var(--fy-sage)",
-                    opacity: w.id === ws?.id ? 1 : 0.25,
+                    flex: "none",
+                    width: 5,
+                    textAlign: "center",
+                    color: "var(--fy-faint)",
                   }}
-                />
-                <span className="fy-wsitem-name">{w.name}</span>
-                <span className="fy-wsitem-path" title={w.root_path}>
-                  {shortPath(w.root_path)}
+                >
+                  +
                 </span>
+                <span className="fy-wsitem-name">{t("laneV2.addFolder")}</span>
               </button>
-            ))}
-            <button type="button" className="fy-wsitem" onClick={props.onChooseWorkspace}>
-              <span
-                style={{
-                  flex: "none",
-                  width: 5,
-                  textAlign: "center",
-                  color: "var(--fy-faint)",
-                }}
-              >
-                +
-              </span>
-              <span className="fy-wsitem-name">{t("laneV2.addFolder")}</span>
-            </button>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="fy-hline" style={{ margin: "26px 0 20px" }} />
 
@@ -744,11 +861,15 @@ function Rail(props: LaneProps & { tr: Translator }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
         {snapshot.sources.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--fy-faint)" }}>{t("laneV2.notConnected")}</div>
+          <div style={{ fontSize: 12, color: "var(--fy-faint)" }}>
+            {t("laneV2.notConnected")}
+          </div>
         )}
         {snapshot.sources.map((s) => {
           const name = displayWho(s.provider);
-          const asking = snapshot.approvals.some((a) => a.provider === s.provider);
+          const asking = snapshot.approvals.some(
+            (a) => a.provider === s.provider,
+          );
           // Work in flight is not only work that stopped to ask. A command
           // running under the open rung never raises an approval, and the
           // rail stayed still while that platform was busy on this machine —
@@ -824,6 +945,291 @@ function Rail(props: LaneProps & { tr: Translator }) {
   );
 }
 
+// ── the machine ────────────────────────────────────────────────────────────
+//
+// Not in the design boards, which know one machine. The anchor takes the
+// workspace anchor's exact shape — eyebrow, name, status line, underlined
+// verbs, the same popover — so a second computer is a second fact in the
+// rail and not a second kind of rail. Recorded deviation.
+
+function selectedMachine(props: LaneProps): MachineView | null {
+  if (!props.machineID || !props.machines) return null;
+  return props.machines.find((m) => m.info.id === props.machineID) ?? null;
+}
+
+function machineDot(state: MachineState): string {
+  switch (state) {
+    case "online":
+      return "var(--fy-sage)";
+    case "connecting":
+    case "installing":
+    case "starting":
+      return "var(--fy-amber)";
+    default:
+      return "var(--fy-faint)";
+  }
+}
+
+/** The status word for a link state. A missing Fylane and an outdated one
+ *  are the same state to the Core; the detail says which, and the word
+ *  should too. */
+function machineWord(state: MachineState, detail?: string): Key {
+  switch (state) {
+    case "online":
+      return "machine.online";
+    case "connecting":
+      return "machine.connecting";
+    case "missing":
+      return detail && /runs Fylane/.test(detail)
+        ? "machine.outdated"
+        : "machine.missing";
+    case "installing":
+      return "machine.installing";
+    case "starting":
+      return "machine.starting";
+    case "off":
+      return "machine.off";
+    default:
+      return "machine.error";
+  }
+}
+
+function MachineAnchor(props: LaneProps & { tr: Translator }) {
+  const { tr } = props;
+  const { t } = tr;
+  const [menu, setMenu] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const machines = props.machines ?? [];
+  const machine = selectedMachine(props);
+  const state = machine?.info.state;
+  const word = machine
+    ? machine.reachable || state !== "online"
+      ? t(machineWord(state!, machine.info.detail))
+      : t("machine.unanswered")
+    : t("laneV2.localConnected");
+  const dot = machine
+    ? machine.reachable || state !== "online"
+      ? machineDot(state!)
+      : "var(--fy-amber)"
+    : "var(--fy-sage)";
+  const target = machine
+    ? `${machine.info.user ? machine.info.user + "@" : ""}${machine.info.host}${machine.info.port ? ":" + machine.info.port : ""}`
+    : "";
+
+  return (
+    <div className="fy-revealer" style={{ position: "relative" }}>
+      <div className="fy-eyebrow" style={{ marginBottom: 9 }}>
+        {t("machine.eyebrow")}
+      </div>
+      <div className="fy-display" style={{ fontSize: 23, lineHeight: 1.15 }}>
+        {machine ? machine.info.name : t("machine.local")}
+      </div>
+      {machine && (
+        <div
+          className="fy-reveal"
+          style={{ "--fy-reveal-h": "44px" } as CSSProperties}
+        >
+          <div
+            style={{
+              paddingTop: 7,
+              font: "400 12px/1.5 var(--fy-mono)",
+              color: "var(--fy-muted)",
+              wordBreak: "break-all",
+            }}
+          >
+            {target}
+            {machine.info.version ? ` · ${machine.info.version}` : ""}
+          </div>
+        </div>
+      )}
+      <div
+        style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 8 }}
+      >
+        <span
+          className={`fy-dot fy-dot-sm${state === "connecting" || state === "installing" || state === "starting" ? " fy-beat" : ""}`}
+          style={{ background: dot }}
+        />
+        <span
+          className="fy-machine-word"
+          style={{ fontSize: 11.5, color: "var(--fy-faint)" }}
+        >
+          {word}
+        </span>
+      </div>
+      {machine?.info.detail && state !== "online" && (
+        <div
+          style={{
+            marginTop: 6,
+            fontSize: 11.5,
+            lineHeight: 1.5,
+            color: "var(--fy-muted)",
+          }}
+        >
+          {machine.info.detail}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          marginTop: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <button
+          type="button"
+          className="fy-underbtn"
+          aria-expanded={menu}
+          onClick={() => setMenu((v) => !v)}
+        >
+          {t("machine.switch")}
+        </button>
+        {machine && <MachineAction {...props} machine={machine} />}
+        {machine && props.onRemoveMachine && (
+          <button
+            type="button"
+            className="fy-underbtn"
+            style={removing ? { color: "var(--fy-brick)" } : undefined}
+            onBlur={() => setRemoving(false)}
+            onClick={() => {
+              if (!removing) {
+                setRemoving(true);
+                return;
+              }
+              setRemoving(false);
+              props.onRemoveMachine!(machine.info.id);
+            }}
+          >
+            {removing ? t("machine.removeAsk") : t("machine.remove")}
+          </button>
+        )}
+      </div>
+
+      {menu && (
+        <div className="fy-wsmenu">
+          <div className="fy-eyebrow" style={{ padding: "7px 9px 8px" }}>
+            {t("machine.list")}
+          </div>
+          <button
+            type="button"
+            className="fy-wsitem"
+            data-current={!machine}
+            onClick={() => {
+              setMenu(false);
+              props.onSelectMachine!("");
+            }}
+          >
+            <span
+              className="fy-dot fy-dot-sm"
+              style={{
+                background: "var(--fy-sage)",
+                opacity: machine ? 0.25 : 1,
+              }}
+            />
+            <span className="fy-wsitem-name">{t("machine.local")}</span>
+          </button>
+          {machines.map((m) => (
+            <button
+              key={m.info.id}
+              type="button"
+              className="fy-wsitem"
+              data-current={m.info.id === machine?.info.id}
+              onClick={() => {
+                setMenu(false);
+                props.onSelectMachine!(m.info.id);
+              }}
+            >
+              <span
+                className="fy-dot fy-dot-sm"
+                style={{
+                  background: machineDot(m.info.state),
+                  opacity:
+                    m.info.id === machine?.info.id || m.info.state !== "online"
+                      ? 1
+                      : 0.25,
+                }}
+              />
+              <span className="fy-wsitem-name">{m.info.name}</span>
+              <span className="fy-wsitem-path" title={m.info.host}>
+                {m.info.host}
+              </span>
+            </button>
+          ))}
+          {props.onAddMachine && (
+            <button
+              type="button"
+              className="fy-wsitem"
+              onClick={() => {
+                setMenu(false);
+                props.onAddMachine!();
+              }}
+            >
+              <span
+                style={{
+                  flex: "none",
+                  width: 5,
+                  textAlign: "center",
+                  color: "var(--fy-faint)",
+                }}
+              >
+                +
+              </span>
+              <span className="fy-wsitem-name">{t("machine.add")}</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The one verb a machine's state calls for: install when there is nothing
+ *  to connect to, reconnect when the link is down, disconnect when it is up.
+ *  In the rail it is an underlined word; in the calm scene, the primary. */
+function MachineAction({
+  machine,
+  tr,
+  primary,
+  ...props
+}: LaneProps & { tr: Translator; machine: MachineView; primary?: boolean }) {
+  const { t } = tr;
+  const { state, detail, id } = machine.info;
+  let label: string;
+  let act: (() => void) | undefined;
+  switch (state) {
+    case "missing":
+      label = t(
+        /runs Fylane/.test(detail ?? "") ? "machine.update" : "machine.install",
+      );
+      act = props.onInstallMachine && (() => props.onInstallMachine!(id));
+      break;
+    case "off":
+    case "error":
+      label = t("machine.reconnect");
+      act = props.onReconnectMachine && (() => props.onReconnectMachine!(id));
+      break;
+    case "online":
+      if (primary) return null;
+      label = t("machine.disconnect");
+      act = props.onDisconnectMachine && (() => props.onDisconnectMachine!(id));
+      break;
+    default:
+      return null;
+  }
+  if (!act) return null;
+  return primary ? (
+    <button type="button" className="fy-primary" onClick={act}>
+      <span>{label}</span>
+    </button>
+  ) : (
+    <button type="button" className="fy-underbtn" onClick={act}>
+      {label}
+    </button>
+  );
+}
+
 /** How far a change reaches, when a language server was warm enough to say.
  *
  *  It takes the faint meta colour this screen already uses rather than the
@@ -833,5 +1239,7 @@ function Rail(props: LaneProps & { tr: Translator }) {
 function Reach({ file, tr }: { file: PendingFile; tr: Translator }) {
   const note = impactNote(file, tr);
   if (!note) return null;
-  return <span style={{ fontSize: 12.5, color: "var(--fy-faint)" }}>· {note}</span>;
+  return (
+    <span style={{ fontSize: 12.5, color: "var(--fy-faint)" }}>· {note}</span>
+  );
 }

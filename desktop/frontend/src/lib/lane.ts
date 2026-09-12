@@ -124,6 +124,8 @@ export interface PendingInfo {
   /** What this run gets from the outbound boundary, as the Core computed it.
    *  Empty for a prompt that is not about running a program. */
   network: string;
+  /** The remote machine this request is on; empty for this computer. */
+  machine: string;
 }
 
 /** The tool a prompt came through. The Core does not send a tool name — it
@@ -259,6 +261,7 @@ export function pendingInfo(approvals: Approval[], { t }: Translator): PendingIn
     // is left to the summary, which reads as the sentence it is.
     command: kind === "command" || kind === "disclosure" ? (a.command ?? []).join(" ") : "",
     dir: a.dir ?? "",
+    machine: a.machine ?? "",
     reason: a.reason ?? "",
     grant: a.grant ?? false,
     reviewable: kind === "write",

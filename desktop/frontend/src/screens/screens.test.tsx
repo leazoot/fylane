@@ -21,6 +21,8 @@ import { SettingsScreen, type SettingsDeps } from "./Settings";
 import { OnboardingScreen } from "./Onboarding";
 import { PairClaimSheet } from "../components/PairClaimSheet";
 import { Dock } from "../components/Dock";
+import { MachineSheet } from "../components/MachineSheet";
+import type { MachineView } from "../lib/poll";
 
 // The rendering layer, pinned.
 //
@@ -276,7 +278,11 @@ describe("forwarded MCP providers on the settings page", () => {
     await settle();
     const touching = Array.from(
       host.querySelectorAll<HTMLElement>("button, input, [role='button']"),
-    ).filter((el) => (el.getAttribute("aria-label") || el.textContent || "").includes("sqlite"));
+    ).filter((el) =>
+      (el.getAttribute("aria-label") || el.textContent || "").includes(
+        "sqlite",
+      ),
+    );
     expect(touching).toEqual([]);
   });
 });
@@ -331,7 +337,8 @@ describe("the connected-AI rail", () => {
       <LaneScreen
         {...laneProps}
         snapshot={snap({
-          approvals: busy === "asking" ? [approval({ provider: "claude" })] : [],
+          approvals:
+            busy === "asking" ? [approval({ provider: "claude" })] : [],
           sources: [
             { provider: "claude", connected: true, lanes_carried: 1 },
             { provider: "grok", connected: false, lanes_carried: 0 },
@@ -339,7 +346,13 @@ describe("the connected-AI rail", () => {
         })}
         tasks={
           busy === "running"
-            ? [task({ state: "running", provider: "claude", label: "sleep 60" })]
+            ? [
+                task({
+                  state: "running",
+                  provider: "claude",
+                  label: "sleep 60",
+                }),
+              ]
             : []
         }
       />,
@@ -349,10 +362,16 @@ describe("the connected-AI rail", () => {
 
   it("separates connected from not connected by shape, not by shade", () => {
     const dots = rail("none");
-    expect(dots.filter((d) => d.classList.contains("fy-dot-hollow"))).toHaveLength(1);
+    expect(
+      dots.filter((d) => d.classList.contains("fy-dot-hollow")),
+    ).toHaveLength(1);
     // Never both: a hollow ring that also breathes reads as connecting.
     expect(
-      dots.some((d) => d.classList.contains("fy-beat") && d.classList.contains("fy-dot-hollow")),
+      dots.some(
+        (d) =>
+          d.classList.contains("fy-beat") &&
+          d.classList.contains("fy-dot-hollow"),
+      ),
     ).toBe(false);
   });
 
@@ -360,11 +379,15 @@ describe("the connected-AI rail", () => {
     // Board 04 calls this rail static, and a beat everywhere else in the
     // window means something is happening now. A permanently breathing dot
     // spends that meaning on a state that never changes.
-    expect(rail("none").filter((d) => d.classList.contains("fy-beat"))).toHaveLength(0);
+    expect(
+      rail("none").filter((d) => d.classList.contains("fy-beat")),
+    ).toHaveLength(0);
   });
 
   it("breathes on the source that is asking, and only that one", () => {
-    const beating = rail("asking").filter((d) => d.classList.contains("fy-beat"));
+    const beating = rail("asking").filter((d) =>
+      d.classList.contains("fy-beat"),
+    );
     expect(beating).toHaveLength(1);
     expect(beating[0].classList.contains("fy-dot-hollow")).toBe(false);
   });
@@ -373,7 +396,9 @@ describe("the connected-AI rail", () => {
     // The first cut tied the beat to a pending approval. Under the open rung
     // an ordinary command never raises one, so the rail sat still through the
     // whole run — reported from a real machine, 2026-08-30.
-    const beating = rail("running").filter((d) => d.classList.contains("fy-beat"));
+    const beating = rail("running").filter((d) =>
+      d.classList.contains("fy-beat"),
+    );
     expect(beating).toHaveLength(1);
     // And it says which of the two it is: asking and running are not the
     // same state, and only one of them is waiting on the user.
@@ -552,7 +577,10 @@ describe("list density", () => {
     draw(
       <TasksScreen
         {...tasksProps}
-        tasks={[...three, task({ task_id: "d", label: "failing", state: "failed" })]}
+        tasks={[
+          ...three,
+          task({ task_id: "d", label: "failing", state: "failed" }),
+        ]}
       />,
     );
     click(button("Compact"));
@@ -754,8 +782,8 @@ describe("what a change row has to say beyond its path", () => {
         { type: "update", path: "src/auth.ts", impact: { callers: 3 } },
       ],
     });
-    const brick = Array.from(host.querySelectorAll<HTMLElement>("span")).filter((el) =>
-      (el.getAttribute("style") ?? "").includes("--fy-brick"),
+    const brick = Array.from(host.querySelectorAll<HTMLElement>("span")).filter(
+      (el) => (el.getAttribute("style") ?? "").includes("--fy-brick"),
     );
     for (const el of brick) {
       expect(el.textContent ?? "").not.toContain("callers");
@@ -931,7 +959,14 @@ describe("a recursive delete is asked twice", () => {
     approval({
       kind: "write",
       summary: "Remove the old package",
-      operations: [{ type: "delete", path: "packages/web", recursive_delete: true, ...over }],
+      operations: [
+        {
+          type: "delete",
+          path: "packages/web",
+          recursive_delete: true,
+          ...over,
+        },
+      ],
     });
 
   it("does not send on the first press", () => {
@@ -986,7 +1021,10 @@ describe("a recursive delete is asked twice", () => {
         {...laneProps}
         snapshot={snap({
           approvals: [
-            tree({ tree: { files: 9, bytes: 2 * 1024 * 1024 * 1024 }, beyond_undo: true }),
+            tree({
+              tree: { files: 9, bytes: 2 * 1024 * 1024 * 1024 },
+              beyond_undo: true,
+            }),
           ],
         })}
         tasks={[]}
@@ -1036,7 +1074,13 @@ describe("a recursive delete is asked twice", () => {
 
 describe("what the prompt says about the network", () => {
   const ask = (over: Partial<Approval>) =>
-    draw(<LaneScreen {...laneProps} snapshot={snap({ approvals: [approval(over)] })} tasks={[]} />);
+    draw(
+      <LaneScreen
+        {...laneProps}
+        snapshot={snap({ approvals: [approval(over)] })}
+        tasks={[]}
+      />,
+    );
 
   it("states it in the details, not on the face", async () => {
     // The face carries the statement, the command and the meta line. A
@@ -1085,14 +1129,23 @@ describe("outbound network, per folder", () => {
         {...settingsProps}
         workspaces={[
           folder(),
-          folder({ id: "ws_2", name: "client-work", network: "deny", network_reach: "denied" }),
+          folder({
+            id: "ws_2",
+            name: "client-work",
+            network: "deny",
+            network_reach: "denied",
+          }),
         ]}
         deps={deps()}
       />,
     );
     await settle();
-    expect(switchFor("ai-workspace")?.getAttribute("aria-checked")).toBe("true");
-    expect(switchFor("client-work")?.getAttribute("aria-checked")).toBe("false");
+    expect(switchFor("ai-workspace")?.getAttribute("aria-checked")).toBe(
+      "true",
+    );
+    expect(switchFor("client-work")?.getAttribute("aria-checked")).toBe(
+      "false",
+    );
     expect(text()).toContain("no network");
   });
 
@@ -1142,7 +1195,9 @@ describe("outbound network, per folder", () => {
           setNetwork: async (id, allow) => {
             asked.push({ id, allow });
             return {
-              workspaces: [folder({ network: "deny", network_reach: "unbounded" })],
+              workspaces: [
+                folder({ network: "deny", network_reach: "unbounded" }),
+              ],
               currentWorkspaceID: "ws_1",
             };
           },
@@ -1197,7 +1252,8 @@ describe("the dock's open width", () => {
   }
 
   const shellWidth = () =>
-    (host.querySelector(".fy-dock-shell") as HTMLElement | null)?.style.width ?? "";
+    (host.querySelector(".fy-dock-shell") as HTMLElement | null)?.style.width ??
+    "";
 
   /** Renders in one language and returns the pinned-open width.
    *
@@ -1209,7 +1265,15 @@ describe("the dock's open width", () => {
     const restore = measureText();
     try {
       draw(<></>);
-      draw(<Dock pages={[...PAGES]} current="lane" onGoto={() => {}} pending={false} />, lang);
+      draw(
+        <Dock
+          pages={[...PAGES]}
+          current="lane"
+          onGoto={() => {}}
+          pending={false}
+        />,
+        lang,
+      );
       click(buttons()[0]);
       return parseFloat(shellWidth());
     } finally {
@@ -1233,7 +1297,14 @@ describe("the dock's open width", () => {
     // is the only thing keeping them off the screen.
     const restore = measureText();
     try {
-      draw(<Dock pages={[...PAGES]} current="lane" onGoto={() => {}} pending={false} />);
+      draw(
+        <Dock
+          pages={[...PAGES]}
+          current="lane"
+          onGoto={() => {}}
+          pending={false}
+        />,
+      );
       expect(shellWidth()).toBe("40px");
     } finally {
       restore();
@@ -1243,7 +1314,11 @@ describe("the dock's open width", () => {
 
 describe("the installed language servers", () => {
   const withServers = (language_servers: unknown[]) => ({
-    commands: async () => ({ rung: "workspace" as const, grants: [], language_servers }),
+    commands: async () => ({
+      rung: "workspace" as const,
+      grants: [],
+      language_servers,
+    }),
   });
 
   it("names each one and what it reads, and says which are up", async () => {
@@ -1254,7 +1329,11 @@ describe("the installed language servers", () => {
         deps={deps(
           withServers([
             { name: "gopls", extensions: [".go"], running: true },
-            { name: "pyright-langserver", extensions: [".py", ".pyi"], running: false },
+            {
+              name: "pyright-langserver",
+              extensions: [".py", ".pyi"],
+              running: false,
+            },
           ]) as Partial<SettingsDeps>,
         )}
       />,
@@ -1280,7 +1359,9 @@ describe("the installed language servers", () => {
         {...settingsProps}
         undoCount={0}
         deps={deps(
-          withServers([{ name: "rust", extensions: [".rs"], running: false }]) as Partial<SettingsDeps>,
+          withServers([
+            { name: "rust", extensions: [".rs"], running: false },
+          ]) as Partial<SettingsDeps>,
         )}
       />,
     );
@@ -1319,7 +1400,16 @@ describe("the installed language servers", () => {
           withServers([
             {
               name: "typescript",
-              extensions: [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"],
+              extensions: [
+                ".ts",
+                ".tsx",
+                ".mts",
+                ".cts",
+                ".js",
+                ".jsx",
+                ".mjs",
+                ".cjs",
+              ],
               running: false,
             },
           ]) as Partial<SettingsDeps>,
@@ -1339,7 +1429,9 @@ describe("the installed language servers", () => {
         {...settingsProps}
         undoCount={0}
         deps={deps(
-          withServers([{ name: "gopls", extensions: [".go"], running: true }]) as Partial<SettingsDeps>,
+          withServers([
+            { name: "gopls", extensions: [".go"], running: true },
+          ]) as Partial<SettingsDeps>,
         )}
       />,
     );
@@ -1348,7 +1440,9 @@ describe("the installed language servers", () => {
       (el.textContent ?? "").includes("gopls"),
     );
     expect(row).toBeDefined();
-    expect(row?.querySelectorAll("button, [role=\"switch\"], input").length).toBe(0);
+    expect(row?.querySelectorAll('button, [role="switch"], input').length).toBe(
+      0,
+    );
   });
 
   it("draws no section on a machine with none installed", async () => {
@@ -1364,7 +1458,9 @@ describe("the installed language servers", () => {
       <SettingsScreen
         {...settingsProps}
         undoCount={0}
-        deps={deps({ commands: async () => ({ rung: "workspace", grants: [] }) })}
+        deps={deps({
+          commands: async () => ({ rung: "workspace", grants: [] }),
+        })}
       />,
     );
     await settle();
@@ -1383,7 +1479,12 @@ describe("the subprocess read boundary", () => {
     );
 
   it("offers a switch where the machine can enforce one", async () => {
-    draw(<SettingsScreen {...settingsProps} deps={deps(withBoundary("enforced"))} />);
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps(withBoundary("enforced"))}
+      />,
+    );
     await settle();
     expect(boundarySwitch()?.getAttribute("aria-checked")).toBe("true");
     expect(host.querySelector(".fy-warn")).toBeNull();
@@ -1396,7 +1497,9 @@ describe("the subprocess read boundary", () => {
     draw(
       <SettingsScreen
         {...settingsProps}
-        deps={deps(withBoundary("absent", "no read boundary is available on windows"))}
+        deps={deps(
+          withBoundary("absent", "no read boundary is available on windows"),
+        )}
       />,
     );
     await settle();
@@ -1411,7 +1514,9 @@ describe("the subprocess read boundary", () => {
   it("keeps saying it is off, for as long as it is off", async () => {
     // Same rule as the open rung: a defence that has been switched off is
     // only safe while it is visible.
-    draw(<SettingsScreen {...settingsProps} deps={deps(withBoundary("off"))} />);
+    draw(
+      <SettingsScreen {...settingsProps} deps={deps(withBoundary("off"))} />,
+    );
     await settle();
     expect(boundarySwitch()?.getAttribute("aria-checked")).toBe("false");
     expect(host.querySelector(".fy-warn")).not.toBeNull();
@@ -1487,7 +1592,12 @@ describe("the update notice", () => {
   // worth knowing, so the notice stays and only the link goes.
   it("says it without a link while there is no release page", async () => {
     draw(
-      <SettingsScreen {...settingsProps} version="0.0.1" update={{ version: "0.0.2" }} deps={deps()} />,
+      <SettingsScreen
+        {...settingsProps}
+        version="0.0.1"
+        update={{ version: "0.0.2" }}
+        deps={deps()}
+      />,
     );
     await settle();
     expect(text()).toContain("0.0.2 is out");
@@ -1531,11 +1641,19 @@ describe("settings while the Core is unreachable", () => {
   const down = async () => {
     throw new Error("companion core is not reachable");
   };
-  const unreachable = () => deps({ prefs: down, commands: down, status: down, dock: down });
+  const unreachable = () =>
+    deps({ prefs: down, commands: down, status: down, dock: down });
 
   it("raises no message while the shell already says the Core is down", async () => {
     const raised: string[] = [];
-    draw(<SettingsScreen {...settingsProps} online={false} deps={unreachable()} onError={(m) => raised.push(m)} />);
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        online={false}
+        deps={unreachable()}
+        onError={(m) => raised.push(m)}
+      />,
+    );
     await settle();
     expect(raised).toEqual([]);
   });
@@ -1543,7 +1661,14 @@ describe("settings while the Core is unreachable", () => {
   it("still raises it when the Core is supposedly up and the read fails", async () => {
     // The quiet is for a Core the shell knows is down, not for every failure.
     const raised: string[] = [];
-    draw(<SettingsScreen {...settingsProps} online={true} deps={unreachable()} onError={(m) => raised.push(m)} />);
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        online={true}
+        deps={unreachable()}
+        onError={(m) => raised.push(m)}
+      />,
+    );
     await settle();
     expect(raised.length).toBeGreaterThan(0);
   });
@@ -1575,7 +1700,11 @@ describe("settings while the Core is unreachable", () => {
 
 describe("hiding the Dock icon", () => {
   const sw = (label: string) =>
-    buttons().find((b) => b.getAttribute("role") === "switch" && b.getAttribute("aria-label") === label);
+    buttons().find(
+      (b) =>
+        b.getAttribute("role") === "switch" &&
+        b.getAttribute("aria-label") === label,
+    );
 
   it("offers the switch where there is a Dock, off by default", async () => {
     // Bare settingsProps carries no deps, and the real bindings do not exist
@@ -1610,7 +1739,9 @@ describe("hiding the Dock icon", () => {
     draw(
       <SettingsScreen
         {...settingsProps}
-        deps={deps({ setDock: async () => ({ supported: true, hidden: false }) })}
+        deps={deps({
+          setDock: async () => ({ supported: true, hidden: false }),
+        })}
       />,
     );
     await settle();
@@ -1644,14 +1775,26 @@ describe("hiding the Dock icon", () => {
 });
 
 describe("the file-write approval policy", () => {
-  const st = (mode: "safe" | "balanced"): CoreStatusInfo => ({ ...STATUS, approval_mode: mode });
+  const st = (mode: "safe" | "balanced"): CoreStatusInfo => ({
+    ...STATUS,
+    approval_mode: mode,
+  });
 
   it("marks the policy the Core says is running, not the default", async () => {
-    draw(<SettingsScreen {...settingsProps} deps={deps({ status: async () => st("balanced") })} />);
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({ status: async () => st("balanced") })}
+      />,
+    );
     await settle();
 
-    expect(rung("New files write straight through")?.getAttribute("aria-checked")).toBe("true");
-    expect(rung("Ask before every write")?.getAttribute("aria-checked")).toBe("false");
+    expect(
+      rung("New files write straight through")?.getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(rung("Ask before every write")?.getAttribute("aria-checked")).toBe(
+      "false",
+    );
   });
 
   it("says what still asks, because that is what someone loosening it is deciding about", async () => {
@@ -1678,7 +1821,9 @@ describe("the file-write approval policy", () => {
     click(rung("New files write straight through"));
     await settle();
     expect(sent).toBe("balanced");
-    expect(rung("New files write straight through")?.getAttribute("aria-checked")).toBe("true");
+    expect(
+      rung("New files write straight through")?.getAttribute("aria-checked"),
+    ).toBe("true");
   });
 
   it("keeps the row where the Core left it when the switch was refused", async () => {
@@ -1688,15 +1833,21 @@ describe("the file-write approval policy", () => {
     draw(
       <SettingsScreen
         {...settingsProps}
-        deps={deps({ setMode: async () => ({ approval_mode: "safe" as const }) })}
+        deps={deps({
+          setMode: async () => ({ approval_mode: "safe" as const }),
+        })}
       />,
     );
     await settle();
 
     click(rung("New files write straight through"));
     await settle();
-    expect(rung("Ask before every write")?.getAttribute("aria-checked")).toBe("true");
-    expect(rung("New files write straight through")?.getAttribute("aria-checked")).toBe("false");
+    expect(rung("Ask before every write")?.getAttribute("aria-checked")).toBe(
+      "true",
+    );
+    expect(
+      rung("New files write straight through")?.getAttribute("aria-checked"),
+    ).toBe("false");
   });
 
   it("offers no choice at all when the Core did not say which policy is running", async () => {
@@ -1715,7 +1866,9 @@ describe("the file-write approval policy", () => {
     await settle();
 
     expect(rung("Ask before every write")?.hasAttribute("disabled")).toBe(true);
-    expect(rung("New files write straight through")?.getAttribute("aria-checked")).toBe("false");
+    expect(
+      rung("New files write straight through")?.getAttribute("aria-checked"),
+    ).toBe("false");
   });
 
   it("names both axes in the panel head, not just the command one", async () => {
@@ -1726,7 +1879,9 @@ describe("the file-write approval policy", () => {
       />,
     );
     await settle();
-    expect(text()).toContain("Ask once per workspace · New files write straight through");
+    expect(text()).toContain(
+      "Ask once per workspace · New files write straight through",
+    );
   });
 
   it("keeps the two approval axes apart for a screen reader", async () => {
@@ -1735,18 +1890,23 @@ describe("the file-write approval policy", () => {
     draw(<SettingsScreen {...settingsProps} />);
     await settle();
 
-    const groups = Array.from(host.querySelectorAll('.fy-panel-col [role="radiogroup"]')).map((g) =>
-      g.getAttribute("aria-label"),
-    );
+    const groups = Array.from(
+      host.querySelectorAll('.fy-panel-col [role="radiogroup"]'),
+    ).map((g) => g.getAttribute("aria-label"));
     expect(groups).toEqual(["ORDINARY COMMANDS", "FILE WRITES"]);
   });
 });
 
 describe("standing workspace grants", () => {
-  const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
-  const held = (over: Partial<CommandSettingsInfo> = {}): CommandSettingsInfo => ({
+  const daysAgo = (n: number) =>
+    new Date(Date.now() - n * 86400000).toISOString();
+  const held = (
+    over: Partial<CommandSettingsInfo> = {},
+  ): CommandSettingsInfo => ({
     rung: "workspace",
-    grants: [{ workspace_id: "ws_1", rung: "workspace", granted_at: daysAgo(42) }],
+    grants: [
+      { workspace_id: "ws_1", rung: "workspace", granted_at: daysAgo(42) },
+    ],
     ...over,
   });
 
@@ -1782,9 +1942,16 @@ describe("standing workspace grants", () => {
   // consults a grant and open never reaches one. A note that claimed
   // otherwise would credit these rows with an authority they do not have.
   it("says a grant is what keeps commands unasked only on the rung where it is", async () => {
-    draw(<SettingsScreen {...settingsProps} deps={deps({ commands: async () => held() })} />);
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({ commands: async () => held() })}
+      />,
+    );
     await settle();
-    expect(await helpOf("Folders already authorized")).toContain("ordinary commands there no longer ask");
+    expect(await helpOf("Folders already authorized")).toContain(
+      "ordinary commands there no longer ask",
+    );
   });
 
   // The explanation lives in a tooltip, so a test has to open it the way a
@@ -1800,14 +1967,21 @@ describe("standing workspace grants", () => {
   };
 
   it("keeps the explanation behind the label, shown while it has focus", async () => {
-    draw(<SettingsScreen {...settingsProps} deps={deps({ commands: async () => held() })} />);
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({ commands: async () => held() })}
+      />,
+    );
     await settle();
     expect(document.querySelector('[role="tooltip"]')).toBeNull();
     const label = Array.from(document.querySelectorAll(".fy-help")).find((el) =>
       el.textContent?.includes("Folders already authorized"),
     ) as HTMLElement;
     await act(async () => label.focus());
-    expect(document.querySelector('[role="tooltip"]')?.textContent).toContain("Withdraw to be asked again");
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toContain(
+      "Withdraw to be asked again",
+    );
     await act(async () => label.blur());
     expect(document.querySelector('[role="tooltip"]')).toBeNull();
   });
@@ -1874,11 +2048,15 @@ describe("standing workspace grants", () => {
     draw(
       <SettingsScreen
         {...settingsProps}
-        deps={deps({ commands: async () => ({ rung: "workspace" as const, grants: [] }) })}
+        deps={deps({
+          commands: async () => ({ rung: "workspace" as const, grants: [] }),
+        })}
       />,
     );
     await settle();
-    expect(text()).toContain("No folder is authorized. Every command is asked about.");
+    expect(text()).toContain(
+      "No folder is authorized. Every command is asked about.",
+    );
   });
 });
 
@@ -2069,7 +2247,9 @@ describe("the tasks filter", () => {
         f.textContent?.startsWith("To review"),
       );
 
-    draw(<TasksScreen {...props} tasks={[]} changeSets={[landed({ id: "w1" })]} />);
+    draw(
+      <TasksScreen {...props} tasks={[]} changeSets={[landed({ id: "w1" })]} />,
+    );
     expect(review()?.querySelector("span")?.textContent).toBe("1");
 
     draw(
@@ -2420,9 +2600,7 @@ describe("the granted-folders popover", () => {
 
     const path = host.querySelector(".fy-wsitem-path");
     expect(path).not.toBeNull();
-    expect(path?.getAttribute("title")).toBe(
-      "/home/dev/projects/fylane-demo",
-    );
+    expect(path?.getAttribute("title")).toBe("/home/dev/projects/fylane-demo");
     // The name is the flexible half; the path is why the menu is open.
     expect(host.querySelector(".fy-wsitem-name")?.textContent).toBe(
       "a-workspace-with-a-long-name",
@@ -2810,7 +2988,10 @@ describe("the connect screen when a tunnel program is missing", () => {
 
   /** Draws Settings and expands the cloudflare row, which is where the panel
    *  lives. */
-  async function openRow(info: Partial<ConnectInfo>, over: Partial<SettingsDeps> = {}) {
+  async function openRow(
+    info: Partial<ConnectInfo>,
+    over: Partial<SettingsDeps> = {},
+  ) {
     draw(
       <SettingsScreen
         {...settingsProps}
@@ -2831,7 +3012,9 @@ describe("the connect screen when a tunnel program is missing", () => {
     // showed fewer of them would be asking about something vaguer than what
     // happens.
     expect(text()).toContain("cloudflared 2026.8.2");
-    expect(text()).toContain("https://github.com/cloudflare/cloudflared/releases/download");
+    expect(text()).toContain(
+      "https://github.com/cloudflare/cloudflared/releases/download",
+    );
     expect(text()).toContain(OFFER.sha256);
     expect(button("Download and verify")).toBeDefined();
     // Downloading is the exception carved out, not the default path.
@@ -2909,5 +3092,316 @@ describe("the connect screen when a tunnel program is missing", () => {
     });
     expect(text()).not.toContain("Downloading and checking");
     expect(button("Download and verify")).toBeDefined();
+  });
+});
+
+// ── remote machines (Batch R) ──────────────────────────────────────────
+
+const VPS: MachineView = {
+  info: {
+    id: "m_vps1",
+    name: "vps-1",
+    host: "vps.example.com",
+    user: "deploy",
+    state: "online",
+    version: "0.0.4",
+    since: "2026-09-12T08:00:00",
+  },
+  workspaces: [
+    { ...WS, id: "ws_r1", name: "api", root_path: "/home/deploy/api" },
+  ],
+  currentWorkspaceID: "ws_r1",
+  reachable: true,
+};
+
+const BUILD_BOX: MachineView = {
+  info: {
+    id: "m_build",
+    name: "build-box",
+    host: "10.0.0.7",
+    state: "missing",
+    detail: "Fylane is not installed on this machine",
+    since: "2026-09-12T08:00:00",
+  },
+  workspaces: [],
+  currentWorkspaceID: "",
+  reachable: false,
+};
+
+const machineProps = {
+  machines: [VPS, BUILD_BOX],
+  onSelectMachine: () => {},
+  onAddMachine: () => {},
+  onRemoveMachine: () => {},
+  onInstallMachine: () => {},
+  onReconnectMachine: () => {},
+  onDisconnectMachine: () => {},
+};
+
+describe("the machine anchor", () => {
+  it("stands on this computer by default and lists every machine on switch", () => {
+    const picked: string[] = [];
+    draw(
+      <LaneScreen
+        {...laneProps}
+        {...machineProps}
+        machineID=""
+        onSelectMachine={(id) => picked.push(id)}
+        snapshot={snap()}
+        tasks={[]}
+      />,
+    );
+    expect(text()).toContain("MACHINE");
+    expect(text()).toContain("This computer");
+    expect(text()).toContain("Local · connected");
+    click(button("Switch machine"));
+    const items = Array.from(
+      host.querySelectorAll(".fy-wsmenu .fy-wsitem"),
+    ).map((b) => b.textContent);
+    expect(items[0]).toContain("This computer");
+    expect(items[1]).toContain("vps-1");
+    expect(items[2]).toContain("build-box");
+    expect(items[3]).toContain("Add a remote machine");
+    click(host.querySelectorAll(".fy-wsmenu .fy-wsitem")[1] as HTMLElement);
+    expect(picked).toEqual(["m_vps1"]);
+  });
+
+  it("without the feature wired, the rail is exactly what it was", () => {
+    draw(<LaneScreen {...laneProps} snapshot={snap()} tasks={[]} />);
+    expect(text()).not.toContain("MACHINE");
+    expect(button("Switch machine")).toBeUndefined();
+  });
+
+  it("standing on a remote machine shows its folders and never a local-only verb", () => {
+    draw(
+      <LaneScreen
+        {...laneProps}
+        {...machineProps}
+        machineID="m_vps1"
+        workspaces={VPS.workspaces}
+        snapshot={snap({ workspace: VPS.workspaces[0] })}
+        tasks={[]}
+      />,
+    );
+    expect(text()).toContain("vps-1");
+    expect(host.querySelector(".fy-machine-word")?.textContent).toBe(
+      "Connected",
+    );
+    expect(text()).toContain("api");
+    // Revealing a folder in Finder only makes sense for a folder on this
+    // computer; the rail must not offer it for one on the VPS.
+    expect(button("Open folder")).toBeUndefined();
+    expect(button("Disconnect")).toBeDefined();
+  });
+
+  it("a machine without Fylane makes the install the scene and the verb", () => {
+    const installed: string[] = [];
+    draw(
+      <LaneScreen
+        {...laneProps}
+        {...machineProps}
+        machineID="m_build"
+        workspaces={[]}
+        onInstallMachine={(id) => installed.push(id)}
+        snapshot={snap({ workspace: null })}
+        tasks={[]}
+      />,
+    );
+    expect(host.querySelector(".fy-machine-word")?.textContent).toBe(
+      "Fylane is not installed",
+    );
+    expect(text()).toContain("build-box");
+    expect(text()).not.toContain("No folder has been granted");
+    expect(text()).not.toContain("WORKSPACE");
+    click(host.querySelector(".fy-primary") as HTMLElement);
+    expect(installed).toEqual(["m_build"]);
+  });
+
+  it("tells an outdated Fylane from a missing one", () => {
+    const old = {
+      ...BUILD_BOX,
+      info: {
+        ...BUILD_BOX.info,
+        detail: "this machine runs Fylane 0.0.3; this app is 0.0.4",
+        version: "0.0.3",
+      },
+    };
+    draw(
+      <LaneScreen
+        {...laneProps}
+        {...machineProps}
+        machines={[old]}
+        machineID="m_build"
+        workspaces={[]}
+        snapshot={snap({ workspace: null })}
+        tasks={[]}
+      />,
+    );
+    expect(host.querySelector(".fy-machine-word")?.textContent).toBe(
+      "Fylane needs updating",
+    );
+    expect(button("Update Fylane")).toBeDefined();
+  });
+
+  it("removing asks once more before it goes", () => {
+    const removed: string[] = [];
+    draw(
+      <LaneScreen
+        {...laneProps}
+        {...machineProps}
+        machineID="m_vps1"
+        onRemoveMachine={(id) => removed.push(id)}
+        snapshot={snap({ workspace: VPS.workspaces[0] })}
+        tasks={[]}
+      />,
+    );
+    click(button("Remove"));
+    expect(removed).toEqual([]);
+    click(button("Remove?"));
+    expect(removed).toEqual(["m_vps1"]);
+  });
+
+  it("a request from a remote machine says which machine, wherever the rail stands", () => {
+    draw(
+      <LaneScreen
+        {...laneProps}
+        {...machineProps}
+        machineID=""
+        snapshot={snap({
+          approvals: [
+            approval({
+              kind: "command",
+              command: ["go", "test"],
+              machine: "vps-1",
+              machine_id: "m_vps1",
+            }),
+          ],
+        })}
+        tasks={[]}
+      />,
+    );
+    expect(host.querySelector(".fy-metaline .fy-mchip")?.textContent).toBe(
+      "vps-1",
+    );
+    expect(text()).toContain("This computer");
+  });
+
+  it("the running headline names the machine the command runs on", () => {
+    draw(
+      <LaneScreen
+        {...laneProps}
+        {...machineProps}
+        machineID=""
+        snapshot={snap()}
+        tasks={[
+          task({ state: "running", machine: "vps-1", machine_id: "m_vps1" }),
+        ]}
+      />,
+    );
+    expect(text()).toContain("Running on vps-1");
+    expect(text()).not.toContain("Running on this machine");
+  });
+});
+
+describe("the tasks page with other machines", () => {
+  it("chips a row from another machine and leaves this computer's rows bare", () => {
+    draw(
+      <TasksScreen
+        tasks={[
+          task({
+            task_id: "r",
+            label: "go test ./...",
+            machine: "vps-1",
+            machine_id: "m_vps1",
+          }),
+          task({ task_id: "l", label: "npm test" }),
+        ]}
+        changeSets={[]}
+        workspace={WS}
+        now={new Date("2026-08-13T10:00:00")}
+        canStop
+        onCancel={() => {}}
+        onRollback={() => {}}
+        onAccept={() => {}}
+        onCopy={() => {}}
+        onGotoLane={() => {}}
+      />,
+    );
+    const chips = Array.from(host.querySelectorAll(".fy-trow .fy-mchip")).map(
+      (c) => c.textContent,
+    );
+    expect(chips).toEqual(["vps-1"]);
+    const rows = Array.from(host.querySelectorAll(".fy-trow-cmd")).map(
+      (r) => r.textContent,
+    );
+    expect(rows).toEqual(["vps-1go test ./...", "npm test"]);
+  });
+});
+
+describe("the machine sheet", () => {
+  it("submits trimmed values, stays open on a refusal, and cancels on Escape", async () => {
+    const got: Record<string, string>[] = [];
+    let cancelled = 0;
+    let refuse = true;
+    draw(
+      <MachineSheet
+        title="Add a remote machine"
+        body="Key-based login must work."
+        action="Add"
+        fields={[
+          { key: "name", label: "Name", required: true },
+          { key: "host", label: "Host", required: true },
+          { key: "user", label: "User", half: true },
+          { key: "port", label: "Port", half: true, numeric: true },
+        ]}
+        onSubmit={async (v) => {
+          got.push(v);
+          if (refuse) throw new Error('host "x y": use a hostname');
+        }}
+        onCancel={() => cancelled++}
+      />,
+    );
+    const submit = host.querySelector(".fy-sheet-approve") as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    const type = (id: string, value: string) => {
+      const el = host.querySelector(`#fy-sheet-${id}`) as HTMLInputElement;
+      act(() => {
+        const setter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value",
+        )!.set!;
+        setter.call(el, value);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    type("name", " vps-1 ");
+    type("host", "x y");
+    expect(submit.disabled).toBe(false);
+    await act(async () => {
+      (host.querySelector("form") as HTMLFormElement).dispatchEvent(
+        new Event("submit", { bubbles: true, cancelable: true }),
+      );
+      await Promise.resolve();
+    });
+    await settle();
+    expect(got).toEqual([{ name: "vps-1", host: "x y", user: "", port: "" }]);
+    expect(host.querySelector(".fy-sheet-error")?.textContent).toContain(
+      "use a hostname",
+    );
+    refuse = false;
+    type("host", "vps.example");
+    await act(async () => {
+      (host.querySelector("form") as HTMLFormElement).dispatchEvent(
+        new Event("submit", { bubbles: true, cancelable: true }),
+      );
+      await Promise.resolve();
+    });
+    expect(got[1].host).toBe("vps.example");
+    act(() => {
+      (host.querySelector("form") as HTMLFormElement).dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    expect(cancelled).toBe(1);
   });
 });

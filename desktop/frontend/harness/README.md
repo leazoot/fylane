@@ -9,7 +9,8 @@ separate vite root and never enters the shipped bundle.
     open 'http://localhost:5199/?board=rules&narrow=1'
 
 Boards: `lane`, `lane-held`, `lane-command`, `lane-disclosure`, `lane-empty`,
-`lane-paused`, `lane-offline`, `tasks`, `tasks-empty`, `settings`,
+`lane-paused`, `lane-offline`, `lane-remote`, `lane-remote-held`,
+`lane-remote-missing`, `tasks`, `tasks-empty`, `tasks-remote`, `settings`,
 `settings-update`, `commands`, `pairing`, `first-run`, `first-run-write`,
 `first-run-rung`, `first-run-done`.
 

@@ -2895,3 +2895,55 @@ a {
     0 0 0 2px var(--fy-raised),
     0 0 0 3.5px var(--fy-ink2);
 }
+
+/* ── remote machines (Batch R) ──────────────────────────────────────────
+   Not in the design boards: the boards know one machine. The chip borrows
+   the fixed-address pill's frame at the meta size, so a row from another
+   machine reads as a fact about the row and not as a new kind of row.
+   Recorded deviation, see docs/12_PROGRESS.md. */
+.fy-mchip {
+  display: inline-block;
+  flex: none;
+  padding: 1px 6px;
+  margin-right: 8px;
+  border: 1px solid var(--fy-rule);
+  border-radius: 5px;
+  font: 400 11px/1.5 var(--fy-sans);
+  letter-spacing: 0.02em;
+  color: var(--fy-muted);
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+
+/* A sheet that asks for a few words: the pairing sheet's frame with fields
+   in it. Labels sit above the field at the eyebrow size. */
+.fy-sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
+}
+.fy-sheet-form label {
+  display: block;
+  margin-bottom: 6px;
+  font: 500 11px/1 var(--fy-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fy-faint);
+}
+.fy-sheet-form .fy-field::placeholder {
+  color: var(--fy-faint);
+}
+.fy-sheet-form-row {
+  display: flex;
+  gap: 14px;
+}
+.fy-sheet-form-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.fy-sheet-error {
+  margin-top: 12px;
+  font: 400 12.5px/1.5 var(--fy-sans);
+  color: var(--fy-brick);
+}

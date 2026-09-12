@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  addMachine,
   addWorkspace,
   cancelTask,
   clearBackups,
   clearTasks,
+  connectMachine,
   copyText,
+  disconnectMachine,
+  installMachine,
   openWorkspaceDir,
   fetchPairClaims,
   pauseWorkspace,
   raiseWindow,
   acceptChangeSet,
+  remoteCore,
+  removeMachine,
   resolveApproval,
   resolvePairClaim,
   resumeWorkspace,
@@ -20,9 +26,15 @@ import {
   type PairClaim,
   type TaskInfo,
 } from "./lib/core";
-import { WindowHide, WindowMinimise, WindowToggleMaximise } from "../wailsjs/runtime/runtime";
+import { MachineSheet } from "./components/MachineSheet";
+import { storeMachine, storedMachine } from "./lib/theme";
+import {
+  WindowHide,
+  WindowMinimise,
+  WindowToggleMaximise,
+} from "../wailsjs/runtime/runtime";
 import { runFirstWrite } from "./lib/firstwrite";
-import { pollCore } from "./lib/poll";
+import { pollCore, type MachineView } from "./lib/poll";
 import { detectOS } from "./lib/platform";
 import { OFFLINE_SNAPSHOT, type LaneSnapshot } from "./lib/lane";
 import { canRollback } from "./lib/records";
@@ -35,7 +47,14 @@ import { PairClaimSheet } from "./components/PairClaimSheet";
 import { SettingsScreen } from "./screens/Settings";
 import { Jelly } from "./components/Jelly";
 import { Dock } from "./components/Dock";
-import { LangContext, storeLang, storedLang, useT, type Key, type Lang } from "./lib/i18n";
+import {
+  LangContext,
+  storeLang,
+  storedLang,
+  useT,
+  type Key,
+  type Lang,
+} from "./lib/i18n";
 import { applyTheme, storeTheme, storedTheme, type Theme } from "./lib/theme";
 
 // The window is the product (design decision). One native window, seven
@@ -91,6 +110,12 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
   const [workspaces, setWorkspaces] = useState<LaneSnapshot["workspace"][]>([]);
   const [currentID, setCurrentID] = useState("");
   const [claims, setClaims] = useState<PairClaim[]>([]);
+  // Remote machines, and which one the rail stands on ("" is this
+  // computer). The choice is remembered per window, like density: it
+  // changes what the rail shows, never what the gate holds.
+  const [machines, setMachines] = useState<MachineView[]>([]);
+  const [machineID, setMachineID] = useState<string>(storedMachine);
+  const [sheet, setSheet] = useState<"none" | "machine" | "folder">("none");
   const [now, setNow] = useState(() => new Date());
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [error, setError] = useState("");
@@ -114,7 +139,15 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
       setCanStopTasks(poll.prefs.allow_stop_tasks);
       setWorkspaces(poll.workspaces);
       setCurrentID(poll.currentWorkspaceID);
-      setFirstRun((s) => (s !== "unknown" ? s : poll.workspaces.length === 0 ? "on" : "off"));
+      setMachines(poll.machines);
+      // A machine that was removed (here or by hand in the settings file)
+      // cannot be stood on.
+      setMachineID((id) =>
+        id && !poll.machines.some((m) => m.info.id === id) ? "" : id,
+      );
+      setFirstRun((s) =>
+        s !== "unknown" ? s : poll.workspaces.length === 0 ? "on" : "off",
+      );
       setSnapshot(poll.snapshot);
       setNow(new Date());
       setError("");
@@ -131,6 +164,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
     } catch {
       setSnapshot(OFFLINE_SNAPSHOT);
       setWorkspaces([]);
+      setMachines([]);
       setClaims([]);
       lastHeld.current = 0;
       // An unreachable Core is an answer too. Without this the window would
@@ -177,51 +211,110 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
     [refresh],
   );
 
-  const ws = snapshot.workspace;
+  // The machine the rail stands on decides whose folders the lane shows
+  // and where a folder-level action goes. Records are another matter: each
+  // one carries where it came from, so approving, stopping and undoing look
+  // the record up rather than the rail.
+  const selected = machines.find((m) => m.info.id === machineID) ?? null;
+  const viewWorkspaces = selected ? selected.workspaces : workspaces;
+  const ws = selected
+    ? (selected.workspaces.find((w) => w.id === selected.currentWorkspaceID) ??
+      null)
+    : snapshot.workspace;
+  const viewSnapshot = selected ? { ...snapshot, workspace: ws } : snapshot;
+  const coreOf = (id?: string) =>
+    id
+      ? remoteCore(id)
+      : {
+          resolveApproval,
+          selectWorkspace,
+          pauseWorkspace,
+          resumeWorkspace,
+          cancelTask,
+          acceptChangeSet,
+          rollbackChangeSet,
+        };
+  const chooseMachine = useCallback((id: string) => {
+    setMachineID(id);
+    storeMachine(id);
+  }, []);
 
-  const onChooseWorkspace = useCallback(
-    () => act(async () => void (await addWorkspace()), t("shell.errAddFolder")),
-    [act],
-  );
+  const onChooseWorkspace = useCallback(() => {
+    if (machineID) {
+      setSheet("folder");
+      return Promise.resolve(null);
+    }
+    return act(
+      async () => void (await addWorkspace()),
+      t("shell.errAddFolder"),
+    );
+  }, [act, machineID]);
   const onTogglePause = useCallback(() => {
     if (!ws) return;
+    const core = coreOf(machineID);
     void act(
-      () => (ws.status === "paused" ? resumeWorkspace(ws.id) : pauseWorkspace(ws.id)),
+      () =>
+        ws.status === "paused"
+          ? core.resumeWorkspace(ws.id)
+          : core.pauseWorkspace(ws.id),
       t("shell.errLaneState"),
     );
-  }, [act, ws]);
-  const onApprove = useCallback(
-    (id: string) => void act(() => resolveApproval(id, true), t("shell.errApprove")),
-    [act],
+  }, [act, ws, machineID]);
+  const decide = useCallback(
+    (id: string, approved: boolean) => {
+      const a = snapshot.approvals.find((p) => p.change_set_id === id);
+      void act(
+        () => coreOf(a?.machine_id).resolveApproval(id, approved),
+        t(approved ? "shell.errApprove" : "shell.errReject"),
+      );
+    },
+    [act, snapshot.approvals],
   );
-  const onReject = useCallback(
-    (id: string) => void act(() => resolveApproval(id, false), t("shell.errReject")),
-    [act],
+  const onApprove = useCallback((id: string) => decide(id, true), [decide]);
+  const onReject = useCallback((id: string) => decide(id, false), [decide]);
+  const onStopTask = useCallback(
+    (id: string) => {
+      const task = tasks.find((k) => k.task_id === id);
+      void act(
+        async () => void (await coreOf(task?.machine_id).cancelTask(id)),
+        t("shell.errGate"),
+      );
+    },
+    [act, tasks],
   );
   const onAccept = useCallback(
     (id: string) =>
       void act(async () => {
-        if (!ws) return;
-        await acceptChangeSet(ws.id, id);
+        const set = snapshot.changeSets.find((c) => c.id === id);
+        if (!set) return;
+        await coreOf(set.machine_id).acceptChangeSet(set.workspace_id, id);
       }, t("shell.errAccept")),
-    [act, ws],
+    [act, snapshot.changeSets],
   );
   const onRollback = useCallback(
     (id: string) =>
       void act(async () => {
-        if (!ws) return;
-        const res = await rollbackChangeSet(ws.id, id);
+        const set = snapshot.changeSets.find((c) => c.id === id);
+        if (!set) return;
+        const res = await coreOf(set.machine_id).rollbackChangeSet(
+          set.workspace_id,
+          id,
+        );
         if (res.status !== "applied" && res.status !== "rolled_back") {
-          throw new Error(res.reason || res.conflict?.reason || t("shell.errRollbackIncomplete"));
+          throw new Error(
+            res.reason ||
+              res.conflict?.reason ||
+              t("shell.errRollbackIncomplete"),
+          );
         }
       }, t("shell.errRollback")),
-    [act, ws],
+    [act, snapshot.changeSets],
   );
 
   if (firstRun === "on") {
     return (
       <OnboardingScreen
-        workspace={ws}
+        workspace={snapshot.workspace}
         sources={snapshot.sources}
         onChooseFolder={async () => {
           const picked = await addWorkspace();
@@ -262,23 +355,49 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
       case "lane":
         return (
           <LaneScreen
-            snapshot={snapshot}
+            snapshot={viewSnapshot}
             tasks={tasks}
-            workspaces={workspaces.filter((w): w is NonNullable<typeof w> => w !== null)}
+            workspaces={viewWorkspaces.filter(
+              (w): w is NonNullable<typeof w> => w !== null,
+            )}
             canStop={canStopTasks}
             onApprove={onApprove}
             onReject={onReject}
             onSelectWorkspace={(id) =>
-              void act(() => selectWorkspace(id), t("shell.errSwitchWorkspace"))
+              void act(
+                () => coreOf(machineID).selectWorkspace(id),
+                t("shell.errSwitchWorkspace"),
+              )
             }
-            onChooseWorkspace={onChooseWorkspace}
-            onOpenDir={(path) => void act(() => openWorkspaceDir(path), t("shell.errOpenDir"))}
-            onStopTask={(id) =>
-              void act(async () => setTasks(await cancelTask(id)), t("shell.errGate"))
+            onChooseWorkspace={() => void onChooseWorkspace()}
+            onOpenDir={(path) =>
+              void act(() => openWorkspaceDir(path), t("shell.errOpenDir"))
             }
+            onStopTask={onStopTask}
             onTogglePause={onTogglePause}
-            onStartCore={() => void act(() => startCore(), t("shell.errStartCore"))}
+            onStartCore={() =>
+              void act(() => startCore(), t("shell.errStartCore"))
+            }
             onGotoTasks={() => setScreen("tasks")}
+            machines={machines}
+            machineID={machineID}
+            onSelectMachine={chooseMachine}
+            onAddMachine={() => setSheet("machine")}
+            onRemoveMachine={(id) =>
+              void act(async () => {
+                await removeMachine(id);
+                if (id === machineID) chooseMachine("");
+              }, t("shell.errMachine"))
+            }
+            onInstallMachine={(id) =>
+              void act(() => installMachine(id), t("shell.errMachine"))
+            }
+            onReconnectMachine={(id) =>
+              void act(() => connectMachine(id), t("shell.errMachine"))
+            }
+            onDisconnectMachine={(id) =>
+              void act(() => disconnectMachine(id), t("shell.errMachine"))
+            }
           />
         );
       case "tasks":
@@ -289,9 +408,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
             workspace={ws}
             now={now}
             canStop={canStopTasks}
-            onCancel={(id) =>
-              void act(async () => setTasks(await cancelTask(id)), t("shell.errGate"))
-            }
+            onCancel={onStopTask}
             onRollback={onRollback}
             onAccept={onAccept}
             onCopy={(text) => void copyText(text)}
@@ -306,12 +423,19 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
             onLang={onLang}
             theme={theme}
             onTheme={chooseTheme}
-            workspaces={workspaces.filter((w): w is NonNullable<typeof w> => w !== null)}
+            workspaces={workspaces.filter(
+              (w): w is NonNullable<typeof w> => w !== null,
+            )}
             recordCount={tasks.length + snapshot.changeSets.length}
             onClearRecords={() =>
-              void act(async () => setTasks(await clearTasks()), t("shell.errClearRecords"))
+              void act(
+                async () => setTasks(await clearTasks()),
+                t("shell.errClearRecords"),
+              )
             }
-            undoCount={snapshot.changeSets.filter((c) => canRollback(c, now)).length}
+            undoCount={
+              snapshot.changeSets.filter((c) => canRollback(c, now)).length
+            }
             onClearBackups={() =>
               act(() => clearBackups(ws?.id ?? ""), t("shell.errClearBackups"))
             }
@@ -368,7 +492,9 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
               <i />
               <i />
             </span>
-            <span style={{ fontSize: 12.5, color: "var(--fy-muted)" }}>Fylane</span>
+            <span style={{ fontSize: 12.5, color: "var(--fy-muted)" }}>
+              Fylane
+            </span>
           </div>
         ) : (
           <span style={{ flex: "none", width: 86 }} />
@@ -379,8 +505,17 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
         {/* Fylane-V3 §chrome: the top row says what the window is currently
             about, and nothing else. Navigation is the Node dock. */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="fy-dot fy-dot-sm" style={{ background: chrome.dot }} />
-          <span style={{ fontSize: 11.5, color: "var(--fy-muted)", letterSpacing: ".01em" }}>
+          <span
+            className="fy-dot fy-dot-sm"
+            style={{ background: chrome.dot }}
+          />
+          <span
+            style={{
+              fontSize: 11.5,
+              color: "var(--fy-muted)",
+              letterSpacing: ".01em",
+            }}
+          >
             {chrome.title}
           </span>
         </div>
@@ -398,15 +533,27 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
           <button
             type="button"
             className="fy-headbtn"
-            style={{ color: ws?.status === "paused" ? "var(--fy-amber)" : "var(--fy-muted)" }}
+            style={{
+              color:
+                ws?.status === "paused" ? "var(--fy-amber)" : "var(--fy-muted)",
+            }}
             onClick={onTogglePause}
             disabled={!ws}
           >
             {ws?.status === "paused" ? t("shell.resume") : t("shell.pause")}
           </button>
-          <button type="button" className="fy-palettebtn" onClick={() => setCommandsOpen(true)}>
+          <button
+            type="button"
+            className="fy-palettebtn"
+            onClick={() => setCommandsOpen(true)}
+          >
             {t("shell.actions")}
-            <span style={{ font: `500 10.5px/1 var(--fy-mono)`, letterSpacing: ".04em" }}>
+            <span
+              style={{
+                font: `500 10.5px/1 var(--fy-mono)`,
+                letterSpacing: ".04em",
+              }}
+            >
               {os === "windows" ? "Ctrl K" : "\u2318K"}
             </span>
           </button>
@@ -420,7 +567,9 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
               aria-label={t("shell.minimise")}
               onClick={() => WindowMinimise()}
             >
-              <span style={{ width: 11, height: 1, background: "currentColor" }} />
+              <span
+                style={{ width: 11, height: 1, background: "currentColor" }}
+              />
             </button>
             <button
               type="button"
@@ -429,7 +578,12 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
               onClick={() => WindowToggleMaximise()}
             >
               <span
-                style={{ width: 9, height: 9, border: "1px solid currentColor", borderRadius: 1 }}
+                style={{
+                  width: 9,
+                  height: 9,
+                  border: "1px solid currentColor",
+                  borderRadius: 1,
+                }}
               />
             </button>
             {/* Closing hides the window; the Core keeps running in the tray. */}
@@ -461,13 +615,22 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
       </div>
 
       {firstRun !== "unknown" && (
-        <Dock pages={NAV} current={screen} onGoto={setScreen} pending={held > 0} />
+        <Dock
+          pages={NAV}
+          current={screen}
+          onGoto={setScreen}
+          pending={held > 0}
+        />
       )}
 
       {error && (
         <div role="alert" className="fy-toast">
           {error}
-          <button type="button" className="fy-textbtn" onClick={() => setError("")}>
+          <button
+            type="button"
+            className="fy-textbtn"
+            onClick={() => setError("")}
+          >
             {t("shell.dismiss")}
           </button>
         </div>
@@ -489,7 +652,7 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
           }}
           onStopTask={(id) => {
             setCommandsOpen(false);
-            void act(async () => setTasks(await cancelTask(id)), t("shell.errGate"));
+            onStopTask(id);
           }}
           onTogglePause={() => {
             setCommandsOpen(false);
@@ -506,11 +669,80 @@ function Window({ lang, onLang }: { lang: Lang; onLang(lang: Lang): void }) {
         />
       )}
 
+      {sheet === "machine" && (
+        <MachineSheet
+          title={t("machine.addTitle")}
+          body={t("machine.addBody")}
+          action={t("machine.addAction")}
+          fields={[
+            {
+              key: "name",
+              label: t("machine.fieldName"),
+              placeholder: t("machine.fieldNamePlaceholder"),
+              required: true,
+            },
+            {
+              key: "host",
+              label: t("machine.fieldHost"),
+              placeholder: t("machine.fieldHostPlaceholder"),
+              required: true,
+            },
+            { key: "user", label: t("machine.fieldUser"), half: true },
+            {
+              key: "port",
+              label: t("machine.fieldPort"),
+              half: true,
+              numeric: true,
+              placeholder: "22",
+            },
+          ]}
+          onCancel={() => setSheet("none")}
+          onSubmit={async (v) => {
+            const added = await addMachine({
+              name: v.name,
+              host: v.host,
+              user: v.user || undefined,
+              port: v.port ? Number(v.port) : undefined,
+            });
+            setSheet("none");
+            chooseMachine(added.id);
+            await refresh();
+          }}
+        />
+      )}
+
+      {sheet === "folder" && selected && (
+        <MachineSheet
+          title={t("machine.folderTitle", { name: selected.info.name })}
+          body={t("machine.folderBody")}
+          action={t("machine.folderAction")}
+          fields={[
+            {
+              key: "path",
+              label: t("machine.fieldPath"),
+              placeholder: t("machine.fieldPathPlaceholder"),
+              required: true,
+            },
+          ]}
+          onCancel={() => setSheet("none")}
+          onSubmit={async (v) => {
+            const core = remoteCore(selected.info.id);
+            const added = await core.addWorkspace(v.path);
+            await core.selectWorkspace(added.id);
+            setSheet("none");
+            await refresh();
+          }}
+        />
+      )}
+
       {claims.length > 0 && (
         <PairClaimSheet
           claim={claims[0]}
           onResolve={(approved) =>
-            void act(() => resolvePairClaim(claims[0].request_id, approved), t("shell.errPairing"))
+            void act(
+              () => resolvePairClaim(claims[0].request_id, approved),
+              t("shell.errPairing"),
+            )
           }
         />
       )}

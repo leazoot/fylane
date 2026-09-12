@@ -1,3 +1,4 @@
+import type { MachineView } from "../src/lib/poll";
 import type {
   Approval,
   ChangeSet,
@@ -12,7 +13,11 @@ import type {
 } from "../src/lib/core";
 import type { LaneSnapshot } from "../src/lib/lane";
 import type { SettingsDeps } from "../src/screens/Settings";
-import { FIRST_BYTES, FIRST_FILE, type FirstWriteOutcome } from "../src/lib/firstwrite";
+import {
+  FIRST_BYTES,
+  FIRST_FILE,
+  type FirstWriteOutcome,
+} from "../src/lib/firstwrite";
 
 // Fixtures for the design-fidelity harness (see harness/README.md). They
 // mirror the shapes the Core really returns, with the design boards' own
@@ -78,8 +83,18 @@ export const WORKSPACES: Workspace[] = [
 ];
 
 export const SOURCES: Source[] = [
-  { provider: "chatgpt", connected: true, last_seen_at: "2026-08-13T09:56:00Z", lanes_carried: 68 },
-  { provider: "claude", connected: true, last_seen_at: "2026-08-13T09:44:00Z", lanes_carried: 26 },
+  {
+    provider: "chatgpt",
+    connected: true,
+    last_seen_at: "2026-08-13T09:56:00Z",
+    lanes_carried: 68,
+  },
+  {
+    provider: "claude",
+    connected: true,
+    last_seen_at: "2026-08-13T09:44:00Z",
+    lanes_carried: 26,
+  },
   { provider: "grok", connected: false, lanes_carried: 0 },
 ];
 
@@ -214,7 +229,13 @@ export const CLAIM: PairClaim = {
 // granted workspace by name rather than the empty state.
 export const COMMANDS: CommandSettingsInfo = {
   rung: "workspace",
-  grants: [{ workspace_id: "ws_1", rung: "workspace", granted_at: "2026-08-12T14:20:00Z" }],
+  grants: [
+    {
+      workspace_id: "ws_1",
+      rung: "workspace",
+      granted_at: "2026-08-12T14:20:00Z",
+    },
+  ],
 };
 
 // Tasks for the lane's recent line and the record board. Durations are what
@@ -231,8 +252,10 @@ export const TASKS: TaskInfo[] = [
     provider: "claude",
     started_at: "2026-08-13T09:46:00Z",
     duration: 8400 * MS,
-    stdout: "> fylane-web@0.1.0 build\n> vite build\n\nvite v5.4.8 building for production...\n✓ 214 modules transformed.",
-    stderr: "error during build:\nCould not resolve \"./lib/missing\" from \"src/app.tsx\"",
+    stdout:
+      "> fylane-web@0.1.0 build\n> vite build\n\nvite v5.4.8 building for production...\n✓ 214 modules transformed.",
+    stderr:
+      'error during build:\nCould not resolve "./lib/missing" from "src/app.tsx"',
     stdout_cursor: 9214,
   },
   {
@@ -244,7 +267,8 @@ export const TASKS: TaskInfo[] = [
     provider: "claude",
     started_at: "2026-08-13T09:38:00Z",
     duration: 60 * MS,
-    stdout: "  PID     ELAPSED STAT COMM\n  482    01:12:03 S    node\n  911    00:04:41 S    go",
+    stdout:
+      "  PID     ELAPSED STAT COMM\n  482    01:12:03 S    node\n  911    00:04:41 S    go",
     stdout_cursor: 2048,
   },
   {
@@ -307,7 +331,8 @@ export const CONNECT: ConnectInfo = {
       kind: "cloudflare-quick",
       binary: "cloudflared",
       install: "brew install cloudflared",
-      download: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/",
+      download:
+        "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/",
       installed: true,
       needs_token: false,
       needs_hostname: false,
@@ -322,7 +347,8 @@ export const CONNECT: ConnectInfo = {
       kind: "cloudflare-named",
       binary: "cloudflared",
       install: "brew install cloudflared",
-      download: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/",
+      download:
+        "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/",
       installed: true,
       needs_token: false,
       needs_hostname: true,
@@ -389,9 +415,16 @@ export const SETTINGS_DEPS: SettingsDeps = {
 
 // First run. The onboarding boards stand in for the native folder picker and
 // for the one real write, so the frames can be walked through without a Core.
-export const NO_SOURCES: Source[] = SOURCES.map((s) => ({ ...s, connected: false, lanes_carried: 0 }));
+export const NO_SOURCES: Source[] = SOURCES.map((s) => ({
+  ...s,
+  connected: false,
+  lanes_carried: 0,
+}));
 
-export const ALL_SOURCES: Source[] = SOURCES.map((s) => ({ ...s, connected: true }));
+export const ALL_SOURCES: Source[] = SOURCES.map((s) => ({
+  ...s,
+  connected: true,
+}));
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -416,3 +449,92 @@ export function snapshot(over: Partial<LaneSnapshot> = {}): LaneSnapshot {
     ...over,
   };
 }
+
+// ── remote machines (Batch R) ───────────────────────────────────────────
+
+export const MACHINES: MachineView[] = [
+  {
+    info: {
+      id: "m_vps1",
+      name: "vps-1",
+      host: "vps.example.com",
+      user: "deploy",
+      state: "online",
+      version: "0.0.4",
+      since: "2026-09-12T08:00:00Z",
+    },
+    workspaces: [
+      {
+        ...WORKSPACES[0],
+        id: "ws_r1",
+        name: "api",
+        root_path: "/home/deploy/api",
+      },
+      {
+        ...WORKSPACES[1],
+        id: "ws_r2",
+        name: "worker",
+        root_path: "/home/deploy/worker",
+      },
+    ],
+    currentWorkspaceID: "ws_r1",
+    reachable: true,
+  },
+  {
+    info: {
+      id: "m_build",
+      name: "build-box",
+      host: "10.0.0.7",
+      state: "missing",
+      detail: "Fylane is not installed on this machine",
+      since: "2026-09-12T08:00:00Z",
+    },
+    workspaces: [],
+    currentWorkspaceID: "",
+    reachable: false,
+  },
+];
+
+/** The task list with a few rows from vps-1 mixed in, newest first. */
+export const TASKS_REMOTE: TaskInfo[] = [
+  {
+    task_id: "tsk_r1",
+    state: "running",
+    label: "go test ./...",
+    dir: "",
+    exit_code: 0,
+    provider: "claude",
+    started_at: "2026-08-13T10:00:00Z",
+    duration: 12 * 1000 * MS,
+    machine_id: "m_vps1",
+    machine: "vps-1",
+  },
+  ...TASKS.slice(0, 3),
+  {
+    task_id: "tsk_r2",
+    state: "succeeded",
+    label: "systemctl --user restart api",
+    dir: "",
+    exit_code: 0,
+    provider: "chatgpt",
+    started_at: "2026-08-13T09:40:00Z",
+    duration: 900 * MS,
+    machine_id: "m_vps1",
+    machine: "vps-1",
+  },
+  ...TASKS.slice(3),
+];
+
+export const HELD_REMOTE: Approval[] = [
+  {
+    ...HELD_COMMAND[0],
+    change_set_id: "cmd:r7b2e1",
+    workspace_id: "ws_r1",
+    workspace_name: "api",
+    provider: "claude",
+    summary: "go test ./...",
+    command: ["go", "test", "./..."],
+    machine_id: "m_vps1",
+    machine: "vps-1",
+  },
+];
