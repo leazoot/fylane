@@ -401,13 +401,13 @@ export const DICT = {
     zh: "文件写入将不再询问你",
   },
   "set.writeOpenConfirmBody": {
-    en: "In every folder, a new file, an edit or a move lands the moment a model asks. Deletes, sensitive paths and any path you marked to ask still stop, and every write keeps its undo copy and its record.",
-    zh: "在所有目录里,模型一提出请求,新建、改写、移动就直接落盘。删除、敏感路径、以及你标了要问的路径仍会停下,每次写入仍留撤销副本和记录。",
+    en: "New files, edits and moves land at once. Deletes and sensitive paths still ask; every write can be undone.",
+    zh: "新建、改写、移动直接落盘。删除和敏感路径仍会问,每次写入都可撤销。",
   },
   "set.writeOpenWarning": { en: "Files are being written without asking", zh: "文件正在无询问写入" },
   "set.writeOpenWarningBody": {
-    en: "Deletes and sensitive paths still ask, and every write keeps a 7-day undo copy on the tasks page.",
-    zh: "删除和敏感路径仍会询问;每次写入在任务页都留 7 天可撤销的副本。",
+    en: "Deletes and sensitive paths still ask; every write can be undone for 7 days.",
+    zh: "删除和敏感路径仍会问;每次写入 7 天内可撤销。",
   },
   "set.rungOpenNote": {
     en: "Ordinary commands run in the current workspace without asking.",
