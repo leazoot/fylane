@@ -427,6 +427,10 @@ cd desktop
 wails dev
 ```
 
+## Community
+
+- [LINUX DO](https://linux.do/)
+
 ## Security
 
 Only your approval on this machine counts. Confirmations on the AI platform are
