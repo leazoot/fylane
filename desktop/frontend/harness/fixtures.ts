@@ -491,7 +491,7 @@ export function snapshot(over: Partial<LaneSnapshot> = {}): LaneSnapshot {
   };
 }
 
-// ── remote machines (Batch R) ───────────────────────────────────────────
+// ── remote machines ────────────────────────────────────────────────────
 
 /** A small directory tree on the fake machine, for the folder sheet. */
 const REMOTE_HOME = "/home/deploy";

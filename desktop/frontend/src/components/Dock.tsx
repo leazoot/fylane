@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useT, type Key } from "../lib/i18n";
 
 // The Node dock (Fylane-V3 board 03). Navigation lives at the bottom left as
-// a floating mark, not as a row of pills in the title bar: the three pages are
+// a floating mark, not as a row of pills in the title bar: the pages are
 // somewhere you go occasionally, and the window's top row belongs to the one
 // thing the window is currently about.
 //

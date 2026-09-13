@@ -3167,7 +3167,7 @@ describe("the connect screen when a tunnel program is missing", () => {
   });
 });
 
-// ── remote machines (Batch R) ──────────────────────────────────────────
+// ── remote machines ───────────────────────────────────────────────────
 
 const VPS: MachineView = {
   info: {

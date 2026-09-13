@@ -8,7 +8,7 @@ import (
 
 // A delegation hands a workspace to a coding agent Fylane does not review,
 // so the prompt for it is asked at every rung and no workspace grant covers
-// it (D24). What one yes buys is bounded here instead: this agent, in this
+// it. What one yes buys is bounded here instead: this agent, in this
 // workspace, for DelegationTTL, after which the question is asked again.
 // The grants live in memory on purpose — a restart asks again, which for an
 // authorization this broad is the right side to err on — and every one in

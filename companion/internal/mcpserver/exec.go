@@ -535,9 +535,9 @@ func (t *toolset) confirmDelegation(ctx context.Context, ws *workspace.Workspace
 	if t.approver == nil {
 		return runCommandOutput{}, false, fmt.Errorf("delegation needs local approval, but no approver is configured")
 	}
-	// A yes given earlier today to this agent in this workspace still
-	// stands (D37). The task itself is still recorded and still visible on
-	// the tasks page; only the question is skipped.
+	// A yes given earlier to this agent in this workspace still stands
+	// for cmdgate.DelegationTTL. The task itself is still recorded and
+	// still visible on the tasks page; only the question is skipped.
 	if t.delegations != nil && t.delegations.Granted(ws.ID(), agent) {
 		return runCommandOutput{}, true, nil
 	}

@@ -553,7 +553,7 @@ export type CommandGrant = {
 
 /** One coding agent a yes still covers in one workspace. The broadest thing
  *  this Core hands out unattended, and therefore the first thing to keep on
- *  screen (D37). */
+ *  screen. */
 export type DelegationGrant = {
   workspace_id: string;
   agent: string;
@@ -590,7 +590,7 @@ export type CommandSettingsInfo = {
   providers?: ProxyProvider[];
   /** Absent for the same reason, and read the same way. */
   language_servers?: LanguageServer[];
-  /** Agents a yes still covers; absent from a Core that predates D37. */
+  /** Agents a yes still covers; absent from an older Core. */
   delegations?: DelegationGrant[];
   /** How long one yes to an agent lasts, in hours. */
   delegation_hours?: number;
@@ -716,7 +716,7 @@ export async function setCommandRung(
  *  `safe` asks before every change set. `balanced` lets one shape through
  *  unasked — a set whose every operation creates a new, non-sensitive file;
  *  an edit, a delete or a sensitive path anywhere in it still asks. `open`
- *  (D37) lets creates, edits and moves through; a delete or a sensitive path
+ *  lets creates, edits and moves through; a delete or a sensitive path
  *  anywhere in the set still asks, and the Core refuses the mode without
  *  `confirm`, the way the command gate's open rung is refused. It is
  *  deliberately independent of the command rung: a write is transactional

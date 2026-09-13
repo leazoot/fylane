@@ -42,8 +42,7 @@ export function storeLang(lang: Lang): void {
 
 export const DICT = {
   // ── shell ──────────────────────────────────────────────────────────
-  // Desktop v2 §1: three top-level words, and the window has no fourth
-  // screen for a fourth one to name.
+  // The page names the dock shows.
   "nav.lane": { en: "Lane", zh: "通道" },
   "nav.settings": { en: "Settings", zh: "设置" },
   "nav.tasks": { en: "Tasks", zh: "任务" },
@@ -214,7 +213,7 @@ export const DICT = {
   "laneV3.rejectedToday": { en: "REJECTED", zh: "已拒绝" },
   "laneV3.runningOn": { en: "Running on {machine}", zh: "正在 {machine} 上执行" },
 
-  // ── remote machines (Batch R) ───────────────────────────────────────
+  // ── remote machines ────────────────────────────────────────────────
   // The rail's second anchor. A machine is a computer Fylane reaches over
   // ssh; "this computer" is the one the window is on. The words are the
   // Core's link states, one each, said as a status and not as a verb.
@@ -389,7 +388,7 @@ export const DICT = {
     en: "Only when every file in the set is new and not sensitive. Edits, deletes and sensitive paths still ask.",
     zh: "仅当这一批全是新建的非敏感文件。改写、删除、敏感路径照旧询问。",
   },
-  // The third write mode (D37). Like the open rung it names what it keeps
+  // The third write mode. Like the open rung it names what it keeps
   // asking about, because that is what someone choosing it is deciding.
   "set.writeOpen": { en: "Write without asking", zh: "写入不再询问" },
   "set.writeOpenNote": {
@@ -555,7 +554,7 @@ export const DICT = {
     en: "Set to run ordinary commands without asking, so these authorizations make no difference. They apply again when you choose a stricter setting.",
     zh: "当前设为普通命令不询问,这些授权暂不起作用。改回更严格的设置时会重新生效。",
   },
-  // A standing yes to a coding agent (D37): the broadest authorization
+  // A standing yes to a coding agent: the broadest authorization
   // this machine hands out, listed beside the folder grants and withdrawn
   // the same way.
   "set.delegationLine": {

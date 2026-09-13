@@ -22,9 +22,9 @@ const (
 	ModeBalanced = "balanced" // non-sensitive creates auto-approve
 	// ModeOpen auto-approves non-sensitive creates, updates and moves. A
 	// delete still asks: it is the one operation whose undo copy can run
-	// out (D33), and the one a person cannot glance past. Sensitive paths
+	// out, and the one a person cannot glance past. Sensitive paths
 	// and route rules marked "ask" still ask at every mode. Never the
-	// default, and never set without an explicit confirmation (D37).
+	// default, and never set without an explicit confirmation.
 	ModeOpen = "open"
 )
 

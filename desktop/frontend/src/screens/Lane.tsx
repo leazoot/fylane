@@ -288,7 +288,7 @@ function Request({
         </span>
       </div>
 
-      {/* What the yes buys beyond this task (D37): the term is on the
+      {/* What the yes buys beyond this task: the term is on the
           prompt, not only in the settings page the person has not opened. */}
       {pending.kind === "delegation" && pending.grant && (
         <div

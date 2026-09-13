@@ -120,7 +120,7 @@ type Server struct {
 	// Prefs backs the settings page's execution preferences (task timeout,
 	// stop button, start at login); nil disables those endpoints.
 	Prefs PrefStore
-	// Delegations are the standing agent authorizations (D37); nil means
+	// Delegations are the standing agent authorizations; nil means
 	// code_task asks every time and the list is empty.
 	Delegations DelegationGates
 	// Machines backs the remote machine list and the per-machine proxy;

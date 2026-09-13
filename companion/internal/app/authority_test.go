@@ -187,8 +187,8 @@ func (c writeCell) String() string {
 // autoApprovable is the complete set of shapes that reach disk without the
 // user being asked. Declaring the exceptions rather than 48 rows is the
 // point: the policy is "these shapes pass, everything else stops", and
-// widening it turns the other 44 cells red at once. D37 added the open
-// mode's three; a delete is deliberately not among them.
+// widening it turns the other 44 cells red at once. The open mode
+// passes three; a delete is deliberately not among them.
 var autoApprovable = map[writeCell]bool{
 	{approval.ModeBalanced, false, txn.OpCreate, false}: true,
 	{approval.ModeOpen, false, txn.OpCreate, false}:     true,

@@ -70,14 +70,14 @@ import { applyTheme, storeTheme, storedTheme, type Theme } from "./lib/theme";
 // traffic lights float over the content on the first row's baseline, which
 // is why every screen reserves 86px on the left.
 
-// Desktop v2 §1: three top-level pages and no fourth. Route rules, the trace
-// and the workspaces bench are gone — not hidden, not disabled, not behind a
-// menu. Switching workspaces lives on the lane's own anchor, and every
-// setting is one page.
+// Desktop v2 §1 set three top-level pages; board 17 added memory. Route
+// rules, the trace and the workspaces bench are gone — not hidden, not
+// disabled, not behind a menu. Switching workspaces lives on the lane's own
+// anchor, and every setting is one page.
 export type Screen = "lane" | "tasks" | "memory" | "settings";
 
-// Batch S added a fourth (Fylane-V3 board 17): what the connected AI wrote
-// down about the folder, because it is the user's to read and correct.
+// Memory is a page because what the connected AI wrote down about a folder
+// is the user's to read and correct.
 const NAV: { key: Screen; label: Key }[] = [
   { key: "lane", label: "nav.lane" },
   { key: "tasks", label: "nav.tasks" },
