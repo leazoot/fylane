@@ -103,7 +103,9 @@ Fylane walks you through four steps, all inside the window. No terminal.
    ordinary command needs a yes, after that ordinary commands in the same
    folder just run, while every file write and every dangerous command still
    asks. You can switch to asking every time, or to not asking for ordinary
-   commands at all.
+   commands at all. File writes have their own ladder: ask every time, let
+   new files through, or write without asking; whichever you pick, a delete
+   or a sensitive path still stops, and every write keeps its undo copy.
 4. **Connect an AI.** This step happens on the AI platform's side, next
    section.
 
