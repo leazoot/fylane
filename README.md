@@ -276,11 +276,26 @@ sent it and what happened.
 
 ![Task history](assets/tasks.png)
 
-What the AI wrote down about a folder is yours too. The Memory page shows the
-state page it keeps (goal, progress, next step, decisions, open questions) and
-the trail of notes behind it; you can correct the page by hand, delete a note,
-export the lot as Markdown, or clear it. A folder on a remote machine shows
-its memory the same way.
+## Memory
+
+A new chat does not start from zero. For each folder Fylane keeps a one-page
+state (goal, progress, next step, decisions, open questions) and a trail of
+notes the AI writes as it works.
+
+- **Reading needs nothing from you.** The first thing an AI does in a new chat
+  is ask Fylane about the folder, and the answer tells it there is memory to
+  read. "Continue where we left off" is usually enough. Even with no notes, it
+  sees what was last written and run.
+- **Writing is up to the AI.** It is told to note finished work and decisions,
+  but nothing forces it. At the end of a piece of work, say "note this down".
+- **If a new chat does not pick it up,** say "check this folder's memory first".
+- **It stays small.** The page is rewritten, never appended, so a new chat
+  reads the same few kilobytes in week one and week one hundred. Old notes can
+  be folded into a summary and stay searchable.
+
+The Memory page shows both. You can correct the page by hand, delete a note,
+export everything as Markdown, or clear it. Memory lives in Fylane's own data
+on the machine the folder is on, never in your project's files.
 
 ## Remote machines
 
