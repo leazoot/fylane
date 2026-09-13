@@ -4,7 +4,7 @@
 
 # Fylane
 
-**Let ChatGPT, Claude and Grok on the web read and edit a project folder on your computer, or on your VPS. Edits and commands are confirmed on your machine before they happen.**
+**Let ChatGPT, Claude and Grok on the web read and edit a project on your computer or your VPS. Every edit and command waits for your OK first.**
 
 English | [简体中文](README.zh-CN.md)
 
@@ -18,35 +18,27 @@ English | [简体中文](README.zh-CN.md)
 
 ## What it is
 
-You use ChatGPT, Claude or Grok in the browser. They cannot see the project on
-your computer. To get one file changed you paste code in and paste the answer
-back out, dozens of times a day.
+The AI in your browser cannot see the project on your computer. To get a file
+changed, you paste code in and paste the answer back.
 
-Fylane is a small program you install on your computer. You pick one folder
-and it turns that folder into an MCP server, so the AI in your browser can
-connect to it the way it connects to a plugin: read the files, edit code, run
-the tests.
+Fylane runs on your computer. Pick a folder, and the AI in your browser can
+connect to it: read files, edit code, run tests.
 
-It differs from "hand the computer to the AI" in one essential way. The AI can
-only *ask*. The actual write or command happens on your machine, and each one
-goes through a confirmation in the Fylane window first. You see what it wants
-to change, you approve, then it lands on disk.
+The AI can only send requests. Fylane makes the actual change or runs the
+command on your machine, and shows it to you in its window first. Nothing
+happens until you approve.
 
 ![A write waiting for approval](assets/approval.png)
 
-Typical uses:
+What you can do with it:
 
-- Let ChatGPT read the project and answer "where is this error thrown" without
-  pasting code.
-- Let Claude edit three files, review the diff in Fylane, then approve.
-- Let Grok run `npm test` in your project and read the output back.
-- Same thing when the project lives on a VPS. Bring that machine in and the
-  AI edits and runs tests on the server; you still approve on this computer.
+- Ask ChatGPT "where is this error thrown" and let it read the project. No pasting.
+- Let Claude edit three files, check the changes in Fylane, then approve.
+- Let Grok run `npm test` and read the results back.
+- Works for a project on a VPS too, and you still approve on this computer.
   See [Remote machines](#remote-machines).
-- Open a new chat tomorrow and the AI picks up where it left off: what was
-  done, what was decided, what comes next. Fylane keeps that per folder, on
-  your machine, and hands it to the next conversation.
-- Close the lid and the AI cannot reach the machine. Nothing was uploaded.
+- Open a new chat tomorrow and carry on where you left off. See [Memory](#memory).
+- Close your laptop and the AI can no longer reach it.
 
 ## How it works
 
@@ -56,12 +48,10 @@ AI in the browser  ──►  public address (tunnel or relay)  ──►  Fylan
                                                                 approval happens here
 ```
 
-Fylane is the only process that touches disk. The tunnel or relay in the
-middle forwards encrypted frames and stores no file, no diff, no path. Every
-path the AI sees is relative; it never learns where the folder is on your
-machine.
+Only Fylane on your computer touches your files. The public address in the
+middle just passes messages along and stores nothing.
 
-When the folder is on a VPS there is one more hop, over ssh:
+When the project is on a VPS, there is one more hop over ssh:
 
 ```
 AI in the browser  ──►  public address  ──►  Fylane on your computer  ──ssh──►  Fylane on the VPS  ──►  the folder on the server
@@ -69,9 +59,9 @@ AI in the browser  ──►  public address  ──►  Fylane on your computer
                                               approval still happens here
 ```
 
-The Fylane on the VPS opens no port to the outside; only this computer can
-reach it, through ssh. Nothing changes on the platform side, it keeps
-connecting to the same address.
+The Fylane on the VPS is not open to the internet. Only your computer can reach
+it, over ssh. Nothing changes on the AI platform: it connects to the same
+address.
 
 ## Install
 
@@ -81,44 +71,37 @@ Download from [Releases](https://github.com/leazoot/fylane/releases/latest):
 | --- | --- |
 | macOS | `fylane-desktop-macos.dmg`, drag into Applications |
 | Windows | `fylane-desktop-windows-amd64.zip`, unzip and run `Fylane.exe` |
-| Linux / servers | command line only for now, one command to install, see [Command line](#command-line) |
+| Linux / servers | command line only for now, see [Command line](#command-line) |
 
-The packages are not signed yet. On first open macOS says the developer cannot
-be verified: go to System Settings → Privacy & Security and choose Open Anyway.
-Windows SmartScreen: More info → Run anyway. Every file's SHA-256 is in
-`SHA256SUMS` on the release page if you want to check before opening.
+The packages are not signed yet. On first open, macOS says the developer cannot
+be verified: go to System Settings → Privacy & Security and click Open Anyway.
+On Windows, when SmartScreen appears, click More info → Run anyway. To check
+the files first, see `SHA256SUMS` on the release page.
 
 ## First run
 
-Fylane walks you through four steps, all inside the window. No terminal.
+Fylane walks you through four steps in its window. No terminal needed.
 
 ![Step 1: choose a folder](assets/first-run.png)
 
-1. **Choose a folder.** This is the only place the AI can see. Nothing above it
-   exists to the AI. You can change it or take it back at any time.
-2. **Send one file through.** Fylane writes a sample file into the folder so
-   you see what an approval looks like once: the content appears first, you
-   approve, then the file exists.
-3. **Decide what has to ask.** The default is "ask once per folder": the first
-   ordinary command needs a yes, after that ordinary commands in the same
-   folder just run, while every file write and every dangerous command still
-   asks. You can switch to asking every time, or to not asking for ordinary
-   commands at all. File writes have their own ladder: ask every time, let
-   new files through, or write without asking; whichever you pick, a delete
-   or a sensitive path still stops, and every write keeps its undo copy.
-4. **Connect an AI.** This step happens on the AI platform's side, next
-   section.
+1. **Choose a folder.** The AI can see this folder and nothing above it. You
+   can change it or take it back at any time.
+2. **Try one write.** Fylane writes a sample file into the folder so you can
+   see what approving looks like.
+3. **Decide what needs asking.** By default Fylane asks once per folder before
+   running commands, then ordinary commands just run. File writes and risky
+   commands still ask. You can change this later in Settings.
+4. **Connect an AI.** This happens on the AI platform, see the next section.
 
-Then you are on the main screen. The left is the lane: requests waiting for you
-show up here. The right is the current folder and the AIs connected to it.
+Then you reach the main screen. On the left is the lane, where requests waiting
+for you appear. On the right are the current folder and the connected AIs.
 
 ![The lane](assets/lane.png)
 
 ## Connecting Fylane to an AI platform
 
-Whichever platform, it is the same three moves: get an address from Fylane,
-paste it into the platform's connector settings, approve the connection in the
-Fylane window.
+Every platform takes three steps: copy the address from Fylane, paste it into
+the platform's connector settings, then approve the connection in Fylane.
 
 ### Step 1: get the address from Fylane
 
@@ -126,12 +109,12 @@ Open **Settings → Connection**.
 
 ![Connection](assets/connection.png)
 
-The first time, choose **Cloudflare quick tunnel** and click Set up. No
-account, no domain. A few seconds later an address like
-`https://xxx.trycloudflare.com/mcp` appears here. Click Copy.
+The first time, choose **Cloudflare quick tunnel** and click Set up. No account
+or domain needed. After a few seconds an address like
+`https://xxx.trycloudflare.com/mcp` appears. Click Copy.
 
-This address changes every time Fylane restarts and the platform has to be
-updated. When you are done trying it out and want an address that stays, see
+This address changes every time Fylane restarts, so you will need to paste it
+into the platform again. For an address that stays the same, see
 [A fixed address](#a-fixed-address).
 
 ### Step 2: paste it into the platform
@@ -142,24 +125,22 @@ updated. When you are done trying it out and want an address that stays, see
 Needs a paid plan (Plus, Pro or Team).
 
 1. Avatar → **Settings → Security and login** → turn on **Developer mode**.
-   (Older versions of the UI had it under Apps & Connectors → Advanced.)
+   In older versions it is under Apps & Connectors → Advanced.
 
    ![Developer mode](assets/setup/chatgpt-developer-mode.png)
 
-2. Go to **Plugins** (called **Apps & Connectors** in older versions) and
-   click **Create**. The form is titled "New Plugin":
+2. Go to **Plugins** (called Apps & Connectors in older versions) and click
+   **Create**. Fill in:
    - Name: anything, for example `Fylane`
-   - Connection: leave **Server URL** selected and paste the address
-   - Authentication: **OAuth**. Choosing "No authentication" fails with
-     `Error creating connector`, because the address requires a login.
+   - Connection: keep **Server URL** and paste the address
+   - Authentication: **OAuth**. "No authentication" fails with
+     `Error creating connector`.
    - Tick "I understand and want to continue".
 
    ![New Plugin form](assets/setup/chatgpt-create-connector.png)
 
-3. Click Create. ChatGPT completes the handshake in the background and then
-   opens a browser page, see step 3.
-4. In a chat, click **+** next to the input → **More** and tick `Fylane`.
-   That chat can now use it.
+3. Click Create. A browser page opens, see step 3.
+4. In a chat, click **+** next to the input → **More**, and tick `Fylane`.
 
 </details>
 
@@ -168,17 +149,14 @@ Needs a paid plan (Plus, Pro or Team).
 
 1. Avatar at the bottom left → **Settings → Connectors** → **Add custom
    connector**.
-2. Name it `Fylane` and paste the address as the remote MCP server URL.
-   **Leave both Client ID and Client Secret under Advanced empty.** Fylane
-   registers the client itself; filling them in causes an error.
-3. Click Add. When Fylane appears in the list, click **Connect** next to it.
-   The browser opens an authorization page, see step 3.
-4. In a chat, open the **tools** button on the input and make sure Fylane is
-   enabled.
+2. Name it `Fylane` and paste the address as the URL. **Leave Client ID and
+   Client Secret under Advanced empty.** Filling them in causes an error.
+3. Click Add, then click **Connect** next to Fylane in the list. An
+   authorization page opens, see step 3.
+4. In a chat, open the **tools** button on the input and make sure Fylane is on.
 
-Claude groups the tools into read-only and write, and each can be set to
-"ask every time" or "always allow". Those are platform-side hints; they do not
-change the approval on your machine.
+In Claude each tool can be set to "ask every time" or "always allow". That is
+only Claude's setting. Fylane still asks what it needs to ask.
 
 <!-- screenshot: assets/setup/claude-add-connector.png (the add custom connector form) -->
 
@@ -189,19 +167,16 @@ change the approval on your machine.
 
 1. grok.com → **Settings → Connectors** → add a custom MCP connector and paste
    the address.
-2. Click connect. The browser opens the authorization page, see step 3.
+2. Click connect. An authorization page opens, see step 3.
 
-Two things are different on Grok and worth knowing up front:
+A few things are different on Grok:
 
-- **Grok shows no write confirmation of its own.** When the model decides to
-  edit, the request goes out. All protection is the approval on your machine,
-  so do not set the approval level to "never ask" while using Grok.
-- Grok has its own cloud Linux sandbox. Say "run the tests in the project" and
-  it may run them there, not on your computer. Name the tool: "use the
-  Fylane connector's run_command to run the tests".
-- Grok waits 60 seconds per tool call. A write needs your approval; if you have
-  not approved within 60 seconds it receives "pending approval". Approve, then
-  ask it to try again.
+- **Grok does not confirm writes itself.** When using Grok, keep write approval
+  on in Fylane.
+- Grok has its own cloud sandbox, so "run the tests" may run them there. Say it
+  plainly: "use Fylane's run_command to run the tests".
+- Grok waits only 60 seconds per call. If you have not approved by then, it is
+  told the request is pending. Approve, then ask it to try again.
 
 <!-- screenshot: assets/setup/grok-add-connector.png -->
 
@@ -209,16 +184,14 @@ Two things are different on Grok and worth knowing up front:
 
 ### Step 3: approve the connection in Fylane
 
-The platform opens a Fylane authorization page showing a short code. At the
-same time the Fylane window on your computer shows the same code. Check they
-match and click **Approve connection**.
+The platform opens an authorization page with a short code. The Fylane window
+shows the same code. Check they match and click **Approve connection**.
 
 ![Approve connection](assets/pairing.png)
 
-If the browser page cannot find Fylane on this machine (you are in a browser on
-another computer, say), the page asks for a pairing code instead. In Fylane go
-to **Settings → Connection**, click **Show a code**, and type it in. A code is
-valid for 10 minutes and works once.
+If you are using a browser on another computer, the page asks for a pairing
+code instead. In Fylane, go to **Settings → Connection**, click **Show a code**,
+and type it in. A code lasts 10 minutes and works once.
 
 ### Try it
 
@@ -226,53 +199,56 @@ Back in the chat, type:
 
 > List the files in the root of this project.
 
-The AI calls Fylane and lists the folder. Reads need no approval. Then:
+The AI lists the folder. Reading needs no approval. Then try:
 
 > Create hello.txt in the project with the content "hello".
 
-Now the Fylane window lights up and shows what the AI wants to write. Approve
-and the file appears in the folder. Reject and the AI is told it was refused.
+The Fylane window lights up and shows what the AI wants to write. Approve and
+the file appears. Reject and the AI is told no.
 
 ## Approval and the security boundary
 
-What Fylane actually does, and what you will see in the window.
-
-**Writes need approval.** When the AI wants to write, edit, delete or move a
-file, the request goes to the Fylane window first. You see the full diff, not
-a line saying "the AI wants to change a file". It lands on disk after you
+**Writes need your approval.** When the AI wants to create, edit, delete or
+move a file, Fylane shows you the change first. Nothing is written until you
 approve.
 
-**An approved write can be undone for 7 days.** Fylane keeps a copy of the
-original before each write. Roll back from the Tasks page. If something else
-changed the file in the meantime the rollback refuses rather than overwrite.
+**Mistakes can be undone.** An approved write can be undone from the Tasks
+page for 7 days. If the file has changed since, the undo stops instead of
+overwriting it.
 
-**Commands are bounded.** The AI passes a program and its arguments, never a
-shell line. No pipes, no `sh -c`. `rm -rf`, `sudo`, killing processes, writing
-to system directories are refused at every approval level.
+**Some commands are always refused.** The AI can only run a single program,
+not a shell script. Running as `sudo`, deleting files outside the folder,
+changing `.git` and writing straight to a disk are refused whatever your
+settings.
 
-**Reads that reveal the machine ask separately.** Listing processes, reading
-environment variables, reading a file outside the workspace: these stop and
-ask at every level.
+**Risky commands ask first.** For example `rm -r`, `git push`, throwing away
+uncommitted changes, changing file permissions, installing software globally
+or listing processes. With commands set to "Allowed inside the workspace",
+these no longer ask.
 
-**Sensitive files are hidden by default.** `.env`, `*.pem`, `id_rsa`,
-`credentials*` and the like are left out of listings and skipped in search. If
-the AI asks for one by name you get a separate confirmation.
+**Anything outside the folder asks separately.** Reading environment variables
+or the keychain, or using a path outside the folder, asks every time, at every
+setting.
 
-**Subprocesses are locked into the folder by the OS.** A program Fylane starts
-for the AI (`npm test`, say) is confined with `sandbox-exec` on macOS and
-Landlock on Linux: it can read this workspace and the toolchain caches, and
-the operating system refuses everything else. Windows has no equivalent and
-relies on the other layers above.
+**Sensitive files are hidden.** `.env`, `*.pem`, `id_rsa`, `credentials*` and
+similar files are left out of listings and search. If the AI asks for one by
+name, you are asked.
 
-**The AI does not know where the folder is.** Tools accept relative paths
-only. Absolute paths never appear in anything sent to the AI.
+**Programs stay inside the folder.** On macOS and Linux, a program Fylane runs
+for the AI, such as `npm test`, can only read the folder and the caches its
+tools need. Windows does not have this yet.
 
-**The frequency is yours; the checks are not.** Ask every time, once per
-folder, or not for ordinary commands. Whichever you choose, the path checks,
-the dangerous-command rules and the audit record keep running.
+**The AI does not know where the folder is.** It only sees paths inside the
+folder.
 
-Every record stays on this machine. The Tasks page shows each request, who
-sent it and what happened.
+**You choose how often you are asked.** Commands have three settings: "Ask
+every time", "Ask once per workspace" and "Allowed inside the workspace".
+Writes have three: "Ask before every write", "New files write straight
+through" and "Write without asking". Deletes and sensitive files ask at every
+setting. Whatever you choose, the checks above stay on.
+
+Everything is recorded on this machine. The Tasks page shows each request, who
+sent it and how it went.
 
 ![Task history](assets/tasks.png)
 
@@ -300,55 +276,44 @@ Everything is stored in Fylane, never in your project's files.
 
 ## Remote machines
 
-The project lives on a VPS, you sit at a Mac, and you want the AI to edit and
-run tests over there. Fylane can bring a remote machine in without changing
-anything on the platform side: it is still one connector, and `workspace_info`
-simply lists that machine's folders alongside your own, each with the
-machine's name.
+Your project is on a VPS, you are at your Mac, and you want the AI to edit and
+test over there. Add that machine to Fylane. Nothing changes on the AI
+platform.
 
-**Prerequisite**: from a terminal on this computer, `ssh user@host` already
-logs in with a key. Fylane uses the system ssh, so your keys, known_hosts and
-`~/.ssh/config` aliases all apply as they are. It never asks for a password.
+**Before you start**: from a terminal on this computer, `ssh user@host` already
+logs in without a password. Fylane uses your system ssh, so your keys and
+`~/.ssh/config` work as usual. It never asks for a password.
 
-1. On the lane, under **Machine** in the rail, click **Switch machine → Add a
-   remote machine…**. Type the destination the way you would after `ssh`: an
-   alias, `user@host`, `host:2222`. Fylane knocks straight away and says what
-   is on the other side. The name defaults to the host and can be changed at
-   any time with **Edit** in the rail.
-2. If Fylane is not on that machine yet, the rail says so and offers
-   **Install Fylane**. One click runs `install.sh` there over ssh, pinned to
-   the same version as this app and checked against SHA256SUMS. Fylane then
-   starts the remote side itself, and checks it is running on every connect.
-3. Once it reads **Connected**, click **Choose a folder** under Workspace. The
-   sheet opens in that machine's home; step into folders (repositories are
-   marked `git`) or type a path such as `~/project`. Nothing is granted until
-   the machine confirms it is a folder, so a typo cannot be granted.
+1. On the lane, under **Machine**, click **Switch machine → Add a remote
+   machine…** and type what you would type after `ssh`, such as an alias or
+   `user@host`.
+2. If Fylane is not on that machine yet, click **Install Fylane** in the rail.
+   It installs the same version as this app.
+3. When it says **Connected**, click **Choose a folder** under Workspace and
+   pick a folder on that machine, or type a path such as `~/project`.
 
-From there it works like a local folder. Reads, writes and commands in that
-folder happen on the VPS; approvals come back to the window on your Mac. On
-the Tasks page, a record from a remote machine carries the machine's name as
-a small chip before the command; local records carry none.
+After that it works like a local folder. Reads, writes and commands happen on
+the VPS, and you approve on your Mac. On the Tasks page, records from a remote
+machine show the machine's name.
 
-Things to know:
+Good to know:
 
-- **The remote Fylane publishes nothing.** No tunnel, no pairing; it listens
-  on that machine's loopback only, and this computer reaches it through an ssh
-  port forward. This computer is its tunnel, so the VPS is unreachable while
-  the Mac is off.
-- **Approval happens here only.** A remote machine's command setting defaults
-  to asking every time, and every question arrives in the Mac window.
-- **Switching machines moves the lane, not the record.** The Tasks page keeps
-  showing every machine, and a pending request is never hidden by the switch.
-- The remote side keeps its data in `~/.fylane/` on that machine (program,
-  database, audit record, `serve.log`). **Remove** only makes this computer
-  forget the machine; nothing there is touched.
-- Remote settings cannot be changed from the window yet; the remote side uses
-  its own defaults. The Windows desktop needs the built-in OpenSSH client.
+- **The Fylane on the VPS is not open to the internet.** The AI reaches it
+  through your computer, so when your computer is off, that VPS is unavailable
+  too.
+- **You approve on this computer only.** Commands on a remote machine ask every
+  time by default.
+- **Switching machines only changes which machine the lane shows.** The Tasks
+  page still shows all machines, and pending requests are never hidden.
+- The remote machine keeps its data in `~/.fylane/` there. **Remove** only
+  makes this computer forget the machine. Nothing on it is deleted.
+- Remote settings cannot be changed from the window yet. The Windows app needs
+  the built-in OpenSSH client.
 
 ## A fixed address
 
-The Cloudflare quick tunnel changes its address on every restart. For one that
-stays, pick another way under **Settings → Connection**:
+The Cloudflare quick tunnel gets a new address on every restart. For one that
+stays the same, pick another option under **Settings → Connection**:
 
 | Way | What it needs | Address |
 | --- | --- | --- |
@@ -358,12 +323,10 @@ stays, pick another way under **Settings → Connection**:
 | ngrok | an ngrok account | free tier changes, paid stays |
 | Your own relay | a server with a public domain | fixed, your own domain |
 
-Fylane starts and manages the first four for you; click Set up in the window.
+Fylane starts and manages the first four for you. Click Set up in the window.
 
-Your own relay suits a team, or several computers sharing one entry point. It
-runs on your server, handles OAuth, forwards in memory, and is the only piece
-that is ever public. It stores no file content. Deployment is in
-[`deploy/`](deploy/):
+Your own relay suits a team, or several computers sharing one address. It runs
+on your server and stores no file content. See [`deploy/`](deploy/):
 
 ```bash
 FYLANE_RELAY_HOST=relay.example.com docker compose -f deploy/docker-compose.yml up -d
@@ -371,13 +334,12 @@ FYLANE_RELAY_HOST=relay.example.com docker compose -f deploy/docker-compose.yml 
 
 ## Command line
 
-A machine without the desktop app (Linux, a server) can use
-`fylane-companion` directly. It is the same core as the desktop app, with
-approvals in the terminal: a write prints its diff, a command prints its full
-command line, `y` approves and any other key rejects. Deleting a whole
-directory needs the full word `yes`.
+On a machine without the desktop app, such as a Linux server, use
+`fylane-companion`. It does the same job, with approvals in the terminal: press
+`y` to approve, any other key to reject. Deleting a whole folder needs you to
+type `yes`.
 
-Install (macOS and Linux; the download is checked against SHA-256):
+Install (macOS and Linux):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/leazoot/fylane/main/scripts/install.sh | sh
@@ -399,10 +361,10 @@ sharing my-app — starting a tunnel, this takes a few seconds
   Pairing code    7K4M-2QB9   (valid for 10m0s)
 ```
 
-The rest is the same as the desktop app: paste the address into the platform
-and enter the pairing code on the authorization page. Ctrl-C ends the tunnel
-and the code with it. Over SSH, run it inside `tmux` or `screen` so it
-survives the connection dropping.
+Then it is the same as the desktop app: paste the address into the platform
+and enter the pairing code on the authorization page. Press Ctrl-C to stop. On
+a server over ssh, run it inside `tmux` or `screen` so it keeps running when
+you disconnect.
 
 With your own relay:
 
@@ -426,25 +388,24 @@ go build -o bin/fylane-companion ./companion/cmd/companion
 | Read | `list_directory` `read_file` `read_files` `search_files` `stat_path` `git_query` |
 | Write | `write_file` `edit_file` `apply_patch` `change_manage` |
 | Run | `run_command` `task_status` `code_task` |
-| Remember | `memory_recall` `memory_note` `memory_search` `memory_read` `memory_compact`, a per-folder page and notes that the next conversation starts from |
-| Navigate | `code_navigate`, real definitions and references from a language server |
-| Extend | `mcp_gateway`, forward to another MCP server on your machine |
+| Remember | `memory_recall` `memory_note` `memory_search` `memory_read` `memory_compact` |
+| Navigate | `code_navigate`, finds definitions and references |
+| Extend | `mcp_gateway`, passes calls to another MCP server on your computer |
 
-Writes and consequential commands return `pending_approval` until you decide
-in Fylane. `change_manage` covers moves, deletes into a recycle area, and
-rollback.
+Writes and commands that need approval return `pending_approval` until you
+decide in Fylane. `change_manage` handles moves, deletes and undo.
 
 ## Questions people ask
 
 | | |
 | --- | --- |
-| Does my code go to a server? | What the AI reads reaches the AI platform, exactly as if you had pasted it. Nothing goes anywhere else, and the tunnel or relay in between stores nothing. |
-| Can the AI delete my project? | Deletes go to a local recycle area. The folder itself and `.git` can never be deleted. Deleting a directory with files in it asks twice. |
-| What if I am away from the computer? | The request waits in the window and the AI is told it is pending. Nothing happens without you. If that is too slow for you, choose "once per folder": ordinary work then runs without asking, and dangerous commands still stop. |
-| Can it run anything? | A program and its arguments, never a shell line. `rm -rf`, `sudo`, killing processes and writing to system directories are refused at every level. On macOS and Linux the operating system confines the process to the folder. |
-| Does the AI remember the project between chats? | Yes. Each folder has a page (goal, progress, next steps, decisions) and a trail of notes the AI writes as it works. A new chat starts from them. They live in Fylane's own data, not in your project's files, and you can read and delete them. |
-| Does it work with a project on my VPS? | Yes. Fylane connects over the ssh you already use, a copy of it runs there, and the approvals still happen on this computer. |
-| Which AIs? | ChatGPT, Claude and Grok are set up in three steps above. Anything that speaks MCP over HTTP can connect the same way. |
+| Does my code go to a server? | What the AI reads is sent to the AI platform, just like pasting it. It goes nowhere else, and the address in the middle stores nothing. |
+| Can the AI delete my project? | Deleted files go to a local recycle area first. The folder itself and `.git` cannot be deleted. Deleting a folder that has files in it asks twice. |
+| What if I am away from the computer? | The request waits in the window. Nothing happens until you respond. If that is too slow, ask less often in Settings. |
+| Can it run anything? | No. It runs single programs only. `sudo` and deleting files outside the folder are always refused, and `rm -r` or `git push` ask first by default. |
+| Does the AI remember the project between chats? | Yes, see [Memory](#memory). |
+| Does it work with a project on my VPS? | Yes. It connects over the ssh you already use, and you still approve on this computer. |
+| Which AIs? | ChatGPT, Claude and Grok, set up with the three steps above. Other apps that support remote MCP can connect the same way. |
 
 ## Development
 
@@ -454,7 +415,7 @@ go test ./...
 cd desktop/frontend
 npm install
 npm test          # vitest
-npm run harness   # renders each screen against fixtures on :5199
+npm run harness   # previews every screen with sample data on :5199
 ```
 
 The desktop app needs the [Wails v2](https://wails.io) CLI and Node 22+:
@@ -466,9 +427,9 @@ wails dev
 
 ## Security
 
-Local approval is the only authority. Platform-side confirmations are hints,
-never a security layer. The relay is treated as untrusted with content and
-never persists file bodies, diffs, listings, or sensitive file names.
+Only your approval on this machine counts. Confirmations on the AI platform are
+just hints. The relay never stores file content, changes, folder listings or
+sensitive file names.
 
 Known limits and how to report a vulnerability: [SECURITY.md](SECURITY.md).
 
