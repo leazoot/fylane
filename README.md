@@ -278,24 +278,25 @@ sent it and what happened.
 
 ## Memory
 
-A new chat does not start from zero. For each folder Fylane keeps a one-page
-state (goal, progress, next step, decisions, open questions) and a trail of
-notes the AI writes as it works.
+Start a new chat and carry on where you left off.
 
-- **Reading needs nothing from you.** The first thing an AI does in a new chat
-  is ask Fylane about the folder, and the answer tells it there is memory to
-  read. "Continue where we left off" is usually enough. Even with no notes, it
-  sees what was last written and run.
-- **Writing is up to the AI.** It is told to note finished work and decisions,
-  but nothing forces it. At the end of a piece of work, say "note this down".
-- **If a new chat does not pick it up,** say "check this folder's memory first".
-- **It stays small.** The page is rewritten, never appended, so a new chat
-  reads the same few kilobytes in week one and week one hundred. Old notes can
-  be folded into a summary and stay searchable.
+For each folder, Fylane remembers two things:
 
-The Memory page shows both. You can correct the page by hand, delete a note,
-export everything as Markdown, or clear it. Memory lives in Fylane's own data
-on the machine the folder is on, never in your project's files.
+- **Where things stand**: what is done, what comes next, what is decided, what is still open.
+- **What happened**: the work done and the important decisions along the way.
+
+In a new chat there is no need to explain the background again. Just say
+"continue where we left off".
+
+- If it does not pick up, say "check this folder's memory first".
+- When you finish a piece of work or make an important decision, say "note this down".
+
+Memory does not keep growing. The current state is kept up to date, and old
+notes can be folded into a summary, with the originals still there when you
+need them.
+
+On the Memory page you can view, edit, delete, export or clear all of it.
+Everything is stored in Fylane, never in your project's files.
 
 ## Remote machines
 
