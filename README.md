@@ -151,23 +151,27 @@ Needs a paid plan (Plus, Pro or Team).
    connector**.
 2. Name it `Fylane` and paste the address as the URL. **Leave Client ID and
    Client Secret under Advanced empty.** Filling them in causes an error.
-3. Click Add, then click **Connect** next to Fylane in the list. An
+3. Click **Continue**, then click **Connect** next to Fylane in the list. An
    authorization page opens, see step 3.
 4. In a chat, open the **tools** button on the input and make sure Fylane is on.
 
+![Add custom connector](assets/setup/claude-add-connector.png)
+
 In Claude each tool can be set to "ask every time" or "always allow". That is
 only Claude's setting. Fylane still asks what it needs to ask.
-
-<!-- screenshot: assets/setup/claude-add-connector.png (the add custom connector form) -->
 
 </details>
 
 <details>
 <summary><b>Grok</b></summary>
 
-1. grok.com → **Settings → Connectors** → add a custom MCP connector and paste
-   the address.
-2. Click connect. An authorization page opens, see step 3.
+1. grok.com → **Settings → Connectors** → **New Connector** → **Custom
+   Connector**.
+2. Name it `Fylane`, paste the address as the Server URL, and click **Add
+   Connector**.
+3. Click connect. An authorization page opens, see step 3.
+
+![Custom Connector](assets/setup/grok-add-connector.png)
 
 A few things are different on Grok:
 
@@ -177,8 +181,6 @@ A few things are different on Grok:
   plainly: "use Fylane's run_command to run the tests".
 - Grok waits only 60 seconds per call. If you have not approved by then, it is
   told the request is pending. Approve, then ask it to try again.
-
-<!-- screenshot: assets/setup/grok-add-connector.png -->
 
 </details>
 

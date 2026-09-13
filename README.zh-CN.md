@@ -125,28 +125,29 @@ Fylane 会带你走四步,都在窗口里完成,不用开终端。
 
 1. 左下角头像 → **设置 → 连接器** → **添加自定义连接器**。
 2. 名称填 `Fylane`,URL 粘贴地址。**高级设置里的 Client ID 和 Client Secret 留空**,填了会报错。
-3. 点添加,再点列表里 Fylane 旁边的 **连接**,浏览器会打开授权页,见第三步。
+3. 点 **Continue**,再点列表里 Fylane 旁边的 **连接**,浏览器会打开授权页,见第三步。
 4. 在对话里点输入框的 **工具** 按钮,确认 Fylane 已打开。
 
-Claude 里每个工具可以设成「每次询问」或「总是允许」。这只是 Claude 那边的设置,Fylane 这边该问的照样会问。
+![添加自定义连接器](assets/setup/claude-add-connector.png)
 
-<!-- 截图:assets/setup/claude-add-connector.png(添加自定义连接器表单) -->
+Claude 里每个工具可以设成「每次询问」或「总是允许」。这只是 Claude 那边的设置,Fylane 这边该问的照样会问。
 
 </details>
 
 <details>
 <summary><b>Grok</b></summary>
 
-1. grok.com → **设置 → 连接器** → 添加自定义 MCP 连接器,粘贴地址。
-2. 点连接,浏览器打开授权页,见第三步。
+1. grok.com → **设置 → 连接器** → **New Connector** → **Custom Connector**。
+2. Name 填 `Fylane`,Server URL 粘贴地址,点 **Add Connector**。
+3. 点连接,浏览器打开授权页,见第三步。
+
+![添加自定义连接器](assets/setup/grok-add-connector.png)
 
 Grok 有几点不一样:
 
 - **Grok 自己不会弹写入确认。** 用 Grok 时,Fylane 的写入确认最好保持开着。
 - Grok 自带云端沙箱,你说「跑一下测试」,它可能在自己那边跑。要说清楚:「用 Fylane 的 run_command 跑测试」。
 - Grok 一次调用只等 60 秒。60 秒内没批准,它会收到「等待批准」,批准后让它再试一次。
-
-<!-- 截图:assets/setup/grok-add-connector.png -->
 
 </details>
 
