@@ -30,6 +30,7 @@ import {
   OpenURL,
   OpenWorkspaceDir,
   RevokeCommandGrant,
+  RevokeDelegationGrant,
   RollbackChangeSet,
   Save,
   SaveSettings,
@@ -147,8 +148,10 @@ export type Approval = MachineTag & {
   /** That rule's own sentence about why it stopped this command. */
   reason?: string;
   /** True when approving also authorizes the whole workspace, not just this
-   *  one command. */
+   *  one command — or, on a delegation prompt, this agent in this workspace
+   *  for grant_hours. */
   grant?: boolean;
+  grant_hours?: number;
   /** True when the user's own route rule asked for this stop. */
   must_ask?: boolean;
   /** What this run gets from the outbound boundary: "allowed", "denied",
@@ -548,6 +551,16 @@ export type CommandGrant = {
   granted_at: string;
 };
 
+/** One coding agent a yes still covers in one workspace. The broadest thing
+ *  this Core hands out unattended, and therefore the first thing to keep on
+ *  screen (D37). */
+export type DelegationGrant = {
+  workspace_id: string;
+  agent: string;
+  granted_at: string;
+  expires_at: string;
+};
+
 /** One locally configured MCP gateway provider. Read-only here: a provider is
  *  a program to run, and naming one is not something any surface but the
  *  config file on this machine gets to do. */
@@ -577,6 +590,10 @@ export type CommandSettingsInfo = {
   providers?: ProxyProvider[];
   /** Absent for the same reason, and read the same way. */
   language_servers?: LanguageServer[];
+  /** Agents a yes still covers; absent from a Core that predates D37. */
+  delegations?: DelegationGrant[];
+  /** How long one yes to an agent lasts, in hours. */
+  delegation_hours?: number;
 };
 
 export async function fetchTasks(): Promise<TaskInfo[]> {
@@ -698,18 +715,30 @@ export async function setCommandRung(
  *
  *  `safe` asks before every change set. `balanced` lets one shape through
  *  unasked — a set whose every operation creates a new, non-sensitive file;
- *  an edit, a delete or a sensitive path anywhere in it still asks. It is
- *  deliberately independent of the command rung: a write is
- *  transactional and has a rollback window, a command has neither.
+ *  an edit, a delete or a sensitive path anywhere in it still asks. `open`
+ *  (D37) lets creates, edits and moves through; a delete or a sensitive path
+ *  anywhere in the set still asks, and the Core refuses the mode without
+ *  `confirm`, the way the command gate's open rung is refused. It is
+ *  deliberately independent of the command rung: a write is transactional
+ *  and has a rollback window, a command has neither.
  *
  *  The Core answers with the mode now in force rather than echoing the
  *  request, so a refusal cannot leave the page showing a mode nobody set. */
-export type WriteMode = "safe" | "balanced";
+export type WriteMode = "safe" | "balanced" | "open";
 
 export async function setWriteMode(
   mode: WriteMode,
+  confirm: boolean,
 ): Promise<{ approval_mode: WriteMode }> {
-  return JSON.parse(await SetWriteMode(mode));
+  return JSON.parse(await SetWriteMode(mode, confirm));
+}
+
+// Withdrawing an agent's standing yes takes effect on its next code_task.
+export async function revokeDelegationGrant(
+  workspaceID: string,
+  agent: string,
+): Promise<CommandSettingsInfo> {
+  return JSON.parse(await RevokeDelegationGrant(workspaceID, agent));
 }
 
 // Withdrawing takes effect on the next command; the Core answers with the

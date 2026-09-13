@@ -162,6 +162,11 @@ export const DICT = {
   // are statements rather than the labels v2 put above a card.
   "laneV3.allow": { en: "Approve", zh: "批准执行" },
   "laneV3.ordinary": { en: "Ordinary command", zh: "普通命令" },
+  "laneV3.allowAgent": { en: "Approve for {hours} h", zh: "批准,{hours} 小时内不再问" },
+  "laneV3.delegationGrant": {
+    en: "Approving lets this agent keep working in this folder for {hours} hours without asking again. Withdraw that any time in Settings.",
+    zh: "批准后 {hours} 小时内,这个 agent 在这个目录里接管不再询问。随时可在设置里撤回。",
+  },
   "laneV3.mBoundary": { en: "BOUNDARY", zh: "边界" },
   "laneV3.runningHeadline": { en: "Running on this machine", zh: "正在本机执行" },
   "laneV3.calmHeadline": { en: "Nothing is waiting for approval", zh: "没有等待批准的请求" },
@@ -384,6 +389,26 @@ export const DICT = {
     en: "Only when every file in the set is new and not sensitive. Edits, deletes and sensitive paths still ask.",
     zh: "仅当这一批全是新建的非敏感文件。改写、删除、敏感路径照旧询问。",
   },
+  // The third write mode (D37). Like the open rung it names what it keeps
+  // asking about, because that is what someone choosing it is deciding.
+  "set.writeOpen": { en: "Write without asking", zh: "写入不再询问" },
+  "set.writeOpenNote": {
+    en: "New files, edits and moves land at once. Deletes and sensitive paths still ask.",
+    zh: "新建、改写、移动直接落盘。删除和敏感路径照旧询问。",
+  },
+  "set.writeOpenConfirmTitle": {
+    en: "Files will be written without asking",
+    zh: "文件写入将不再询问你",
+  },
+  "set.writeOpenConfirmBody": {
+    en: "In every folder, a new file, an edit or a move lands the moment a model asks. Deletes, sensitive paths and any path you marked to ask still stop, and every write keeps its undo copy and its record.",
+    zh: "在所有目录里,模型一提出请求,新建、改写、移动就直接落盘。删除、敏感路径、以及你标了要问的路径仍会停下,每次写入仍留撤销副本和记录。",
+  },
+  "set.writeOpenWarning": { en: "Files are being written without asking", zh: "文件正在无询问写入" },
+  "set.writeOpenWarningBody": {
+    en: "Deletes and sensitive paths still ask, and every write keeps a 7-day undo copy on the tasks page.",
+    zh: "删除和敏感路径仍会询问;每次写入在任务页都留 7 天可撤销的副本。",
+  },
   "set.rungOpenNote": {
     en: "Ordinary commands run in the current workspace without asking.",
     zh: "普通命令在当前工作区内直接执行。",
@@ -530,6 +555,19 @@ export const DICT = {
     en: "Set to run ordinary commands without asking, so these authorizations make no difference. They apply again when you choose a stricter setting.",
     zh: "当前设为普通命令不询问,这些授权暂不起作用。改回更严格的设置时会重新生效。",
   },
+  // A standing yes to a coding agent (D37): the broadest authorization
+  // this machine hands out, listed beside the folder grants and withdrawn
+  // the same way.
+  "set.delegationLine": {
+    en: "{agent} keeps working here without asking · {left} left",
+    zh: "{agent} 在这里接管不再询问 · 还剩 {left}",
+  },
+  "set.delegationHelp": {
+    en: "One yes to a coding agent lasts {hours} hours in that folder. Withdraw it to be asked again.",
+    zh: "对编码 agent 的一次批准在那个目录里管 {hours} 小时,撤回后会重新询问。",
+  },
+  "set.hoursLeft": { en: "{n} h", zh: "{n} 小时" },
+  "set.minutesLeft": { en: "{n} min", zh: "{n} 分钟" },
   "set.grantsNone": {
     en: "No folder is authorized. Every command is asked about.",
     zh: "没有目录被授权。每条命令都会询问。",

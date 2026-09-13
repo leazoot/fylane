@@ -109,8 +109,10 @@ export interface PendingInfo {
   dir: string;
   /** The Core's sentence about why this stopped here. */
   reason: string;
-  /** Approving also authorizes every ordinary command in this workspace. */
+  /** Approving also authorizes every ordinary command in this workspace —
+   *  or, on a delegation, this agent here for grantHours. */
   grant: boolean;
+  grantHours: number;
   /** Whether there is a diff behind the prompt. Only a write has one; the
    *  screen used to offer "Review changes" as the primary action for command
    *  prompts too, which opened a layer with nothing in it. */
@@ -265,6 +267,7 @@ export function pendingInfo(approvals: Approval[], { t }: Translator): PendingIn
     machine: a.machine ?? "",
     reason: a.reason ?? "",
     grant: a.grant ?? false,
+    grantHours: a.grant_hours ?? 0,
     reviewable: kind === "write",
     rule: a.rule ?? "",
     createdAt: a.created_at,

@@ -22,8 +22,10 @@ import {
   startTunnelSetup,
   type ClearedBackups,
   revokeCommandGrant,
+  revokeDelegationGrant,
   remoteCore,
   type CommandGrant,
+  type DelegationGrant,
   type CommandRung,
   type MachineInfo,
   type LanguageServer,
@@ -187,6 +189,7 @@ const RUNGS: { key: CommandRung; label: Key; note: Key }[] = [
 const MODES: { key: WriteMode; label: Key; note: Key }[] = [
   { key: "safe", label: "set.writeSafe", note: "set.writeSafeNote" },
   { key: "balanced", label: "set.writeBalanced", note: "set.writeBalancedNote" },
+  { key: "open", label: "set.writeOpen", note: "set.writeOpenNote" },
 ];
 
 /** One approval axis: a heading and its mutually exclusive choices.
@@ -279,6 +282,7 @@ export interface SettingsDeps {
   commands: typeof fetchCommandSettings;
   setRung: typeof setCommandRung;
   revokeGrant: typeof revokeCommandGrant;
+  revokeDelegation: typeof revokeDelegationGrant;
   startSetup: typeof startTunnelSetup;
   cancelSetup: typeof cancelTunnelSetup;
   startDownload: typeof startTunnelDownload;
@@ -301,6 +305,7 @@ const CORE: SettingsDeps = {
   commands: fetchCommandSettings,
   setRung: setCommandRung,
   revokeGrant: revokeCommandGrant,
+  revokeDelegation: revokeDelegationGrant,
   startSetup: startTunnelSetup,
   cancelSetup: cancelTunnelSetup,
   startDownload: startTunnelDownload,
@@ -371,6 +376,8 @@ export function SettingsScreen({
   const [prefs, setPrefs] = useState<PrefsInfo | null>(null);
   const [rung, setRung] = useState<CommandRung | null>(null);
   const [mode, setMode] = useState<WriteMode | null>(null);
+  const [delegations, setDelegations] = useState<DelegationGrant[]>([]);
+  const [delegationHours, setDelegationHours] = useState(0);
   const [dock, setDock] = useState<DockInfo | null>(null);
   const [proxies, setProxies] = useState<ProxyProvider[]>([]);
   const [servers, setServers] = useState<LanguageServer[]>([]);
@@ -456,6 +463,8 @@ export function SettingsScreen({
       setProxies(read.proxies);
       setServers(read.servers);
       setGrants(read.grants);
+      setDelegations(read.delegations);
+      setDelegationHours(read.delegationHours);
       setLoading(false);
       if (online) {
         read.errors.forEach((key) => onError(t(key)));
@@ -521,9 +530,25 @@ export function SettingsScreen({
 
   // The Core answers with the mode now in force rather than echoing the
   // request, so a refusal cannot leave a policy on screen that nobody set.
-  const chooseMode = async (next: WriteMode) => {
+  // The open mode is asked about in place first, like the open rung.
+  const [askingWrite, setAskingWrite] = useState(false);
+  const chooseMode = async (next: WriteMode, confirmed = false) => {
+    if (next === "open" && !confirmed) {
+      setAskingWrite(true);
+      return;
+    }
+    setAskingWrite(false);
     try {
-      setMode((await deps.setMode(next)).approval_mode);
+      setMode((await deps.setMode(next, next === "open")).approval_mode);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : t("shell.errGate"));
+    }
+  };
+
+  const withdrawDelegation = async (workspaceID: string, agent: string) => {
+    try {
+      const res = await deps.revokeDelegation(workspaceID, agent);
+      setDelegations(res.delegations ?? []);
     } catch (e) {
       onError(e instanceof Error ? e.message : t("shell.errGate"));
     }
@@ -779,6 +804,46 @@ export function SettingsScreen({
                 tr={tr}
                 onPick={(key) => void chooseMode(key)}
               />
+              {askingWrite && (
+                <div className="fy-warn">
+                  <div style={{ flex: 1 }}>
+                    <div className="fy-slabel">{t("set.writeOpenConfirmTitle")}</div>
+                    <div className="fy-snote" style={{ color: "var(--fy-ink2)" }}>
+                      {t("set.writeOpenConfirmBody")}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      flex: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <button type="button" className="fy-quiet" onClick={() => setAskingWrite(false)}>
+                      {t("set.cancel")}
+                    </button>
+                    <button
+                      type="button"
+                      className="fy-smallbtn"
+                      onClick={() => void chooseMode("open", true)}
+                    >
+                      {t("set.openConfirmYes")}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {/* Like the open rung, never a quiet state. */}
+              {!askingWrite && mode === "open" && (
+                <div className="fy-warn">
+                  <div style={{ flex: 1 }}>
+                    <div className="fy-slabel">{t("set.writeOpenWarning")}</div>
+                    <div className="fy-snote" style={{ color: "var(--fy-ink2)" }}>
+                      {t("set.writeOpenWarningBody")}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -821,9 +886,12 @@ export function SettingsScreen({
               folders={folders}
               rung={rung}
               remote={remote}
+              delegations={delegations}
+              delegationHours={delegationHours}
               tr={tr}
               onWithdraw={(id) => void withdraw(id)}
               onWithdrawRemote={(machineID, id) => void withdrawRemote(machineID, id)}
+              onWithdrawDelegation={(id, agent) => void withdrawDelegation(id, agent)}
             />
             <NetworkRows
               workspaces={folders}
@@ -999,17 +1067,23 @@ function GrantRows({
   folders,
   rung,
   remote,
+  delegations,
+  delegationHours,
   tr,
   onWithdraw,
   onWithdrawRemote,
+  onWithdrawDelegation,
 }: {
   grants: CommandGrant[];
   folders: Workspace[];
   rung: CommandRung | null;
   remote: RemoteFolders[];
+  delegations: DelegationGrant[];
+  delegationHours: number;
   tr: Translator;
   onWithdraw: (id: string) => void;
   onWithdrawRemote: (machineID: string, id: string) => void;
+  onWithdrawDelegation: (id: string, agent: string) => void;
 }) {
   const { t } = tr;
   if (rung === null) {
@@ -1063,7 +1137,17 @@ function GrantRows({
       </button>
     </div>
   );
-  const none = grants.length === 0 && remote.every((r) => r.grants.length === 0);
+  // What is left of a delegation's clock, in the unit that still says
+  // something: hours until the last one, then minutes.
+  const left = (iso: string): string => {
+    const ms = new Date(iso).getTime() - now.getTime();
+    const mins = Math.max(1, Math.round(ms / 60_000));
+    return mins >= 60
+      ? t("set.hoursLeft", { n: Math.round(mins / 60) })
+      : t("set.minutesLeft", { n: mins });
+  };
+  const none =
+    grants.length === 0 && delegations.length === 0 && remote.every((r) => r.grants.length === 0);
   return (
     <>
       <GroupHead text={t("set.grants")} help={t(note[rung])} id="fy-help-grants" />
@@ -1080,6 +1164,16 @@ function GrantRows({
           onWithdraw(g.workspace_id),
         );
       })}
+      {delegations.map((d) =>
+        row(
+          "agent:" + d.workspace_id + ":" + d.agent,
+          nameIn(folders, d.workspace_id),
+          t("set.delegationLine", { agent: d.agent, left: left(d.expires_at) }),
+          t("set.delegationHelp", { hours: delegationHours }),
+          true,
+          () => onWithdrawDelegation(d.workspace_id, d.agent),
+        ),
+      )}
       {remote.map((r) =>
         r.grants.map((g) => {
           const [line, more] = wording(g, r.rung);

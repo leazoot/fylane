@@ -495,8 +495,14 @@ func (a *App) RevokeCommandGrant(workspaceID string) (string, error) {
 // creates a new, non-sensitive file. It is a separate axis from the command
 // rung because a write is transactional and reversible and a
 // command is neither, so loosening one must not loosen the other.
-func (a *App) SetWriteMode(mode string) (string, error) {
-	return a.call("POST", "/v1/safety", map[string]string{"mode": mode})
+func (a *App) SetWriteMode(mode string, confirm bool) (string, error) {
+	return a.call("POST", "/v1/safety", map[string]any{"mode": mode, "confirm": confirm})
+}
+
+// RevokeDelegationGrant withdraws one agent's standing authorization in one
+// workspace; the next code_task asks again.
+func (a *App) RevokeDelegationGrant(workspaceID, agent string) (string, error) {
+	return a.call("POST", "/v1/commands/revoke_delegation", map[string]string{"workspace_id": workspaceID, "agent": agent})
 }
 
 // Settings reads the execution preferences shown on the settings page.

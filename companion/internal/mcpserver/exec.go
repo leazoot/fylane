@@ -535,6 +535,12 @@ func (t *toolset) confirmDelegation(ctx context.Context, ws *workspace.Workspace
 	if t.approver == nil {
 		return runCommandOutput{}, false, fmt.Errorf("delegation needs local approval, but no approver is configured")
 	}
+	// A yes given earlier today to this agent in this workspace still
+	// stands (D37). The task itself is still recorded and still visible on
+	// the tasks page; only the question is skipped.
+	if t.delegations != nil && t.delegations.Granted(ws.ID(), agent) {
+		return runCommandOutput{}, true, nil
+	}
 	summary := fmt.Sprintf("%s will work on: %s", agent, firstLine(in.Prompt))
 	verdict, err := t.approver.Approve(ctx, &txn.ApprovalRequest{
 		ChangeSetID:   "agent:" + commandKey(t.provider, ws.ID(), in.Dir, []string{agent, in.Prompt}),
@@ -548,12 +554,18 @@ func (t *toolset) confirmDelegation(ctx context.Context, ws *workspace.Workspace
 		Rule:          delegationRule,
 		Reason:        DelegationWarning,
 		Network:       t.reach(ws),
+		// The yes also covers this agent here for a while; the prompt says
+		// so, the same way the command gate's one-time question does.
+		Grant: t.delegations != nil,
 	})
 	if err != nil {
 		return runCommandOutput{}, false, err
 	}
 	switch {
 	case verdict.Approved:
+		if t.delegations != nil {
+			t.delegations.Grant(ws.ID(), agent)
+		}
 		return runCommandOutput{}, true, nil
 	case verdict.Pending:
 		return runCommandOutput{
@@ -572,6 +584,13 @@ func (t *toolset) confirmDelegation(ctx context.Context, ws *workspace.Workspace
 			Next:   nextstep.Stop,
 		}, false, nil
 	}
+}
+
+// DelegationGrants remembers one yes to an agent in a workspace for a
+// bounded time. Implemented by *cmdgate.Delegations.
+type DelegationGrants interface {
+	Granted(workspaceID, agent string) bool
+	Grant(workspaceID, agent string) cmdgate.DelegationGrant
 }
 
 // delegationRule is the rule id the desktop keys the delegation prompt off.

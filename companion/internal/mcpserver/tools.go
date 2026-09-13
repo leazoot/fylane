@@ -57,6 +57,9 @@ type toolset struct {
 	memory MemoryStore
 	// agents backs code_task; nil means no delegation is configured.
 	agents AgentRegistry
+	// delegations remembers one yes to an agent for a while; nil asks
+	// every time.
+	delegations DelegationGrants
 	// providers backs mcp_gateway; nil means no local MCP server is
 	// configured, and the tool is not registered at all.
 	providers ProviderRegistry

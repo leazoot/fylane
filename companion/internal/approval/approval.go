@@ -8,6 +8,7 @@ package approval
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -19,6 +20,12 @@ import (
 const (
 	ModeSafe     = "safe"     // every write operation requires confirmation
 	ModeBalanced = "balanced" // non-sensitive creates auto-approve
+	// ModeOpen auto-approves non-sensitive creates, updates and moves. A
+	// delete still asks: it is the one operation whose undo copy can run
+	// out (D33), and the one a person cannot glance past. Sensitive paths
+	// and route rules marked "ask" still ask at every mode. Never the
+	// default, and never set without an explicit confirmation (D37).
+	ModeOpen = "open"
 )
 
 // Budgets holds the blocking-approval time budgets measured against the real
@@ -111,13 +118,20 @@ type Service struct {
 // request the user actually looked at.
 const decisionTTL = 15 * time.Minute
 
+// ErrConfirmationRequired is returned when ModeOpen is set without the
+// caller confirming it. Like the command gate's open rung, the confirmation
+// is the point: it is the moment the user takes on what it means. A mode
+// read back from disk at start-up needs none — it was confirmed when it
+// was written.
+var ErrConfirmationRequired = errors.New("the open write mode writes files without asking; set confirm to acknowledge that")
+
 // New returns a Service in the given mode. An empty mode means ModeSafe —
 // the default policy is the strict one.
 func New(mode string, budgets Budgets, onRequest func(*Pending)) (*Service, error) {
 	switch mode {
 	case "":
 		mode = ModeSafe
-	case ModeSafe, ModeBalanced:
+	case ModeSafe, ModeBalanced, ModeOpen:
 	default:
 		return nil, fmt.Errorf("unknown approval mode %q", mode)
 	}
@@ -164,12 +178,17 @@ func (s *Service) Mode() string {
 	return s.mode
 }
 
-// SetMode switches the approval policy at runtime (the desktop Safety page).
-// Only the two defined modes exist — there is no mode that approves
-// everything, and pending approvals are unaffected.
-func (s *Service) SetMode(mode string) error {
+// SetMode switches the approval policy at runtime (the desktop settings
+// page). There is no mode that approves everything: ModeOpen still asks for
+// deletes and sensitive paths, and it cannot be reached without confirm.
+// Pending approvals are unaffected.
+func (s *Service) SetMode(mode string, confirm bool) error {
 	switch mode {
 	case ModeSafe, ModeBalanced:
+	case ModeOpen:
+		if !confirm {
+			return ErrConfirmationRequired
+		}
 	default:
 		return fmt.Errorf("unknown approval mode %q", mode)
 	}
@@ -179,9 +198,11 @@ func (s *Service) SetMode(mode string) error {
 	return nil
 }
 
-// autoApproved applies the policy table: only balanced mode
-// auto-approves, and only change sets consisting purely of non-sensitive
-// creates ("safe new files"). Everything else requires confirmation.
+// autoApproved applies the policy table. Balanced mode passes one shape:
+// a change set consisting purely of non-sensitive creates ("safe new
+// files"). Open mode passes three: non-sensitive creates, updates and
+// moves. A delete, a sensitive path, or a set that mixes one in asks at
+// every mode; so does a route rule marked "ask".
 func (s *Service) autoApproved(req *txn.ApprovalRequest) bool {
 	// A route rule the user marked "ask" outranks the policy: it is the
 	// user asking for this file to stop here, and the policy table only
@@ -189,7 +210,8 @@ func (s *Service) autoApproved(req *txn.ApprovalRequest) bool {
 	if req.MustAsk {
 		return false
 	}
-	if s.Mode() != ModeBalanced {
+	mode := s.Mode()
+	if mode != ModeBalanced && mode != ModeOpen {
 		return false
 	}
 	// A request with no file operations is not a set of "safe new files";
@@ -205,7 +227,16 @@ func (s *Service) autoApproved(req *txn.ApprovalRequest) bool {
 		return false
 	}
 	for _, op := range req.Operations {
-		if op.Type != txn.OpCreate || op.Sensitive {
+		if op.Sensitive {
+			return false
+		}
+		switch op.Type {
+		case txn.OpCreate:
+		case txn.OpUpdate, txn.OpMove:
+			if mode != ModeOpen {
+				return false
+			}
+		default:
 			return false
 		}
 	}

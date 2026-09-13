@@ -188,6 +188,7 @@ function deps(over: Partial<SettingsDeps> = {}): SettingsDeps {
     commands: async () => ({ rung: "workspace", grants: [] }),
     setRung: async () => ({ rung: "workspace", grants: [] }),
     revokeGrant: async () => ({ rung: "workspace", grants: [] }),
+    revokeDelegation: async () => ({ rung: "workspace", grants: [] }),
     setNetwork: async () => ({ workspaces: [], currentWorkspaceID: "" }),
     startSetup: async () => connect(),
     cancelSetup: async () => connect(),
@@ -1832,6 +1833,40 @@ describe("the file-write approval policy", () => {
     ).toBe("true");
   });
 
+  it("asks in place before writing without asking, then tells the Core it was acknowledged", async () => {
+    const sent: [string, boolean][] = [];
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({
+          setMode: async (mode, confirm) => {
+            sent.push([mode, confirm]);
+            return { approval_mode: mode };
+          },
+        })}
+      />,
+    );
+    await settle();
+    expect(text()).toContain("Deletes and sensitive paths still ask");
+
+    // The first press is a question, not a switch.
+    click(rung("Write without asking"));
+    await settle();
+    expect(sent).toEqual([]);
+    expect(text()).toContain("Files will be written without asking");
+    expect(rung("Write without asking")?.getAttribute("aria-checked")).toBe("false");
+    click(button("Cancel"));
+    expect(text()).not.toContain("Files will be written without asking");
+
+    click(rung("Write without asking"));
+    click(button("I understand, turn it on"));
+    await settle();
+    expect(sent).toEqual([["open", true]]);
+    expect(rung("Write without asking")?.getAttribute("aria-checked")).toBe("true");
+    // Never a quiet state.
+    expect(text()).toContain("Files are being written without asking");
+  });
+
   it("keeps the row where the Core left it when the switch was refused", async () => {
     // The Core answers with the mode in force rather than echoing the
     // request. A page that moved the mark on click would show a policy the
@@ -1941,6 +1976,37 @@ describe("standing workspace grants", () => {
     click(button("Withdraw"));
     await settle();
     expect(revoked).toBe("ws_1");
+    expect(text()).toContain("No folder is authorized");
+  });
+
+  it("lists an agent's standing yes with its clock and withdraws it", async () => {
+    let revoked: [string, string] | null = null;
+    const inTwoHours = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    draw(
+      <SettingsScreen
+        {...settingsProps}
+        deps={deps({
+          commands: async () => ({
+            rung: "workspace",
+            grants: [],
+            delegations: [
+              { workspace_id: "ws_1", agent: "codex", granted_at: daysAgo(0), expires_at: inTwoHours },
+            ],
+            delegation_hours: 8,
+          }),
+          revokeDelegation: async (id, agent) => {
+            revoked = [id, agent];
+            return { rung: "workspace", grants: [], delegations: [], delegation_hours: 8 };
+          },
+        })}
+      />,
+    );
+    await settle();
+    expect(text()).toContain("codex keeps working here without asking · 2 h left");
+    expect(text()).not.toContain("No folder is authorized");
+    click(button("Withdraw"));
+    await settle();
+    expect(revoked).toEqual(["ws_1", "codex"]);
     expect(text()).toContain("No folder is authorized");
   });
 
@@ -3467,6 +3533,34 @@ describe("folders on other machines on the settings page", () => {
     await settle();
     expect(log).toEqual(["revoke ws_r1", "network ws_r1 false"]);
     expect(text()).toContain("On vps-1 · no network");
+  });
+});
+
+describe("delegation prompt", () => {
+  it("says what the yes buys and for how long", () => {
+    const takeover = approval({
+      kind: "delegation",
+      summary: "codex will work on: build a gomoku game",
+      command: ["codex", "build a gomoku game"],
+      rule: "delegates-to-an-agent",
+      reason: "this agent will read, write, and run commands in this workspace on its own",
+      grant: true,
+      grant_hours: 8,
+    });
+    draw(<LaneScreen {...laneProps} snapshot={snap({ approvals: [takeover] })} tasks={[]} />);
+    expect(button("Approve for 8 h")).not.toBeUndefined();
+    expect(text()).toContain("keep working in this folder for 8 hours without asking again");
+
+    // A Core without the grant asks the plain question and promises nothing.
+    draw(
+      <LaneScreen
+        {...laneProps}
+        snapshot={snap({ approvals: [approval({ ...takeover, grant: false, grant_hours: undefined })] })}
+        tasks={[]}
+      />,
+    );
+    expect(button("Approve")).not.toBeUndefined();
+    expect(text()).not.toContain("keep working in this folder");
   });
 });
 

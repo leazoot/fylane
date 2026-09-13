@@ -4,6 +4,7 @@ import {
   fetchPrefs,
   fetchStatus,
   type CommandGrant,
+  type DelegationGrant,
   type CoreStatusInfo,
   type CommandRung,
   type ConnectInfo,
@@ -131,6 +132,10 @@ export interface SettingsRead {
    *  answer here, so the page says "nothing is authorized" rather than
    *  showing no section at all. */
   grants: CommandGrant[];
+  /** Agents a yes still covers, read the same way as grants. */
+  delegations: DelegationGrant[];
+  /** How long one yes to an agent lasts, in hours; 0 from a Core without it. */
+  delegationHours: number;
   /** Messages to raise, in the order the page lists the sections. */
   errors: Key[];
 }
@@ -176,6 +181,8 @@ export async function readSettings(deps: SettingsReaders): Promise<SettingsRead>
     proxies: commands.status === "fulfilled" ? (commands.value.providers ?? []) : [],
     servers: commands.status === "fulfilled" ? (commands.value.language_servers ?? []) : [],
     grants: commands.status === "fulfilled" ? commands.value.grants : [],
+    delegations: commands.status === "fulfilled" ? (commands.value.delegations ?? []) : [],
+    delegationHours: commands.status === "fulfilled" ? (commands.value.delegation_hours ?? 0) : 0,
     errors,
   };
 }

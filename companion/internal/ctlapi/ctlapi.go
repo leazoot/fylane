@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/leazoot/fylane/companion/internal/approval"
+	"github.com/leazoot/fylane/companion/internal/cmdgate"
 	"github.com/leazoot/fylane/companion/internal/pairclaim"
 	"github.com/leazoot/fylane/companion/internal/readbox"
 	"github.com/leazoot/fylane/companion/internal/routerule"
@@ -119,6 +120,9 @@ type Server struct {
 	// Prefs backs the settings page's execution preferences (task timeout,
 	// stop button, start at login); nil disables those endpoints.
 	Prefs PrefStore
+	// Delegations are the standing agent authorizations (D37); nil means
+	// code_task asks every time and the list is empty.
+	Delegations DelegationGates
 	// Machines backs the remote machine list and the per-machine proxy;
 	// nil disables those endpoints.
 	Machines MachineControl
@@ -474,6 +478,7 @@ func (s *Server) Start(ctx context.Context, dataDir string) (string, error) {
 	mux.HandleFunc("GET /v1/commands", s.handleCommands)
 	mux.HandleFunc("POST /v1/commands/rung", s.handleCommandRung)
 	mux.HandleFunc("POST /v1/commands/revoke", s.handleCommandRevoke)
+	mux.HandleFunc("POST /v1/commands/revoke_delegation", s.handleDelegationRevoke)
 	mux.HandleFunc("GET /v1/tasks", s.handleTasks)
 	mux.HandleFunc("POST /v1/tasks/cancel", s.handleTaskCancel)
 	mux.HandleFunc("POST /v1/tasks/clear", s.handleTaskClear)
@@ -540,18 +545,25 @@ func writeJSON(w http.ResponseWriter, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
-// handleSafety switches the approval policy (the desktop Safety page). Only
-// the two defined modes exist; there is no always-allow.
+// handleSafety switches the file-write approval policy (the desktop
+// settings page). There is no always-allow: the open mode still asks for
+// deletes and sensitive paths, and needs confirm to be reached, the way the
+// command gate's open rung does.
 func (s *Server) handleSafety(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Mode string `json:"mode"`
+		Mode    string `json:"mode"`
+		Confirm bool   `json:"confirm"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if err := s.Approvals.SetMode(req.Mode); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := s.Approvals.SetMode(req.Mode, req.Confirm); err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, approval.ErrConfirmationRequired) {
+			status = http.StatusPreconditionRequired
+		}
+		http.Error(w, err.Error(), status)
 		return
 	}
 	if s.PersistApprovalMode != nil {
@@ -691,8 +703,10 @@ type pendingApproval struct {
 	Rule    string   `json:"rule,omitempty"`
 	Reason  string   `json:"reason,omitempty"`
 	// Grant marks the one-time question that authorizes the whole workspace
-	// rather than this one command.
-	Grant bool `json:"grant,omitempty"`
+	// rather than this one command — or, on a delegation prompt, this agent
+	// in this workspace for GrantHours.
+	Grant      bool `json:"grant,omitempty"`
+	GrantHours int  `json:"grant_hours,omitempty"`
 	// MustAsk marks a stop the user's own route rule asked for.
 	MustAsk bool `json:"must_ask,omitempty"`
 	// Network states what this run gets from the outbound boundary
@@ -718,11 +732,21 @@ func (s *Server) handleApprovals(w http.ResponseWriter, _ *http.Request) {
 			Rule:          p.Request.Rule,
 			Reason:        p.Request.Reason,
 			Grant:         p.Request.Grant,
+			GrantHours:    grantHours(p.Request),
 			MustAsk:       p.Request.MustAsk,
 			Network:       p.Request.Network,
 		})
 	}
 	writeJSON(w, map[string]any{"approvals": out})
+}
+
+// grantHours is how long a delegation's yes lasts, on the prompt that asks
+// it; zero on every other prompt, where the grant has no clock.
+func grantHours(req *txn.ApprovalRequest) int {
+	if req.Grant && req.Kind == txn.KindDelegation {
+		return int(cmdgate.DelegationTTL / time.Hour)
+	}
+	return 0
 }
 
 // approvalKind never returns empty. A prompt whose kind did not reach the

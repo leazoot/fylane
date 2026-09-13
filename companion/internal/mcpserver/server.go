@@ -115,6 +115,9 @@ type Deps struct {
 	Activity ActivityJournal
 	// Memory backs the memory_* tools. Nil leaves them unregistered.
 	Memory MemoryStore
+	// Delegations remembers a yes to a coding agent in a workspace for a
+	// bounded time (cmdgate.DelegationTTL). Nil asks on every code_task.
+	Delegations DelegationGrants
 	// Agents backs code_task. Nil leaves the tool unregistered — a
 	// Companion with no coding agent installed should not advertise one.
 	Agents AgentRegistry
@@ -208,7 +211,7 @@ func newWithProvider(deps Deps, opts *Options, provider string) *mcp.Server {
 	tools := &toolset{src: deps.Source, engine: deps.Engine, reads: deps.Reads,
 		rules: deps.Rules, provider: provider, remotes: deps.Remotes,
 		exec: deps.Exec, tasks: deps.Tasks, approver: deps.Approve, gate: deps.Gate,
-		execAudit: deps.ExecAudit, runs: deps.Runs, activityLog: deps.Activity, memory: deps.Memory, agents: deps.Agents,
+		execAudit: deps.ExecAudit, runs: deps.Runs, activityLog: deps.Activity, memory: deps.Memory, agents: deps.Agents, delegations: deps.Delegations,
 		providers: deps.Providers, navigators: deps.Navigators, box: deps.Box}
 	if opts != nil {
 		tools.inlineBudget = opts.MaxInlineBytes

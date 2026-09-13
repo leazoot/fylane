@@ -695,6 +695,44 @@ func TestCodeTaskAsksBeforeDelegatingAndSaysWhatItCosts(t *testing.T) {
 	}
 }
 
+func TestOneYesToAnAgentLastsAWhileAndNoLonger(t *testing.T) {
+	agent := &stubAgent{summary: "done"}
+	f := newExecFixture(t, txn.Decision{Approved: true}).withAgent(agent)
+	grants := cmdgate.NewDelegations()
+	f.tools.delegations = grants
+	ctx := context.Background()
+
+	if _, _, err := f.tools.codeTask(ctx, nil, codeTaskInput{Prompt: "first"}); err != nil {
+		t.Fatal(err)
+	}
+	reqs := f.approver.requests()
+	if len(reqs) != 1 || !reqs[0].Grant {
+		t.Fatalf("the first delegation did not ask as the one-time question: %+v", reqs)
+	}
+	// The second task in the same workspace by the same agent runs on the
+	// first yes; the user is not asked again.
+	if _, out, err := f.tools.codeTask(ctx, nil, codeTaskInput{Prompt: "second"}); err != nil || out.TaskID == "" {
+		t.Fatalf("second delegation: %+v %v", out, err)
+	}
+	if len(f.approver.requests()) != 1 {
+		t.Fatalf("asked %d times, want 1", len(f.approver.requests()))
+	}
+	// Withdrawn, or run out: the question comes back.
+	rec, err := f.src.Current(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !grants.Revoke(rec.ID, "stub") {
+		t.Fatal("nothing to withdraw: the yes was not recorded against this workspace and agent")
+	}
+	if _, _, err := f.tools.codeTask(ctx, nil, codeTaskInput{Prompt: "third"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.approver.requests()) != 2 {
+		t.Fatalf("asked %d times after withdrawal, want 2", len(f.approver.requests()))
+	}
+}
+
 func TestCodeTaskIsRefusedWhenTheUserDeclines(t *testing.T) {
 	f := newExecFixture(t, txn.Decision{Approved: false, Reason: "user_rejected"}).
 		withAgent(&stubAgent{})

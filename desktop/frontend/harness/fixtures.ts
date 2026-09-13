@@ -409,6 +409,7 @@ export const SETTINGS_DEPS: SettingsDeps = {
   commands: async () => COMMANDS,
   setRung: async () => COMMANDS,
   revokeGrant: async () => COMMANDS,
+  revokeDelegation: async () => COMMANDS,
   setNetwork: async () => ({ workspaces: [], currentWorkspaceID: "" }),
   startSetup: async () => CONNECT,
   cancelSetup: async () => CONNECT,

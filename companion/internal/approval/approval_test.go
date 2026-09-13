@@ -2,6 +2,7 @@ package approval
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -511,5 +512,47 @@ func TestACommandIsNeverAutoApproved(t *testing.T) {
 	}
 	if s.autoApproved(req) {
 		t.Fatal("a command was auto-approved by the file policy table")
+	}
+}
+
+func TestOpenModeNeedsConfirmationAndStillAsksForDeletesAndSensitivePaths(t *testing.T) {
+	s, err := New("", testBudgets(time.Second), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetMode(ModeOpen, false); !errors.Is(err, ErrConfirmationRequired) {
+		t.Fatalf("open without confirm: %v", err)
+	}
+	if s.Mode() != ModeSafe {
+		t.Fatalf("a refused switch changed the mode to %q", s.Mode())
+	}
+	if err := s.SetMode(ModeOpen, true); err != nil {
+		t.Fatal(err)
+	}
+	// Read back from disk, the mode needs no second confirmation.
+	if _, err := New(ModeOpen, testBudgets(time.Second), nil); err != nil {
+		t.Fatalf("a persisted open mode is refused at start-up: %v", err)
+	}
+	req := func(ops ...txn.OpPreview) *txn.ApprovalRequest {
+		return &txn.ApprovalRequest{ChangeSetID: "chg_open", Kind: txn.KindWrite, Operations: ops}
+	}
+	for _, tc := range []struct {
+		name string
+		req  *txn.ApprovalRequest
+		want bool
+	}{
+		{"a create", req(txn.OpPreview{Type: txn.OpCreate, Path: "a.md"}), true},
+		{"an update", req(txn.OpPreview{Type: txn.OpUpdate, Path: "a.md"}), true},
+		{"a move", req(txn.OpPreview{Type: txn.OpMove, Path: "a.md", To: "b.md"}), true},
+		{"a delete", req(txn.OpPreview{Type: txn.OpDelete, Path: "a.md"}), false},
+		{"an update beside a delete", req(txn.OpPreview{Type: txn.OpUpdate, Path: "a.md"}, txn.OpPreview{Type: txn.OpDelete, Path: "b.md"}), false},
+		{"a sensitive update", req(txn.OpPreview{Type: txn.OpUpdate, Path: ".env", Sensitive: true}), false},
+		{"a route rule that asks", &txn.ApprovalRequest{ChangeSetID: "chg_ask", Kind: txn.KindWrite, MustAsk: true,
+			Operations: []txn.OpPreview{{Type: txn.OpUpdate, Path: "a.md"}}}, false},
+		{"a command", &txn.ApprovalRequest{ChangeSetID: "chg_cmd", Kind: txn.KindCommand, Command: []string{"go", "test"}}, false},
+	} {
+		if got := s.autoApproved(tc.req); got != tc.want {
+			t.Errorf("open mode auto-approves %s = %v, want %v", tc.name, got, tc.want)
+		}
 	}
 }

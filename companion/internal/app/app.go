@@ -240,6 +240,9 @@ func (a *App) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if approvals.Mode() == approval.ModeOpen {
+		a.log.Warn("file-write approval is open: creates, updates and moves land without asking; deletes and sensitive paths still ask")
+	}
 	gate := cmdgate.New(st, storedRung, func(rung string) error {
 		return SaveCommandRung(a.cfg.DataDir, rung)
 	})
@@ -262,25 +265,27 @@ func (a *App) Run(ctx context.Context) error {
 		return err
 	}
 
+	delegations := cmdgate.NewDelegations()
 	var handler http.Handler = mcpserver.Handler(mcpserver.Deps{
-		Source:     manager,
-		Engine:     engine,
-		Reads:      approvals,
-		Rules:      RuleStore{DataDir: a.cfg.DataDir},
-		Exec:       runner,
-		Tasks:      taskManager,
-		Approve:    approvals,
-		Gate:       gate,
-		ExecAudit:  execAuditor{store: st, log: a.log},
-		Runs:       st,
-		Activity:   st,
-		Memory:     st,
-		Agents:     agents,
-		Providers:  providers,
-		Navigators: navigators,
-		Box:        box,
-		Seen:       seenRecorder(ctx, st, a.log),
-		Remotes:    remoteWorkspaces(remotes),
+		Source:      manager,
+		Engine:      engine,
+		Reads:       approvals,
+		Rules:       RuleStore{DataDir: a.cfg.DataDir},
+		Exec:        runner,
+		Tasks:       taskManager,
+		Approve:     approvals,
+		Gate:        gate,
+		ExecAudit:   execAuditor{store: st, log: a.log},
+		Runs:        st,
+		Activity:    st,
+		Memory:      st,
+		Agents:      agents,
+		Delegations: delegations,
+		Providers:   providers,
+		Navigators:  navigators,
+		Box:         box,
+		Seen:        seenRecorder(ctx, st, a.log),
+		Remotes:     remoteWorkspaces(remotes),
 	}, &mcpserver.Options{
 		EnableWaitProbe: a.cfg.EnableProbes,
 		MaxInlineBytes:  a.cfg.MaxInlineBytes,
@@ -341,6 +346,7 @@ func (a *App) Run(ctx context.Context) error {
 	ctl := &ctlapi.Server{Manager: manager, Store: st, Approvals: approvals, Engine: engine,
 		RelayURL: a.cfg.RelayURL, Commands: gate, Tasks: taskManager,
 		Proxies: proxyList{providers}, LanguageServers: serverList{navigators}, ReadBox: box}
+	ctl.Delegations = delegations
 	ctl.PersistApprovalMode = func(mode string) error {
 		return SaveApprovalMode(a.cfg.DataDir, mode)
 	}

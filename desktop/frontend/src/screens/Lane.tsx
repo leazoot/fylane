@@ -288,6 +288,21 @@ function Request({
         </span>
       </div>
 
+      {/* What the yes buys beyond this task (D37): the term is on the
+          prompt, not only in the settings page the person has not opened. */}
+      {pending.kind === "delegation" && pending.grant && (
+        <div
+          style={{
+            marginTop: 10,
+            font: "400 12.5px/1.5 var(--fy-sans)",
+            color: "var(--fy-muted)",
+            maxWidth: 560,
+          }}
+        >
+          {t("laneV3.delegationGrant", { hours: pending.grantHours })}
+        </div>
+      )}
+
       {details && <Detail pending={pending} tr={tr} />}
 
       {/* The first press opens this, the second one acts on it. The size has
@@ -361,6 +376,9 @@ function approveWord(
 ): string {
   if (armed) {
     return t("laneV3.confirmDelete");
+  }
+  if (pending.grant && pending.kind === "delegation") {
+    return t("laneV3.allowAgent", { hours: pending.grantHours });
   }
   return pending.grant ? t("laneV2.allowHere") : t("laneV3.allow");
 }

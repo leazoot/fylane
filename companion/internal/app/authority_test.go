@@ -185,11 +185,15 @@ func (c writeCell) String() string {
 }
 
 // autoApprovable is the complete set of shapes that reach disk without the
-// user being asked. Declaring the exception rather than 32 rows is the point:
-// the policy is "one shape passes, everything else stops", and widening it
-// turns the other 31 cells red at once.
+// user being asked. Declaring the exceptions rather than 48 rows is the
+// point: the policy is "these shapes pass, everything else stops", and
+// widening it turns the other 44 cells red at once. D37 added the open
+// mode's three; a delete is deliberately not among them.
 var autoApprovable = map[writeCell]bool{
 	{approval.ModeBalanced, false, txn.OpCreate, false}: true,
+	{approval.ModeOpen, false, txn.OpCreate, false}:     true,
+	{approval.ModeOpen, false, txn.OpUpdate, false}:     true,
+	{approval.ModeOpen, false, txn.OpMove, false}:       true,
 }
 
 func TestTheWriteApprovalMatrixIsExhaustive(t *testing.T) {
@@ -260,9 +264,10 @@ func TestTheTwoLaddersDoNotImply(t *testing.T) {
 
 	// The open rung says "do not interrupt me while I work in this folder".
 	// It is a statement about commands. Reading it as a statement about
-	// writes would silently retire the whole change-set approval, so: an
-	// ordinary update still asks, in either approval mode, with the rung as
-	// open and as granted as it can be.
+	// writes would silently retire the whole change-set approval, so: with
+	// the rung as open and as granted as it can be, a write is answered by
+	// the write ladder alone — an update passes only in the write mode that
+	// says so, and a delete asks in every mode.
 	gate := cmdgate.New(st, string(cmdgate.Open), nil)
 	if err := gate.SetRung(cmdgate.Open, true); err != nil {
 		t.Fatal(err)
@@ -271,12 +276,20 @@ func TestTheTwoLaddersDoNotImply(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, mode := range declaredModes(t) {
-		req := &txn.ApprovalRequest{
+		update := &txn.ApprovalRequest{
 			ChangeSetID: "chg_open_" + mode, WorkspaceID: wsID, Kind: txn.KindWrite,
 			Operations: []txn.OpPreview{{Type: txn.OpUpdate, Path: "main.go"}},
 		}
-		if !askedFor(t, mode, req) {
-			t.Errorf("mode %s: an update passed without asking because the command rung is open", mode)
+		want := !autoApprovable[writeCell{mode, false, txn.OpUpdate, false}]
+		if asked := askedFor(t, mode, update); asked != want {
+			t.Errorf("mode %s: an update asked = %v with the command rung open, want %v (the write ladder's own answer)", mode, asked, want)
+		}
+		del := &txn.ApprovalRequest{
+			ChangeSetID: "chg_open_del_" + mode, WorkspaceID: wsID, Kind: txn.KindWrite,
+			Operations: []txn.OpPreview{{Type: txn.OpDelete, Path: "main.go"}},
+		}
+		if !askedFor(t, mode, del) {
+			t.Errorf("mode %s: a delete passed without asking because the command rung is open", mode)
 		}
 	}
 

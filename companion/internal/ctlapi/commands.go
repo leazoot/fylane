@@ -21,6 +21,13 @@ type CommandGate interface {
 	Revoke(ctx context.Context, workspaceID string) error
 }
 
+// DelegationGates lists and withdraws the standing agent authorizations.
+// Implemented by *cmdgate.Delegations.
+type DelegationGates interface {
+	List() []cmdgate.DelegationGrant
+	Revoke(workspaceID, agent string) bool
+}
+
 // ProxyProvider is one locally configured MCP provider, as much of it as the
 // desktop needs. Deliberately not the program behind it: the name and the
 // trust are what a person can act on, and the command line is a local detail
@@ -85,6 +92,12 @@ type commandSettings struct {
 	// the preferences because it is the same question the two lists above
 	// answer: which programs on this machine may this Companion start.
 	LanguageServers []LanguageServer `json:"language_servers"`
+	// Delegations are the agents a yes still covers, and for how long. The
+	// broadest authorization this Core hands out, so the first to keep on
+	// screen.
+	Delegations []cmdgate.DelegationGrant `json:"delegations"`
+	// DelegationHours is how long one yes lasts, for the prompt to say.
+	DelegationHours int `json:"delegation_hours"`
 }
 
 // handleCommands reports the rung and every workspace grant in force. The
@@ -115,12 +128,40 @@ func (s *Server) handleCommands(w http.ResponseWriter, r *http.Request) {
 			servers = l
 		}
 	}
+	delegations := []cmdgate.DelegationGrant{}
+	if s.Delegations != nil {
+		if d := s.Delegations.List(); d != nil {
+			delegations = d
+		}
+	}
 	writeJSON(w, commandSettings{
 		Rung:            string(s.Commands.Rung()),
 		Grants:          grants,
 		Providers:       providers,
 		LanguageServers: servers,
+		Delegations:     delegations,
+		DelegationHours: int(cmdgate.DelegationTTL / time.Hour),
 	})
+}
+
+// handleDelegationRevoke withdraws one agent's standing authorization in one
+// workspace. Like a command grant, it takes effect on the next request and
+// answers with the settings the page redraws from.
+func (s *Server) handleDelegationRevoke(w http.ResponseWriter, r *http.Request) {
+	if s.Commands == nil || s.Delegations == nil {
+		http.Error(w, "delegation is not configured", http.StatusNotFound)
+		return
+	}
+	var req struct {
+		WorkspaceID string `json:"workspace_id"`
+		Agent       string `json:"agent"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.WorkspaceID == "" || req.Agent == "" {
+		http.Error(w, "workspace_id and agent are required", http.StatusBadRequest)
+		return
+	}
+	s.Delegations.Revoke(req.WorkspaceID, req.Agent)
+	s.handleCommands(w, r)
 }
 
 type rungRequest struct {

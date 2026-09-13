@@ -198,6 +198,18 @@ func TestSafetyModeSwitch(t *testing.T) {
 	if !strings.Contains(string(body), `"approval_mode":"balanced"`) {
 		t.Fatalf("status missing mode: %s", body)
 	}
+	// The open mode is a door with a sign on it: without confirm the Core
+	// refuses, and the refusal is not "malformed", so a client can tell
+	// the two apart.
+	if resp, _ := f.call(t, "POST", "/v1/safety", f.token, map[string]any{"mode": "open"}); resp.StatusCode != http.StatusPreconditionRequired {
+		t.Fatalf("open without confirm = %d", resp.StatusCode)
+	}
+	if f.srv.Approvals.Mode() != "balanced" || persisted != "balanced" {
+		t.Fatalf("a refused switch changed the mode: %q / %q", f.srv.Approvals.Mode(), persisted)
+	}
+	if resp, body := f.call(t, "POST", "/v1/safety", f.token, map[string]any{"mode": "open", "confirm": true}); resp.StatusCode != http.StatusOK || persisted != "open" {
+		t.Fatalf("open with confirm = %d %s, persisted %q", resp.StatusCode, body, persisted)
+	}
 }
 
 func TestControlFileModeRepaired(t *testing.T) {
@@ -806,7 +818,7 @@ func TestSaveFollowsRouteRules(t *testing.T) {
 // through, and must not move it anywhere.
 func TestAskRuleHoldsAWriteBalancedModeWouldPass(t *testing.T) {
 	f := newFixture(t)
-	if err := f.srv.Approvals.SetMode(approval.ModeBalanced); err != nil {
+	if err := f.srv.Approvals.SetMode(approval.ModeBalanced, false); err != nil {
 		t.Fatal(err)
 	}
 	f.srv.Rules = &memRules{rules: []routerule.Rule{
