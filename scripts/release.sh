@@ -93,7 +93,7 @@ if [ "${FYLANE_BUILD_DESKTOP:-}" = "1" ]; then
     echo "error: desktop/wails.json productVersion $wailsver != $VERSION" >&2
     exit 1
   fi
-  # wails builds for the host only, so the pieces the package needs are the
+  # wails builds for the host OS only, so the pieces the package needs are the
   # host's — and they exist only if the host is one of the targets above.
   hostos=$(go env GOOS)
   hostarch=$(go env GOARCH)
@@ -104,7 +104,18 @@ if [ "${FYLANE_BUILD_DESKTOP:-}" = "1" ]; then
     echo "error: no companion build for host $hostos/$hostarch; add it to the target list" >&2
     exit 1
   fi
-  (cd desktop && wails build -clean -trimpath -ldflags "$ldflags")
+  if [ "$hostos" = darwin ]; then
+    # One macOS package for both chips. The shell is built universal, and
+    # the Core and cloudflared are the two single-arch builds glued with
+    # lipo, so an Intel Mac installs the same file an Apple-silicon one does
+    # and nothing in the README or the update manifest has to name a chip.
+    for a in arm64 amd64; do
+      [ -d "$stage/fylane-companion-darwin-$a" ] || { echo "error: no darwin/$a companion build; the universal bundle needs both" >&2; exit 1; }
+    done
+    (cd desktop && wails build -clean -trimpath -platform darwin/universal -ldflags "$ldflags")
+  else
+    (cd desktop && wails build -clean -trimpath -ldflags "$ldflags")
+  fi
 
   if [ "$hostos" = darwin ]; then
     # Wails names the bundle after the project; users install "Fylane
@@ -120,9 +131,14 @@ if [ "${FYLANE_BUILD_DESKTOP:-}" = "1" ]; then
     # cloudflared beside the Core, where tunnelproc looks first. Signing must
     # happen after this mutation, and covers cloudflared too because a bundle
     # is signed as a unit — the one place we re-sign someone else's binary.
-    cp "$src/fylane-companion" "$app/Contents/MacOS/fylane-companion"
-    cp "$src/cloudflared" "$app/Contents/MacOS/cloudflared"
+    lipo -create -output "$app/Contents/MacOS/fylane-companion" \
+      "$stage/fylane-companion-darwin-arm64/fylane-companion" "$stage/fylane-companion-darwin-amd64/fylane-companion"
+    lipo -create -output "$app/Contents/MacOS/cloudflared" \
+      "$stage/fylane-companion-darwin-arm64/cloudflared" "$stage/fylane-companion-darwin-amd64/cloudflared"
     chmod +x "$app/Contents/MacOS/fylane-companion" "$app/Contents/MacOS/cloudflared"
+    for f in Fylane fylane-companion cloudflared; do
+      lipo "$app/Contents/MacOS/$f" -verify_arch x86_64 arm64 || { echo "error: $f in the bundle is not universal" >&2; exit 1; }
+    done
     cp third_party/cloudflared/LICENSE "$app/Contents/Resources/CLOUDFLARED-LICENSE.txt"
     if [ -n "${FYLANE_MAC_SIGN_ID:-}" ]; then
       codesign --force --options runtime --timestamp -s "$FYLANE_MAC_SIGN_ID" "$app/Contents/MacOS/fylane-companion"

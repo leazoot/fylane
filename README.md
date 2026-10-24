@@ -69,7 +69,7 @@ Download from [Releases](https://github.com/leazoot/fylane/releases/latest):
 
 | System | Download |
 | --- | --- |
-| macOS | `fylane-desktop-macos.dmg`, drag into Applications |
+| macOS (one package for Apple silicon and Intel) | `fylane-desktop-macos.dmg`, drag into Applications |
 | Windows | `fylane-desktop-windows-amd64.zip`, unzip and run `Fylane.exe` |
 | Linux / servers | command line only for now, see [Command line](#command-line) |
 

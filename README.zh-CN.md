@@ -61,7 +61,7 @@ VPS 上的 Fylane 不对外开放,只有你这台电脑能通过 ssh 连到它�
 
 | 系统 | 下载 |
 | --- | --- |
-| macOS | `fylane-desktop-macos.dmg`,拖进「应用程序」 |
+| macOS(Apple 芯片与 Intel 同一个包) | `fylane-desktop-macos.dmg`,拖进「应用程序」 |
 | Windows | `fylane-desktop-windows-amd64.zip`,解压后运行 `Fylane.exe` |
 | Linux / 服务器 | 目前只有命令行版,见[命令行](#命令行) |
 
